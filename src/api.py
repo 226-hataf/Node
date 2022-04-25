@@ -5,10 +5,19 @@ from dotenv import load_dotenv
 
 from fastapi import FastAPI
 from core import log
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
 app = FastAPI()
+
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+)
 
 @app.get('/')
 async def root():
@@ -18,7 +27,7 @@ async def root():
 async def signup():
     return {}
 
-@app.post('/sigin')
+@app.post('/signin')
 async def login():
     return {}
 
