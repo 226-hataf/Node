@@ -1,8 +1,6 @@
-from ast import Delete
-from lib2to3.pgen2.token import COMMA
 from fastapi import APIRouter, Depends
 
-from business import User, Permission
+from business import Permission
 from business.models.dependencies import CommonDependencies
 from core import ZKModel
 
