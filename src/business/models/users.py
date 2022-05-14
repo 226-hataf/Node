@@ -17,7 +17,7 @@ class User(BaseModel):
     phone: Optional[str]
     createdAt: Optional[str]
     lastLoginAt: Optional[str]
-    # permissions: List[Permission]    
+    permissions: Optional[List]    
     
 
 class UserResponseModel(BaseModel):

@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 
 from business import User
@@ -48,6 +49,19 @@ async def list(commons: CommonDependencies=Depends(CommonDependencies)):
 
 
 list.__doc__ = f" List {model.plural}".expandtabs()
+
+@router.put('/{user_id}/permissions', tags=[model.plural])
+async def update_permissions(user_id: str, user: User):
+    auth_provider: Provider = get_provider()
+
+    permissions = {}
+    for permission in user.permissions:
+        permissions.update({f'{permission}': True})
+
+    additional_claims = auth_provider.update_permissions(user_id=user_id, permissions=permissions)
+
+    return {'confirmed_permissions': additional_claims} # list of permissions
+
 
 @router.get('/{user_id}', tags=[model.plural], response_model=User, response_model_exclude={"password"})
 async def get(user_id: str):

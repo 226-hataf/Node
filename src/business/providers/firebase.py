@@ -4,7 +4,7 @@ from .base import Provider, DuplicateEmailError
 from firebase_admin import auth
 from core import log
 import firebase_admin
-
+import jwt
 
 firebase_admin.initialize_app()
 class ProviderFirebase(Provider):
@@ -50,7 +50,7 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
-    def _cast_user(self, data:dict):
+    def _cast_user(self, data: dict):
         return User(
             id=data['localId'],
             email=data['email'],
@@ -59,7 +59,7 @@ class ProviderFirebase(Provider):
             lastLoginAt=data['lastLoginAt'],
         )
         
-    def list_users(self, page:str, page_size:int):
+    def list_users(self, page: str, page_size: int):
         try:
             page = auth.list_users(max_results=page_size,page_token=page)
 
@@ -70,3 +70,28 @@ class ProviderFirebase(Provider):
             return users, next_page, page._max_results
         except Exception as e:
             raise e
+
+    def update_permissions(self, user_id: str, permissions: dict):
+        uid = user_id
+        
+        additional_claims = {
+            'ZK_auth_user_create': True,
+            'ZK_auth_user_del': False,
+            'ZK_chat_session_list': True
+        }
+
+        # compare permissions and additional_claims
+        set_per = set(permissions.items())
+        set_claims = set(additional_claims.items())
+
+        keys_to_remove = dict(set_claims - set_per)
+
+        for key in list(keys_to_remove):
+            if key:
+                additional_claims.pop(key)
+
+        custom_token = auth.create_custom_token(uid, additional_claims) # {"ZK_zeauth_permissions": list(additional_claims.keys())}
+
+        auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions": list(additional_claims.keys())})
+        
+        return additional_claims # custom_token

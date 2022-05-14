@@ -14,6 +14,9 @@ class Provider:
     def list_users(self, page:str, page_size:int):
         log.error(f"method list_user not implement for provider")
 
+    def update_permissions(self, user_id:str):
+        log.error(f"method verify_user not implement for provider")
+
     def update_user(self, old_user: User, new_user: User):
         log.error(f"method update_user not implement for provider")
 
