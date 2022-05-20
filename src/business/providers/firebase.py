@@ -1,12 +1,16 @@
 from typing import List
+
+from fastapi import HTTPException
 from business.models.users import User
+from business.models.roles import Roles
 from .base import Provider, DuplicateEmailError
-from firebase_admin import auth
+from firebase_admin import auth, firestore
 from core import log
 import firebase_admin
 import jwt
 
 firebase_admin.initialize_app()
+db = firestore.client()
 class ProviderFirebase(Provider):
 
     @staticmethod
@@ -95,3 +99,47 @@ class ProviderFirebase(Provider):
         auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions": list(additional_claims.keys())})
         
         return additional_claims # custom_token
+
+    # CRUD ROLES
+    def create_role(self, name: str, permissions: List[str], description: str):
+        try:
+            col_ref = db.collection(name).document('role')
+
+            col_ref.set({'role_name': name, 'permisions': permissions, 'description': description})
+
+            return permissions
+        except Exception as e:
+            log.error(e)
+
+    def list_roles(self, name: str, page: str, page_size: int):
+        try:
+            page = auth.list_users(max_results=page_size,page_token=page)
+            next_page = page.next_page_token
+
+            docs = db.collection(name).get()
+            roles_list = {}
+            for doc in docs:
+                roles_list.update(doc.to_dict())
+
+            return name, roles_list, next_page, page._max_results#docs.to_dict()
+        except Exception as e:
+            log.error(e)
+            log.error("no such document")
+
+    def update_role(self, name: str, new_permissions: List[str], description: str):
+        doc = db.collection(name).document('role')
+        if doc.get()._exists:
+            doc.delete()
+            self.create_roles(name=name, permissions=new_permissions, description=description)
+        # doc.update({'role_name': name, 'permissions': new_permissions})
+        else:
+            raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")
+
+
+    def delete_role(self, name: str):
+        doc = db.collection(name).document('role')
+        if doc.get()._exists:
+            doc.delete()
+            return name
+        else:
+            raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")

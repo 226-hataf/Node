@@ -6,7 +6,7 @@ from .permissions import Permission
 
 class User(BaseModel):
     id: Optional[Union[str, int]]
-    email: str
+    email: Optional[str]
     username: Optional[str]
     password: Optional[str]
     verified: Optional[bool]

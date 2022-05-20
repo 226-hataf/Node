@@ -1,3 +1,4 @@
+from typing import List
 from business.models.users import User
 from core import log
 class Provider:
@@ -25,6 +26,20 @@ class Provider:
     
     def activate_user(self, user_id: str):
         log.error(f"method activate_user not implement for provider")
+
+    # ROLES
+    def create_role(self, name: str, permissions: List[str]):
+        log.error(f'method create_roles not implemented for provider')
+    
+    def list_roles(self, name: str):
+        log.error(f'method list_roles not implemented for provider')
+
+    def update_role(self, name: str, new_permissions: List[str]):
+        log.error(f'method update_roles not implemented for provider')
+
+    def delete_role(self, role_name: str):
+        log.error(f'method delete_role not implemented for provider')
+
 
 class DuplicateEmailError(Exception):
     pass
