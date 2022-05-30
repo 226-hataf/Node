@@ -1,12 +1,13 @@
+import email
 import re
 from typing import Optional, Union, List
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 from .permissions import Permission
 
 class User(BaseModel):
     id: Optional[Union[str, int]]
-    email: Optional[str]
+    email: str
     username: Optional[str]
     password: Optional[str]
     verified: Optional[bool]
@@ -17,8 +18,17 @@ class User(BaseModel):
     phone: Optional[str]
     createdAt: Optional[str]
     lastLoginAt: Optional[str]
-    permissions: Optional[List]    
+    permissions: Optional[List]
+
+    @validator('email')
+    def check_email(cls, v):
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            assert "invalid email"
+        assert v is not None, 'the user email is required'
+        # return v
     
+class Config:
+    orm_mode = True
 
 class UserResponseModel(BaseModel):
     next_page: Optional[str]

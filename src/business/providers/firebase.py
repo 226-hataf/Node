@@ -7,7 +7,7 @@ from .base import Provider, DuplicateEmailError
 from firebase_admin import auth, firestore
 from core import log
 import firebase_admin
-import jwt
+
 
 firebase_admin.initialize_app()
 db = firestore.client()
@@ -40,19 +40,36 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
-    # def signin(self, username: str, password: str):
-    #     auth.get_users([
-    #         auth.UidIdentifier('uid1'),
-    #     ])
 
     def delete_user(self, user_id: str):
         try:
             deleted_user = auth.get_user(user_id) # find the user to delete by its id
-            auth.delete_user(deleted_user.uid) # delete the user by its unique id
-            log.info(f'successfully deleted user {deleted_user.uid}')
-            return deleted_user
+            if deleted_user:
+                auth.delete_user(deleted_user.uid) # delete the user by its unique id
+                log.info(f'successfully deleted user {deleted_user.uid}')
+                return deleted_user
         except Exception as e:
             raise e
+
+    def update_user(self, user_id: str, user: User):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    uid=user_id,
+                    email=user.email,
+                    phone_number=user.phone,
+                    password=user.password,
+                    display_name=user.full_name,
+                    photo_url=user.avatar_url,
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            log.error(e)
+            # raise e
 
     def _cast_user(self, data: dict):
         return User(
@@ -60,7 +77,7 @@ class ProviderFirebase(Provider):
             email=data['email'],
             verified=data['emailVerified'],
             createdAt=data['createdAt'],
-            lastLoginAt=data['lastLoginAt'],
+            # lastLoginAt=data['lastLoginAt'],
         )
         
     def list_users(self, page: str, page_size: int):
@@ -76,36 +93,39 @@ class ProviderFirebase(Provider):
             raise e
 
     def update_permissions(self, user_id: str, permissions: dict):
-        uid = user_id
-        
-        additional_claims = {
-            'ZK_auth_user_create': True,
-            'ZK_auth_user_del': False,
-            'ZK_chat_session_list': True
-        }
+        try:    
+            uid = user_id
+            
+            additional_claims = {
+                'ZK_auth_user_create': True,
+                'ZK_auth_user_del': False,
+                'ZK_chat_session_list': True
+            }
 
-        # compare permissions and additional_claims
-        set_per = set(permissions.items())
-        set_claims = set(additional_claims.items())
+            # compare permissions and additional_claims
+            set_per = set(permissions.items())
+            set_claims = set(additional_claims.items())
 
-        keys_to_remove = dict(set_claims - set_per)
+            keys_to_remove = dict(set_claims - set_per)
 
-        for key in list(keys_to_remove):
-            if key:
-                additional_claims.pop(key)
+            for key in list(keys_to_remove):
+                if key:
+                    additional_claims.pop(key)
 
-        custom_token = auth.create_custom_token(uid, additional_claims) # {"ZK_zeauth_permissions": list(additional_claims.keys())}
+            custom_token = auth.create_custom_token(uid, additional_claims) # {"ZK_zeauth_permissions": list(additional_claims.keys())}
 
-        auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions": list(additional_claims.keys())})
-        
-        return additional_claims # custom_token
+            auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions": list(additional_claims.keys())})
+            
+            return additional_claims # custom_token
+        except Exception as e:
+            log.error(e)
 
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
         try:
             col_ref = db.collection(name).document('role')
 
-            col_ref.set({'role_name': name, 'permisions': permissions, 'description': description})
+            col_ref.set({'role_name': name, 'permissions': permissions, 'description': description})
 
             return permissions
         except Exception as e:
@@ -127,19 +147,23 @@ class ProviderFirebase(Provider):
             log.error("no such document")
 
     def update_role(self, name: str, new_permissions: List[str], description: str):
-        doc = db.collection(name).document('role')
-        if doc.get()._exists:
-            doc.delete()
-            self.create_roles(name=name, permissions=new_permissions, description=description)
-        # doc.update({'role_name': name, 'permissions': new_permissions})
-        else:
-            raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")
+        try:
+            doc = db.collection(name).document('role')
+            if doc.get()._exists:
+                doc.update({'role_name': name, 'permissions': new_permissions, 'description': description})
+            else:
+                raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")
+        except Exception as e:
+            log.error(e)
 
 
     def delete_role(self, name: str):
-        doc = db.collection(name).document('role')
-        if doc.get()._exists:
-            doc.delete()
-            return name
-        else:
-            raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")
+        try:
+            doc = db.collection(name).document('role')
+            if doc.get()._exists:
+                doc.delete()
+                return name
+            else:
+                raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")
+        except Exception as e:
+            log.error(e)

@@ -17,7 +17,7 @@ model = ZKModel(**{
 
 # TODO: CRUD Operations
 # TODO: Create
-@router.post('/', tags=[model.plural])
+@router.post('/', tags=[model.plural], status_code=201)
 async def create(name: str, permissions: List[str], description: Optional[str] = ""):
     auth_provider: Provider = get_provider()
     try:
@@ -28,7 +28,7 @@ async def create(name: str, permissions: List[str], description: Optional[str] =
         log.error(e)
 
 # TODO: Read
-@router.get('/', tags=[model.plural], response_model=Roles, response_model_exclude_none=True)
+@router.get('/', tags=[model.plural], status_code=200, response_model=Roles, response_model_exclude_none=True)
 async def list_roles(name: str, commons: CommonDependencies=Depends(CommonDependencies)):
     auth_provider: Provider = get_provider()
     try:
@@ -49,7 +49,7 @@ async def roles():
     return {}
 
 # TODO: Update
-@router.put('/{role_id}', tags=[model.plural])
+@router.put('/{role_id}', tags=[model.plural], status_code=200)
 async def update_roles(role_id: str, permissions: List[str], description: Optional[str] = ""):
     auth_provider: Provider = get_provider()
     try:
