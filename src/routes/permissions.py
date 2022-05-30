@@ -1,7 +1,7 @@
-from ast import Delete
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from business import User, Permission
+from business import Permission
+from business.models.dependencies import CommonDependencies
 from core import ZKModel
 
 router = APIRouter()
@@ -21,8 +21,8 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
 
 
 @router.get('/', tags=[model.plural])
-async def list():
-    return []
+async def list(commons: CommonDependencies=Depends(CommonDependencies)):
+    return commons
 
 list.__doc__ = f" List {model.plural}".expandtabs()
 

@@ -43,7 +43,7 @@ for module in os.listdir(f"{os.path.dirname(__file__)}/routes"):
         app.include_router(pkg.router, prefix=f"/{module_name}")
     except Exception as e:
         log.error(f"failed importing <{module_name}> endpoints")
-        log.debug(e)
+        print(e)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 import os
 
-from core import log
-from providers.firebase import ProviderFirebase
+from .firebase import ProviderFirebase
 
 def get_provider():
     provider = os.environ.get('AUTH_PROVIDER')
