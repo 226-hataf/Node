@@ -1,7 +1,7 @@
 import email
 import re
 from typing import Optional, Union, List
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, ValidationError
 
 from .permissions import Permission
 
@@ -21,11 +21,10 @@ class User(BaseModel):
     permissions: Optional[List]
 
     @validator('email')
-    def check_email(cls, v):
+    def check_email(cls, email):
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            assert "invalid email"
-        assert v is not None, 'the user email is required'
-        # return v
+            raise ValidationError("invalid email format")
+        return email
     
 class Config:
     orm_mode = True

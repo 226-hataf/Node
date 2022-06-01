@@ -11,6 +11,7 @@ from core.types import ZKModel
 
 router = APIRouter()
 
+auth_provider: Provider = get_provider()
 
 model = ZKModel(**{
         "name": 'user',
@@ -20,7 +21,6 @@ model = ZKModel(**{
 
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
 async def create(user: User):
-    auth_provider: Provider = get_provider()
     try:
         signed_up_user = auth_provider.signup(user=user)
         return signed_up_user.dict()
@@ -35,7 +35,6 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
 
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
 async def list(commons: CommonDependencies=Depends(CommonDependencies)):
-    auth_provider: Provider = get_provider()
     try:
         user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size)
         return {
@@ -46,13 +45,13 @@ async def list(commons: CommonDependencies=Depends(CommonDependencies)):
 
     except Exception as e:
         log.error(e)
+        print(e)
 
 
 list.__doc__ = f" List {model.plural}".expandtabs()
 
 @router.put('/{user_id}/permissions', tags=[model.plural], status_code=204)
 async def update_permissions(user_id: str, user: User):
-    auth_provider: Provider = get_provider()
 
     permissions = {}
     for permission in user.permissions:
@@ -72,7 +71,6 @@ get.__doc__ = f" Get a specific {model.name} by it s id".expandtabs()
 
 @router.put('/{user_id}', tags=[model.plural], status_code=200) #, response_model=User, response_model_exclude={"password"}
 async def update(user_id: str, user: User):
-    auth_provider: Provider = get_provider()
     try:
         updated_user = auth_provider.update_user(user_id=user_id, user=user)
         return {'updated user': updated_user.uid}
@@ -85,7 +83,6 @@ update.__doc__ = f" Update a {model.name} by its id and payload".expandtabs()
 
 @router.delete('/{user_id}', tags=[model.plural], status_code=202) # , response_model=User, response_model_include={"email"}
 async def delete(user_id: str):
-    auth_provider: Provider = get_provider()
     try:
         deleted_user = auth_provider.delete_user(user_id=user_id)
         return {"deleted": deleted_user.email}
