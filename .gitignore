@@ -1,3 +1,5 @@
 src/env
 env
 __pycache__
+google-sa.json
+jsc-chatbot-sa.json
