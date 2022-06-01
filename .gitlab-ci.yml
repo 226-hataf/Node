@@ -17,8 +17,8 @@ dev_build&deploy:
     name: production
     url: https://console.cloud.google.com/gcr/images/aifeed?project=aifeed
 
-    before_script:
-      - cat $JSC_CHATBOT_SA > jsc-chatbot-sa.json
+  before_script:
+    - cat $JSC_CHATBOT_SA > jsc-chatbot-sa.json
 
-    script:
-      - gcloud run deploy $DEV_APP --project $DEV_PROJECT --region $DEV_REGION --source .
+  script:
+    - gcloud run deploy $DEV_APP --project $DEV_PROJECT --region $DEV_REGION --source .
