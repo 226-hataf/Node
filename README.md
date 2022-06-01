@@ -1,5 +1,6 @@
-
+​
 Environemnt variables:
+​
 
 AUTH_TYPE: Valid values [firebase]
 
@@ -10,3 +11,4 @@ UVICORN_PORT: 8080
 UVICORN_WORKERS: 1
 UVICORN_DEBUG: True
 UVICORN_RELOAD: True 
+gcloud run deploy zkdoer-zeauth-dev --project jsc-chatbot --region us-central1 --source .
