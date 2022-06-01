@@ -9,10 +9,16 @@ from core import log
 import firebase_admin
 
 
-firebase_admin.initialize_app()
-db = firestore.client()
-class ProviderFirebase(Provider):
 
+
+class ProviderFirebase(Provider):
+    db = None
+
+    def __init__(self) -> None:
+        super().__init__()
+        if ProviderFirebase.db is None:
+            firebase_admin.initialize_app()
+            ProviderFirebase.db = firestore.client()
     @staticmethod
     def _enrich_user(user: User):
         if user.full_name is None and (user.first_name or user.last_name):
@@ -126,7 +132,7 @@ class ProviderFirebase(Provider):
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
         try:
-            col_ref = db.collection(name).document('role')
+            col_ref = ProviderFirebase.db.collection(name).document('role')
 
             col_ref.set({'role_name': name, 'permissions': permissions, 'description': description})
 
@@ -164,7 +170,7 @@ class ProviderFirebase(Provider):
 
     def update_role(self, name: str, new_permissions: List[str], description: str):
         try:
-            doc = db.collection(name).document('role')
+            doc = ProviderFirebase.db.collection(name).document('role')
             if doc.get()._exists:
                 doc.update({'role_name': name, 'permissions': new_permissions, 'description': description})
             else:
@@ -175,7 +181,7 @@ class ProviderFirebase(Provider):
 
     def delete_role(self, name: str):
         try:
-            doc = db.collection(name).document('role')
+            doc = ProviderFirebase.db.collection(name).document('role')
             if doc.get()._exists:
                 doc.delete()
                 return name
