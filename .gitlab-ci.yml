@@ -4,9 +4,9 @@ variables:
   DEV_PROJECT: jsc-chatbot
   DEV_REGION:  us-central1
   DEV_APP: zkdoer-zeauth-dev
-  GOOGLE_APPLICATIONS_CREDENTIALS
-# Production build
-dev_build&deploy:
+
+# dev build
+dev_build_deploy:
   # when to run
   only:
     refs:
