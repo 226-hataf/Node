@@ -25,16 +25,19 @@ class ProviderFirebase(Provider):
 
     def signup(self, user: User):
         try:
-            new_user = auth.create_user(
-                email=user.email,
-                password=user.password,
-                phone_number=user.phone,
-                display_name=user.full_name,
-                photo_url=user.avatar_url,
-            )
-            log.info(f'sucessfully created new user: {new_user.uid}')
-            user.id = new_user.uid
-            return ProviderFirebase._enrich_user(user)
+            if user.email is None:
+                new_user = auth.create_user(
+                    email=user.email,
+                    password=user.password,
+                    phone_number=user.phone,
+                    display_name=user.full_name,
+                    photo_url=user.avatar_url,
+                )
+                log.info(f'sucessfully created new user: {new_user.uid}')
+                user.id = new_user.uid
+                return ProviderFirebase._enrich_user(user)
+            else:
+                raise e
         except auth.EmailAlreadyExistsError:
             raise DuplicateEmailError
         except Exception as e:

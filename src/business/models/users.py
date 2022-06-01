@@ -21,11 +21,11 @@ class User(BaseModel):
     permissions: Optional[List]
 
     @validator('email')
-    def check_email(cls, v):
+    def check_email(cls, email):
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             assert "invalid email"
-        assert v is not None, 'the user email is required'
-        # return v
+        assert email is not None, 'the user email is required'
+        return email
     
 class Config:
     orm_mode = True
