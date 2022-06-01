@@ -4,8 +4,7 @@ variables:
   DEV_PROJECT: jsc-chatbot
   DEV_REGION:  us-central1
   DEV_APP: zkdoer-zeauth-dev
-
-
+  GOOGLE_APPLICATIONS_CREDENTIALS
 # Production build
 dev_build&deploy:
   # when to run
@@ -18,7 +17,9 @@ dev_build&deploy:
     url: https://console.cloud.google.com/gcr/images/aifeed?project=aifeed
 
   before_script:
-    - cat $JSC_CHATBOT_SA > jsc-chatbot-sa.json
-
+    - echo $JSC_CHATBOT_SA > jsc-chatbot-sa.json
+    - echo $DEV_GOOGLE_APPLICATIONS_CREDENTIALS > google-sa.json
+    - ls
+    - export GOOGLE_APPLICATIONS_CREDENTIALS=$PWD/google-sa.json
   script:
     - gcloud run deploy $DEV_APP --project $DEV_PROJECT --region $DEV_REGION --source .
