@@ -134,20 +134,33 @@ class ProviderFirebase(Provider):
         except Exception as e:
             log.error(e)
 
-    def list_roles(self, name: str, page: str, page_size: int):
+    def list_specific_roles(self, name: str, page: str, page_size: int):
         try:
             page = auth.list_users(max_results=page_size,page_token=page)
             next_page = page.next_page_token
 
-            docs = db.collection(name).get()
-            roles_list = {}
-            for doc in docs:
-                roles_list.update(doc.to_dict())
+            docs = db.collection('ZK_roles_test').document(name).get()
+            # for doc in docs:
+            #     roles_list.update(doc.to_dict())
 
-            return name, roles_list, next_page, page._max_results#docs.to_dict()
+            return docs.to_dict(), next_page, page._max_results#docs.to_dict()
         except Exception as e:
             log.error(e)
             log.error("no such document")
+
+    def list_all_roles(self, page: str, page_size: int):
+        try:
+            page = auth.list_users(max_results=page_size,page_token=page)
+            next_page = page.next_page_token
+            docs = db.collection('ZK_roles_test').get()
+            roles_list = []
+            for doc in docs:
+                roles_list.append(doc.to_dict())
+            return roles_list, next_page, page._max_results
+        except Exception as e:
+            log.error(e)
+            log.error("no such document")
+
 
     def update_role(self, name: str, new_permissions: List[str], description: str):
         try:
