@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from business import User
 from business.models.users import UserResponseModel
-from business.providers.base import Provider, DuplicateEmailError
+from business.providers.base import Provider, DuplicateEmailError, RequiredField
 from business.providers import get_provider
 from business.models.dependencies import CommonDependencies
 from core import log
@@ -28,7 +28,7 @@ async def create(user: User):
         raise HTTPException(status_code=400, detail="this email is already linked to an account")
     except Exception as e:
         log.error(e)
-        raise HTTPException(status_code=422, detail=f"the user email is required {e}")
+        raise HTTPException(status_code=422, detail="the user email is required")
 
 create.__doc__ = f" Create a new {model.name}".expandtabs()
 
@@ -50,21 +50,21 @@ async def list(commons: CommonDependencies=Depends(CommonDependencies)):
 
 list.__doc__ = f" List {model.plural}".expandtabs()
 
-@router.put('/{user_id}/permissions', tags=[model.plural], status_code=204)
-async def update_permissions(user_id: str, user: User):
+@router.put('/{user_id}/roles', tags=[model.plural], status_code=204)
+async def update_roles(user_id: str, new_role: List[str]):
+    try:
+        new_roles = auth_provider.update_user_roles(new_role=new_role, user_id=user_id)
 
-    permissions = {}
-    for permission in user.permissions:
-        permissions.update({f'{permission}': True})
-
-    additional_claims = auth_provider.update_permissions(user_id=user_id, permissions=permissions)
-
-    return {'confirmed_permissions': additional_claims} # list of permissions
+        return {'confirmed_permissions': new_roles} # list of permissions
+    except Exception as e:
+        log.error(e)
+        raise e
 
 
-@router.get('/{user_id}', tags=[model.plural], response_model=User, response_model_exclude={"password"})
+@router.get('/{user_id}', tags=[model.plural], status_code=200, response_model=User, response_model_exclude={"password"})
 async def get(user_id: str):
-    return User # {}
+    user_info = auth_provider.get_user(user_id=user_id)
+    return user_info
 
 get.__doc__ = f" Get a specific {model.name} by it s id".expandtabs()
 

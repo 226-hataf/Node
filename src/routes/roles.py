@@ -1,6 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from business.models.dependencies import CommonDependencies
+from business.models.permissions import Permission
 from business.models.roles import Roles
 from business.providers import get_provider
 from business.providers.base import Provider

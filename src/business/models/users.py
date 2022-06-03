@@ -3,11 +3,14 @@ import re
 from typing import Optional, Union, List
 from pydantic import BaseModel, validator, ValidationError
 
+from business.models.roles import Roles
+
 from .permissions import Permission
 
 class User(BaseModel):
     id: Optional[Union[str, int]]
     email: str
+    roles: Optional[List[str]]
     username: Optional[str]
     password: Optional[str]
     verified: Optional[bool]

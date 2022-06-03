@@ -1,9 +1,10 @@
 from typing import List
 
 from fastapi import HTTPException
+from business.models.permissions import Permission
 from business.models.users import User
 from business.models.roles import Roles
-from .base import Provider, DuplicateEmailError
+from .base import Provider, DuplicateEmailError, RequiredField
 from firebase_admin import auth, firestore
 from core import log
 import firebase_admin
@@ -31,7 +32,7 @@ class ProviderFirebase(Provider):
 
     def signup(self, user: User):
         try:
-            if user.email is None:
+            if user.email is not None:
                 new_user = auth.create_user(
                     email=user.email,
                     password=user.password,
@@ -42,12 +43,12 @@ class ProviderFirebase(Provider):
                 log.info(f'sucessfully created new user: {new_user.uid}')
                 user.id = new_user.uid
                 return ProviderFirebase._enrich_user(user)
-            else:
-                raise e
         except auth.EmailAlreadyExistsError:
             raise DuplicateEmailError
         except Exception as e:
             raise e
+            # raise HTTPException(status_code=422, detail=f"the user email is required ")
+            # raise e
 
 
     def delete_user(self, user_id: str):
@@ -101,38 +102,56 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
-    def update_permissions(self, user_id: str, permissions: dict):
-        try:    
-            uid = user_id
-            
-            additional_claims = {
-                'ZK_auth_user_create': True,
-                'ZK_auth_user_del': False,
-                'ZK_chat_session_list': True
-            }
-
-            # compare permissions and additional_claims
-            set_per = set(permissions.items())
-            set_claims = set(additional_claims.items())
-
-            keys_to_remove = dict(set_claims - set_per)
-
-            for key in list(keys_to_remove):
-                if key:
-                    additional_claims.pop(key)
-
-            custom_token = auth.create_custom_token(uid, additional_claims) # {"ZK_zeauth_permissions": list(additional_claims.keys())}
-
-            auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions": list(additional_claims.keys())})
-            
-            return additional_claims # custom_token
+    def get_user(self, user_id: str):
+        try:
+            user_info = auth.get_user(user_id)
+            if user_info:
+                return self._cast_user(user_info._data)
         except Exception as e:
-            log.error(e)
+            raise HTTPException(status_code=404, detail="the user is not found")
+
+    # def update_user_permissions(self, user_id: str, new_list_permissions: list):
+    #     try:    
+    #         uid = user_id
+    #         user_info = auth.get_user(uid)
+    #         # compare permissions and additional_claim
+
+    #         #custom_token = auth.create_custom_token(uid, new_list_permissions) # {"ZK_zeauth_permissions": list(additional_claims.keys())}
+
+    #         auth.set_custom_user_claims(uid, new_list_permissions)
+            
+    #         return new_list_permissions # custom_token
+    #     except Exception as e:
+    #         log.error(e)
+
+    def update_user_roles(self, new_role: list[str], user_id: str):
+        try:
+            uid = user_id
+            update_user_role = auth.get_user(uid)
+            if update_user_role:
+                new_roles = {}
+                new_permissions = {}
+                for role in new_role:
+                    new_roles.update({f'{role}': True})
+                    role_ref = ProviderFirebase.db.collection("ZK_roles_test").document(role).get()
+                    # the permissions of the new roles
+                    role_permissions = role_ref._data["permissions"]
+
+                    for pre in role_permissions:
+                       new_permissions.update({f'{pre}': True})
+
+                auth.set_custom_user_claims(uid, new_permissions)
+                auth.set_custom_user_claims(uid, new_roles)
+
+                
+            return {"new_permissions": new_permissions.keys()}
+        except Exception as e:
+            raise e
 
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
         try:
-            col_ref = ProviderFirebase.db.collection(name).document('role')
+            col_ref = ProviderFirebase.db.collection('ZK_roles_test').document(name)
 
             col_ref.set({'role_name': name, 'permissions': permissions, 'description': description})
 
@@ -145,7 +164,7 @@ class ProviderFirebase(Provider):
             page = auth.list_users(max_results=page_size,page_token=page)
             next_page = page.next_page_token
 
-            docs = db.collection('ZK_roles_test').document(name).get()
+            docs = ProviderFirebase.db.collection('ZK_roles_test').document(name).get()
             # for doc in docs:
             #     roles_list.update(doc.to_dict())
 
@@ -158,7 +177,7 @@ class ProviderFirebase(Provider):
         try:
             page = auth.list_users(max_results=page_size,page_token=page)
             next_page = page.next_page_token
-            docs = db.collection('ZK_roles_test').get()
+            docs = ProviderFirebase.db.collection('ZK_roles_test').get()
             roles_list = []
             for doc in docs:
                 roles_list.append(doc.to_dict())
@@ -170,7 +189,7 @@ class ProviderFirebase(Provider):
 
     def update_role(self, name: str, new_permissions: List[str], description: str):
         try:
-            doc = ProviderFirebase.db.collection(name).document('role')
+            doc = ProviderFirebase.db.collection('ZK_roles_test').document(name)
             if doc.get()._exists:
                 doc.update({'role_name': name, 'permissions': new_permissions, 'description': description})
             else:
@@ -181,7 +200,7 @@ class ProviderFirebase(Provider):
 
     def delete_role(self, name: str):
         try:
-            doc = ProviderFirebase.db.collection(name).document('role')
+            doc = ProviderFirebase.db.collection('ZK_roles_test').document(name)
             if doc.get()._exists:
                 doc.delete()
                 return name
