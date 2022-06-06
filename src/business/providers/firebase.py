@@ -1,4 +1,5 @@
 from typing import List
+from unittest import result
 
 from fastapi import HTTPException
 from business.models.users import User
@@ -91,13 +92,11 @@ class ProviderFirebase(Provider):
         
     def list_users(self, page: str, page_size: int):
         try:
-            page = auth.list_users(max_results=page_size,page_token=page)
+            result = auth.list_users(max_results=page_size,page_token=page)
 
-            next_page = page.next_page_token
+            users = [self._cast_user(user._data) for user in result.users]
 
-            users = [self._cast_user(user._data) for user in page.users]
-
-            return users, next_page, page._max_results
+            return users, result, result._max_results
         except Exception as e:
             raise e
 
