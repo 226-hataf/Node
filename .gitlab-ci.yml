@@ -21,5 +21,9 @@ dev_build_deploy:
     - echo $DEV_GOOGLE_APPLICATIONS_CREDENTIALS > google-sa.json
     - ls
     - export GOOGLE_APPLICATIONS_CREDENTIALS=$PWD/google-sa.json
+    - gcloud auth activate-service-account --key-file google-sa.json # Activate your service account
+    - gcloud auth configure-docker # Configure docker environment
+    - gcloud config set project $DEV_PROJECT #Set the GCP Project ID to the variable name
   script:
-    - gcloud run deploy $DEV_APP --project $DEV_PROJECT --region $DEV_REGION --source .
+    - gcloud builds submit --tag gcr.io/$DEV_PROJECT/$DEV_APP #Run the gcloud build command to build our image
+    - gcloud run deploy $DEV_APP --image gcr.io/$DEV_PROJECT/$DEV_APP --region=$DEV_REGION --platform managed --allow-unauthenticated # Run the gcloud run deploy command to deploy our new service
