@@ -15,8 +15,8 @@ model = ZKModel(**{
         "fields": [{"name" : 'id', "pk": True}]
     })
 
-# TODO: CRUD Operations
-# TODO: Create
+# CRUD Operations
+# Create
 @router.post('/', tags=[model.plural], status_code=201)
 async def create(name: str, permissions: List[str], description: Optional[str] = ""):
     auth_provider: Provider = get_provider()
@@ -27,7 +27,7 @@ async def create(name: str, permissions: List[str], description: Optional[str] =
     except Exception as e:
         log.error(e)
 
-# TODO: Read
+# Read
 @router.get('/', tags=[model.plural], status_code=200, response_model=Roles, response_model_exclude_none=True)
 async def list_roles(name: str, commons: CommonDependencies=Depends(CommonDependencies)):
     auth_provider: Provider = get_provider()
@@ -48,7 +48,7 @@ async def list_roles(name: str, commons: CommonDependencies=Depends(CommonDepend
 async def roles():
     return {}
 
-# TODO: Update
+# Update
 @router.put('/{role_id}', tags=[model.plural], status_code=200)
 async def update_roles(role_id: str, permissions: List[str], description: Optional[str] = ""):
     auth_provider: Provider = get_provider()
@@ -60,7 +60,7 @@ async def update_roles(role_id: str, permissions: List[str], description: Option
         log.error(e)
         raise e
 
-# TODO: Delete
+# Delete
 @router.delete('/{role_id}', tags=[model.plural], status_code=202)
 async def delete(role_id: str):
     auth_provider: Provider = get_provider()
