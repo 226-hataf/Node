@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 
 from business import User
+from business.models.roles import Roles
 from business.models.users import UserResponseModel
 from business.providers.base import Provider, DuplicateEmailError, RequiredField
 from business.providers import get_provider
@@ -55,7 +56,7 @@ async def update_roles(user_id: str, new_role: List[str]):
     try:
         new_roles = auth_provider.update_user_roles(new_role=new_role, user_id=user_id)
 
-        return {'confirmed_permissions': new_roles} # list of permissions
+        return (new_roles) # list of permissions
     except Exception as e:
         log.error(e)
         raise e

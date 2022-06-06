@@ -1,4 +1,6 @@
+from pickletools import int4
 from typing import List
+from unittest.util import strclass
 
 from fastapi import HTTPException
 from business.models.permissions import Permission
@@ -92,13 +94,11 @@ class ProviderFirebase(Provider):
         
     def list_users(self, page: str, page_size: int):
         try:
-            page = auth.list_users(max_results=page_size,page_token=page)
+            result = auth.list_users(max_results=page_size, page_token=page)
 
-            next_page = page.next_page_token
+            users = [self._cast_user(user._data) for user in result.users]
 
-            users = [self._cast_user(user._data) for user in page.users]
-
-            return users, next_page, page._max_results
+            return users, result.next_page_token, result._max_results
         except Exception as e:
             raise e
 
@@ -139,12 +139,13 @@ class ProviderFirebase(Provider):
 
                     for pre in role_permissions:
                        new_permissions.update({f'{pre}': True})
-
-                auth.set_custom_user_claims(uid, new_permissions)
-                auth.set_custom_user_claims(uid, new_roles)
+                
+                    auth.set_custom_user_claims(uid, new_permissions)
+            
+                #auth.set_custom_user_claims(uid, new_roles)
 
                 
-            return {"new_permissions": new_permissions.keys()}
+                return list(new_permissions.keys())
         except Exception as e:
             raise e
 
