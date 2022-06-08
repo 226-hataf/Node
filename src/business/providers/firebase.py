@@ -1,3 +1,4 @@
+import ast
 from pickletools import int4
 from typing import List
 from unittest.util import strclass
@@ -22,24 +23,26 @@ class ProviderFirebase(Provider):
         if ProviderFirebase.db is None:
             firebase_admin.initialize_app()
             ProviderFirebase.db = firestore.client()
+
     @staticmethod
-    def _enrich_user(user: User):
-        if user.full_name is None and (user.first_name or user.last_name):
-            return str(user.first_name) + ' ' + str(user.last_name)
-        
+    def _enrich_user(user: User) -> User:
+        if user.full_name is None and (user.first_name or user.last_name ):
+            first_name = user.first_name if user.first_name is not None else ''
+            last_name = user.last_name if user.last_name is not None else ''
+            user.full_name = str(first_name) + ' ' + str(last_name)
         if user.full_name and (user.last_name is None or user.first_name is None):
             user.first_name, user.last_name = user.full_name.split(' ')
-
         return user
 
     def signup(self, user: User):
         try:
+            user = ProviderFirebase._enrich_user(user)
             if user.email is not None:
                 new_user = auth.create_user(
                     email=user.email,
                     password=user.password,
                     phone_number=user.phone,
-                    display_name=user.full_name,
+                    display_name= user.full_name,
                     photo_url=user.avatar_url,
                 )
                 log.info(f'sucessfully created new user: {new_user.uid}')
@@ -49,8 +52,6 @@ class ProviderFirebase(Provider):
             raise DuplicateEmailError
         except Exception as e:
             raise e
-            # raise HTTPException(status_code=422, detail=f"the user email is required ")
-            # raise e
 
 
     def delete_user(self, user_id: str):
@@ -89,7 +90,9 @@ class ProviderFirebase(Provider):
             email=data['email'],
             verified=data['emailVerified'],
             createdAt=data['createdAt'],
-            # lastLoginAt=data['lastLoginAt'],
+            permissions = ast.literal_eval(data["customAttributes"])['ZK_zeauth_permissions'] if "customAttributes" in data else [], 
+            roles = ast.literal_eval(data["customAttributes"])["ZK_zeauth_roles"] if "customAttributes" in data else [],
+            full_name=data['displayName']
         )
         
     def list_users(self, page: str, page_size: int):
@@ -110,42 +113,20 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise HTTPException(status_code=404, detail="the user is not found")
 
-    # def update_user_permissions(self, user_id: str, new_list_permissions: list):
-    #     try:    
-    #         uid = user_id
-    #         user_info = auth.get_user(uid)
-    #         # compare permissions and additional_claim
 
-    #         #custom_token = auth.create_custom_token(uid, new_list_permissions) # {"ZK_zeauth_permissions": list(additional_claims.keys())}
-
-    #         auth.set_custom_user_claims(uid, new_list_permissions)
-            
-    #         return new_list_permissions # custom_token
-    #     except Exception as e:
-    #         log.error(e)
-
-    def update_user_roles(self, new_role: list[str], user_id: str):
+    def update_user_roles(self, new_role: List[str], user_id: str ):
         try:
             uid = user_id
             update_user_role = auth.get_user(uid)
             if update_user_role:
-                new_roles = {}
-                new_permissions = {}
+                new_permissions = []
                 for role in new_role:
-                    new_roles.update({f'{role}': True})
-                    role_ref = ProviderFirebase.db.collection("ZK_roles_test").document(role).get()
-                    # the permissions of the new roles
-                    role_permissions = role_ref._data["permissions"]
-
-                    for pre in role_permissions:
-                       new_permissions.update({f'{pre}': True})
-                
-                    auth.set_custom_user_claims(uid, new_permissions)
-            
-                #auth.set_custom_user_claims(uid, new_roles)
-
-                
-                return list(new_permissions.keys())
+                    role_ref =  ProviderFirebase.db.collection("ZK_roles_test").document(role).get()
+                    for pre in role_ref._data["permissions"]:
+                        new_permissions.append(pre)
+                auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions" : new_permissions,"ZK_zeauth_roles" : new_role})
+                user= auth.get_user(user_id)
+                return self._cast_user(user._data)
         except Exception as e:
             raise e
 

@@ -21,7 +21,7 @@ class User(BaseModel):
     phone: Optional[str]
     createdAt: Optional[str]
     lastLoginAt: Optional[str]
-    permissions: Optional[List]
+    permissions: Optional[List[str]]
 
     @validator('email')
     def check_email(cls, email):

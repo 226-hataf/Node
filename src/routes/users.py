@@ -28,8 +28,7 @@ async def create(user: User):
     except DuplicateEmailError:
         raise HTTPException(status_code=400, detail="this email is already linked to an account")
     except Exception as e:
-        log.error(e)
-        raise HTTPException(status_code=422, detail="the user email is required")
+        raise e
 
 create.__doc__ = f" Create a new {model.name}".expandtabs()
 
@@ -51,12 +50,11 @@ async def list(commons: CommonDependencies=Depends(CommonDependencies)):
 
 list.__doc__ = f" List {model.plural}".expandtabs()
 
-@router.put('/{user_id}/roles', tags=[model.plural], status_code=204)
-async def update_roles(user_id: str, new_role: List[str]):
+@router.put('/{user_id}/roles', tags=[model.plural], status_code=201,response_model= User)
+async def update_roles(user_id: str, new_role: List[str] ):
     try:
-        new_roles = auth_provider.update_user_roles(new_role=new_role, user_id=user_id)
-
-        return (new_roles) # list of permissions
+        user = (auth_provider.update_user_roles(new_role=new_role, user_id=user_id ))
+        return user # list of permissins
     except Exception as e:
         log.error(e)
         raise e
