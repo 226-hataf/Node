@@ -10,11 +10,11 @@ dev_build_deploy:
   # when to run
   only:
     refs:
-      - devhttps://www.figma.com/file/xjBrDvt1aB5SINl8mTuD7B/DOHA-NEWS-PROJECT?node-id=63%3A702
+      - dev
 
   environment:
-    name: production
-    url: https://console.cloud.google.com/gcr/images/aifeed?project=aifeed
+    name: dev
+    url: https://zekoder.com/dev
 
   before_script:
     - echo $JSC_CHATBOT_SA > jsc-chatbot-sa.json
