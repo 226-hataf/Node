@@ -1,10 +1,13 @@
+import ast
+from pickletools import int4
 from typing import List
-from unittest import result
+
 
 from fastapi import HTTPException
+from business.models.permissions import Permission
 from business.models.users import User
 from business.models.roles import Roles
-from .base import Provider, DuplicateEmailError
+from .base import Provider, DuplicateEmailError, RequiredField
 from firebase_admin import auth, firestore
 from core import log
 import firebase_admin
@@ -20,31 +23,31 @@ class ProviderFirebase(Provider):
         if ProviderFirebase.db is None:
             firebase_admin.initialize_app()
             ProviderFirebase.db = firestore.client()
+
     @staticmethod
-    def _enrich_user(user: User):
-        if user.full_name is None and (user.first_name or user.last_name):
-            return str(user.first_name) + ' ' + str(user.last_name)
-        
+    def _enrich_user(user: User) -> User:
+        if user.full_name is None and (user.first_name or user.last_name ):
+            first_name = user.first_name if user.first_name is not None else ''
+            last_name = user.last_name if user.last_name is not None else ''
+            user.full_name = str(first_name) + ' ' + str(last_name)
         if user.full_name and (user.last_name is None or user.first_name is None):
             user.first_name, user.last_name = user.full_name.split(' ')
-
         return user
 
     def signup(self, user: User):
         try:
-            if user.email is None:
+            user = ProviderFirebase._enrich_user(user)
+            if user.email is not None:
                 new_user = auth.create_user(
                     email=user.email,
                     password=user.password,
                     phone_number=user.phone,
-                    display_name=user.full_name,
+                    display_name= user.full_name,
                     photo_url=user.avatar_url,
                 )
                 log.info(f'sucessfully created new user: {new_user.uid}')
                 user.id = new_user.uid
                 return ProviderFirebase._enrich_user(user)
-            else:
-                raise e
         except auth.EmailAlreadyExistsError:
             raise DuplicateEmailError
         except Exception as e:
@@ -87,51 +90,50 @@ class ProviderFirebase(Provider):
             email=data['email'],
             verified=data['emailVerified'],
             createdAt=data['createdAt'],
-            # lastLoginAt=data['lastLoginAt'],
+            permissions = ast.literal_eval(data["customAttributes"])['ZK_zeauth_permissions'] if "customAttributes" in data else [], 
+            roles = ast.literal_eval(data["customAttributes"])["ZK_zeauth_roles"] if "customAttributes" in data else [],
+            full_name=data['displayName']
         )
         
     def list_users(self, page: str, page_size: int):
         try:
             result = auth.list_users(max_results=page_size,page_token=page)
-
             users = [self._cast_user(user._data) for user in result.users]
 
             return users, result, result._max_results
+
         except Exception as e:
             raise e
 
-    def update_permissions(self, user_id: str, permissions: dict):
-        try:    
-            uid = user_id
-            
-            additional_claims = {
-                'ZK_auth_user_create': True,
-                'ZK_auth_user_del': False,
-                'ZK_chat_session_list': True
-            }
-
-            # compare permissions and additional_claims
-            set_per = set(permissions.items())
-            set_claims = set(additional_claims.items())
-
-            keys_to_remove = dict(set_claims - set_per)
-
-            for key in list(keys_to_remove):
-                if key:
-                    additional_claims.pop(key)
-
-            custom_token = auth.create_custom_token(uid, additional_claims) # {"ZK_zeauth_permissions": list(additional_claims.keys())}
-
-            auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions": list(additional_claims.keys())})
-            
-            return additional_claims # custom_token
+    def get_user(self, user_id: str):
+        try:
+            user_info = auth.get_user(user_id)
+            if user_info:
+                return self._cast_user(user_info._data)
         except Exception as e:
-            log.error(e)
+            raise HTTPException(status_code=404, detail="the user is not found")
+
+
+    def update_user_roles(self, new_role: List[str], user_id: str ):
+        try:
+            uid = user_id
+            update_user_role = auth.get_user(uid)
+            if update_user_role:
+                new_permissions = []
+                for role in new_role:
+                    role_ref =  ProviderFirebase.db.collection("ZK_roles_test").document(role).get()
+                    for pre in role_ref._data["permissions"]:
+                        new_permissions.append(pre)
+                auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions" : new_permissions,"ZK_zeauth_roles" : new_role})
+                user= auth.get_user(user_id)
+                return self._cast_user(user._data)
+        except Exception as e:
+            raise e
 
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
         try:
-            col_ref = ProviderFirebase.db.collection(name).document('role')
+            col_ref = ProviderFirebase.db.collection('ZK_roles_test').document(name)
 
             col_ref.set({'role_name': name, 'permissions': permissions, 'description': description})
 
@@ -139,24 +141,37 @@ class ProviderFirebase(Provider):
         except Exception as e:
             log.error(e)
 
-    def list_roles(self, name: str, page: str, page_size: int):
+    def list_specific_roles(self, name: str, page: str, page_size: int):
         try:
             page = auth.list_users(max_results=page_size,page_token=page)
             next_page = page.next_page_token
 
-            docs = ProviderFirebase.db.collection(name).get()
-            roles_list = {}
-            for doc in docs:
-                roles_list.update(doc.to_dict())
+            docs = ProviderFirebase.db.collection('ZK_roles_test').document(name).get()
+            # for doc in docs:
+            #     roles_list.update(doc.to_dict())
 
-            return name, roles_list, next_page, page._max_results#docs.to_dict()
+            return docs.to_dict(), next_page, page._max_results#docs.to_dict()
         except Exception as e:
             log.error(e)
             log.error("no such document")
 
+    def list_all_roles(self, page: str, page_size: int):
+        try:
+            page = auth.list_users(max_results=page_size,page_token=page)
+            next_page = page.next_page_token
+            docs = ProviderFirebase.db.collection('ZK_roles_test').get()
+            roles_list = []
+            for doc in docs:
+                roles_list.append(doc.to_dict())
+            return roles_list, next_page, page._max_results
+        except Exception as e:
+            log.error(e)
+            log.error("no such document")
+
+
     def update_role(self, name: str, new_permissions: List[str], description: str):
         try:
-            doc = ProviderFirebase.db.collection(name).document('role')
+            doc = ProviderFirebase.db.collection('ZK_roles_test').document(name)
             if doc.get()._exists:
                 doc.update({'role_name': name, 'permissions': new_permissions, 'description': description})
             else:
@@ -167,7 +182,7 @@ class ProviderFirebase(Provider):
 
     def delete_role(self, name: str):
         try:
-            doc = ProviderFirebase.db.collection(name).document('role')
+            doc = ProviderFirebase.db.collection('ZK_roles_test').document(name)
             if doc.get()._exists:
                 doc.delete()
                 return name

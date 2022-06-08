@@ -3,11 +3,14 @@ import re
 from typing import Optional, Union, List
 from pydantic import BaseModel, validator, ValidationError
 
+from business.models.roles import Roles
+
 from .permissions import Permission
 
 class User(BaseModel):
     id: Optional[Union[str, int]]
     email: str
+    roles: Optional[List[str]]
     username: Optional[str]
     password: Optional[str]
     verified: Optional[bool]
@@ -18,7 +21,7 @@ class User(BaseModel):
     phone: Optional[str]
     createdAt: Optional[str]
     lastLoginAt: Optional[str]
-    permissions: Optional[List]
+    permissions: Optional[List[str]]
 
     @validator('email')
     def check_email(cls, email):

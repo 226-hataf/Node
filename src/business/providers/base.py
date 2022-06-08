@@ -15,9 +15,13 @@ class Provider:
     def list_users(self, page:str, page_size:int):
         log.error(f"method list_user not implement for provider")
 
-    def update_permissions(self, user_id:str):
-        log.error(f"method verify_user not implement for provider")
+    def get_user(self, user_id: str):
+        log.error(f"method get_user not implement for provider")
 
+    def update_user_permissions(self, user_id:str):
+        log.error(f"method update_user_permissions not implement for provider")
+    def update_user_roles(self, new_role: list[str], user_id: str):
+        log.error(f"method update_user_permissions not implement for provider")
     def update_user(self, old_user: User, new_user: User):
         log.error(f"method update_user not implement for provider")
 
@@ -31,8 +35,11 @@ class Provider:
     def create_role(self, name: str, permissions: List[str]):
         log.error(f'method create_roles not implemented for provider')
     
-    def list_roles(self, name: str):
-        log.error(f'method list_roles not implemented for provider')
+    def list_specific_roles(self, name: str, page: str, page_size: int):
+        log.error(f'method list_specific_roles not implemented for provider')
+
+    def list_all_roles(self, page: str, page_size: int):
+        log.error(f'method list_all_roles not implemented for provider')
 
     def update_role(self, name: str, new_permissions: List[str]):
         log.error(f'method update_roles not implemented for provider')
@@ -42,4 +49,7 @@ class Provider:
 
 
 class DuplicateEmailError(Exception):
+    pass
+
+class RequiredField(Exception):
     pass

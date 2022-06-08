@@ -1,6 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from business.models.dependencies import CommonDependencies
+from business.models.permissions import Permission
 from business.models.roles import Roles
 from business.providers import get_provider
 from business.providers.base import Provider
@@ -28,24 +29,34 @@ async def create(name: str, permissions: List[str], description: Optional[str] =
         log.error(e)
 
 # Read
-@router.get('/', tags=[model.plural], status_code=200, response_model=Roles, response_model_exclude_none=True)
-async def list_roles(name: str, commons: CommonDependencies=Depends(CommonDependencies)):
+@router.get('/', tags=[model.plural], status_code=200)
+async def list_roles(commons: CommonDependencies=Depends(CommonDependencies)): # , response_model=Roles, response_model_exclude_none=True
     auth_provider: Provider = get_provider()
     try:
-        role_name, role_list, next_page, page_size = auth_provider.list_roles(name=name, page=commons.page, page_size=commons.size)
+        role_list, next_page, page_size = auth_provider.list_all_roles(page=commons.page, page_size=commons.size)
 
         return {
-                'role_name': role_name, 
-                'roles': role_list['permisions'],
-                'description': role_list['description'],
+                'roles': role_list,
                 'next_page': next_page,
                 'page_size': page_size
             }
     except Exception as e:
         log.error(e)
 
-@router.get('/{role_id}', tags=[model.plural])
-async def roles():
+
+@router.get('/{role_id}', tags=[model.plural], status_code=200) # , response_model=Roles, response_model_exclude_none=True
+async def roles(name: str, commons: CommonDependencies=Depends(CommonDependencies)):
+    auth_provider: Provider = get_provider()
+    try:
+        role_list, next_page, page_size = auth_provider.list_specific_roles(name=name, page=commons.page, page_size=commons.size)
+
+        return {
+                'role_name': role_list, 
+                'next_page': next_page,
+                'page_size': page_size
+            }
+    except Exception as e:
+        log.error(e)
     return {}
 
 # Update
