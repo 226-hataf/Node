@@ -86,9 +86,8 @@ class ProviderFirebase(Provider):
             email=data['email'],
             verified=data['emailVerified'],
             createdAt=data['createdAt'],
-            permissions = ast.literal_eval(data["customAttributes"])['ZK_zeauth_permissions'] if "customAttributes" in data else [], 
-            roles = ast.literal_eval(data["customAttributes"])["ZK_zeauth_roles"] if "customAttributes" in data else [],
-            # full_name=data.get('displayName')
+            permissions = ast.literal_eval(data["customAttributes"])['zk-zeauth-permissions'] if "customAttributes" in data else [], 
+            roles = ast.literal_eval(data["customAttributes"])["zk-zeauth-roles"] if "customAttributes" in data else [],full_name = data['displayName'] if "displayName" in data else None
         )
         
     def list_users(self, page: str, page_size: int):
@@ -96,7 +95,7 @@ class ProviderFirebase(Provider):
             result = auth.list_users(max_results=page_size,page_token=page)
             users = [self._cast_user(user._data) for user in result.users]
 
-            return users, result, result._max_results
+            return users, result.next_page_token, result._max_results
 
         except Exception as e:
             raise e
@@ -117,10 +116,10 @@ class ProviderFirebase(Provider):
             if update_user_role:
                 new_permissions = []
                 for role in new_role:
-                    role_ref =  ProviderFirebase.db.collection("ZK_roles_test").document(role).get()
+                    role_ref =  ProviderFirebase.db.collection("zk-zauth-roles").document(role).get()
                     for pre in role_ref._data["permissions"]:
                         new_permissions.append(pre)
-                auth.set_custom_user_claims(uid, {"ZK_zeauth_permissions" : new_permissions,"ZK_zeauth_roles" : new_role})
+                auth.set_custom_user_claims(uid, {"zk-zeauth-permissions" : new_permissions,"zk-zeauth-roles" : new_role})
                 user= auth.get_user(user_id)
                 return self._cast_user(user._data)
         except Exception as e:
@@ -129,7 +128,7 @@ class ProviderFirebase(Provider):
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
         try:
-            col_ref = ProviderFirebase.db.collection('ZK_roles_test').document(name)
+            col_ref = ProviderFirebase.db.collection('zk-zauth-roles').document(name)
 
             col_ref.set({'role_name': name, 'permissions': permissions, 'description': description})
 
@@ -142,7 +141,7 @@ class ProviderFirebase(Provider):
             page = auth.list_users(max_results=page_size,page_token=page)
             next_page = page.next_page_token
 
-            docs = ProviderFirebase.db.collection('ZK_roles_test').document(name).get()
+            docs = ProviderFirebase.db.collection('zk-zauth-roles').document(name).get()
             # for doc in docs:
             #     roles_list.update(doc.to_dict())
 
@@ -155,7 +154,7 @@ class ProviderFirebase(Provider):
         try:
             page = auth.list_users(max_results=page_size,page_token=page)
             next_page = page.next_page_token
-            docs = ProviderFirebase.db.collection('ZK_roles_test').get()
+            docs = ProviderFirebase.db.collection('zk-zauth-roles').get()
             roles_list = []
             for doc in docs:
                 roles_list.append(doc.to_dict())
@@ -167,7 +166,7 @@ class ProviderFirebase(Provider):
 
     def update_role(self, name: str, new_permissions: List[str], description: str):
         try:
-            doc = ProviderFirebase.db.collection('ZK_roles_test').document(name)
+            doc = ProviderFirebase.db.collection("zk-zauth-roles").document(name)
             if doc.get()._exists:
                 doc.update({'role_name': name, 'permissions': new_permissions, 'description': description})
             else:
@@ -178,7 +177,7 @@ class ProviderFirebase(Provider):
 
     def delete_role(self, name: str):
         try:
-            doc = ProviderFirebase.db.collection('ZK_roles_test').document(name)
+            doc = ProviderFirebase.db.collection("zk-zauth-roles").document(name)
             if doc.get()._exists:
                 doc.delete()
                 return name
