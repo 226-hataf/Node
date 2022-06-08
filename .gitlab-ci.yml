@@ -10,7 +10,7 @@ dev_build_deploy:
   # when to run
   only:
     refs:
-      - dev
+      - devhttps://www.figma.com/file/xjBrDvt1aB5SINl8mTuD7B/DOHA-NEWS-PROJECT?node-id=63%3A702
 
   environment:
     name: production
