@@ -28,6 +28,7 @@ async def root():
 
 @app.post('/verify')
 async def verify(token: str):
+    """verify jwt token"""
     auth_provider: Provider = get_provider()
     decoded = auth_provider.verify(token)
     return decoded

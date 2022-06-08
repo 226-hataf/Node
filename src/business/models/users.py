@@ -26,7 +26,7 @@ class User(BaseModel):
     @validator('email')
     def check_email(cls, email):
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            raise ValidationError("invalid email format")
+            raise ValueError("invalid email format")
         return email
     
 class Config:

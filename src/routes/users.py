@@ -1,14 +1,15 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from business import User
-from business.models.roles import Roles
 from business.models.users import UserResponseModel
-from business.providers.base import Provider, DuplicateEmailError, RequiredField
+from business.providers.base import Provider, DuplicateEmailError
 from business.providers import get_provider
 from business.models.dependencies import CommonDependencies
 from core import log
 from core.types import ZKModel
+from business.models.dependencies import ProtectedMethod
 
 router = APIRouter()
 
@@ -17,11 +18,17 @@ auth_provider: Provider = get_provider()
 model = ZKModel(**{
         "name": 'user',
         "plural": 'users',
-        "fields": [{"name" : 'id', "pk": True}]
+        "permissions": {
+            'read': ['zk-zeauth-read'],
+            'create': ['zk-zeauth-create'],
+            'update': ['zk-zeauth-update'],
+            'delete': ['zk-zeauth-delete']
+        }
     })
 
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def create(user: User):
+async def create( user: User, token: str=Depends(ProtectedMethod)):
+    token.auth(model.permissions.create)
     try:
         signed_up_user = auth_provider.signup(user=user)
         return signed_up_user.dict()
@@ -34,7 +41,8 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
 
 
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
-async def list(commons: CommonDependencies=Depends(CommonDependencies)):
+async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
+    token.auth(model.permissions.read)
     try:
         user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size)
         return {
