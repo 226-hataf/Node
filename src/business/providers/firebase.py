@@ -1,7 +1,7 @@
 import ast
 from pickletools import int4
 from typing import List
-from unittest.util import strclass
+
 
 from fastapi import HTTPException
 from business.models.permissions import Permission
@@ -97,11 +97,11 @@ class ProviderFirebase(Provider):
         
     def list_users(self, page: str, page_size: int):
         try:
-            result = auth.list_users(max_results=page_size, page_token=page)
-
+            result = auth.list_users(max_results=page_size,page_token=page)
             users = [self._cast_user(user._data) for user in result.users]
 
-            return users, result.next_page_token, result._max_results
+            return users, result, result._max_results
+
         except Exception as e:
             raise e
 
