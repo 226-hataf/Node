@@ -45,6 +45,8 @@ class Provider:
     def delete_role(self, name: str):
         log.error(f'method delete_role not implemented for provider')
 
+    def verify(self, token: str):
+        log.error(f'method verify not implemented for provider')
 
 class DuplicateEmailError(Exception):
     pass
