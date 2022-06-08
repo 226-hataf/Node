@@ -1,11 +1,14 @@
 import os
-import uvicorn
 import importlib
-from dotenv import load_dotenv
 
 from fastapi import FastAPI
-from core import log
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import uvicorn
+
+from core import log
+from business.providers.base import Provider
+from business.providers import get_provider
 
 load_dotenv()
 
@@ -23,13 +26,11 @@ app.add_middleware(
 async def root():
     return {"message" :"ZeKoder security managment API"}
 
-@app.post('/signup')
-async def signup():
-    return {}
-
-@app.post('/signin')
-async def login():
-    return {}
+@app.post('/verify')
+async def verify(token: str):
+    auth_provider: Provider = get_provider()
+    decoded = auth_provider.verify(token)
+    return decoded
 
 # load all routes dynamically
 for module in os.listdir(f"{os.path.dirname(__file__)}/routes"):

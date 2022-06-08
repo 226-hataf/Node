@@ -1,18 +1,14 @@
 import ast
-from pickletools import int4
 from typing import List
 
 
 from fastapi import HTTPException
-from business.models.permissions import Permission
-from business.models.users import User
-from business.models.roles import Roles
-from .base import Provider, DuplicateEmailError, RequiredField
-from firebase_admin import auth, firestore
-from core import log
 import firebase_admin
+from firebase_admin import auth, firestore
 
-
+from business.models.users import User
+from .base import Provider, DuplicateEmailError
+from core import log
 
 
 class ProviderFirebase(Provider):
@@ -92,7 +88,7 @@ class ProviderFirebase(Provider):
             createdAt=data['createdAt'],
             permissions = ast.literal_eval(data["customAttributes"])['ZK_zeauth_permissions'] if "customAttributes" in data else [], 
             roles = ast.literal_eval(data["customAttributes"])["ZK_zeauth_roles"] if "customAttributes" in data else [],
-            full_name=data['displayName']
+            # full_name=data.get('displayName')
         )
         
     def list_users(self, page: str, page_size: int):
@@ -190,3 +186,11 @@ class ProviderFirebase(Provider):
                 raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")
         except Exception as e:
             log.error(e)
+
+    def verify(self, token: str):
+        try:
+            decoded_token = auth.verify_id_token(token)
+            return decoded_token
+        except Exception as e:
+            log.debug(e)
+            raise HTTPException(403, "failed token verification")
