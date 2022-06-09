@@ -22,7 +22,7 @@ class ProviderFirebase(Provider):
 
     @staticmethod
     def _enrich_user(user: User) -> User:
-        if user.full_name is None and (user.first_name or user.last_name ):
+        if user.full_name is None and (user.first_name or user.last_name):
             first_name = user.first_name if user.first_name is not None else ''
             last_name = user.last_name if user.last_name is not None else ''
             user.full_name = str(first_name) + ' ' + str(last_name)
@@ -87,7 +87,7 @@ class ProviderFirebase(Provider):
             verified=data['emailVerified'],
             createdAt=data['createdAt'],
             permissions = ast.literal_eval(data["customAttributes"])['zk-zeauth-permissions'] if "customAttributes" in data else [], 
-            roles = ast.literal_eval(data["customAttributes"])["zk-zeauth-roles"] if "customAttributes" in data else [],full_name = data['displayName'] if "displayName" in data else None
+            roles = ast.literal_eval(data["customAttributes"])["zk-zeauth-roles"] if "customAttributes" in data else [],full_name=data['displayName'] if "displayName" in data else None
         )
         
     def list_users(self, page: str, page_size: int):
@@ -109,7 +109,7 @@ class ProviderFirebase(Provider):
             raise HTTPException(status_code=404, detail="the user is not found")
 
 
-    def update_user_roles(self, new_role: List[str], user_id: str ):
+    def update_user_roles(self, new_role: List[str], user_id: str):
         try:
             uid = user_id
             update_user_role = auth.get_user(uid)
@@ -119,7 +119,7 @@ class ProviderFirebase(Provider):
                     role_ref =  ProviderFirebase.db.collection("zk-zauth-roles").document(role).get()
                     for pre in role_ref._data["permissions"]:
                         new_permissions.append(pre)
-                auth.set_custom_user_claims(uid, {"zk-zeauth-permissions" : new_permissions,"zk-zeauth-roles" : new_role})
+                auth.set_custom_user_claims(uid, {"zk-zeauth-permissions" : new_permissions, "zk-zeauth-roles" : new_role})
                 user= auth.get_user(user_id)
                 return self._cast_user(user._data)
         except Exception as e:
@@ -138,12 +138,10 @@ class ProviderFirebase(Provider):
 
     def list_specific_roles(self, name: str, page: str, page_size: int):
         try:
-            page = auth.list_users(max_results=page_size,page_token=page)
+            page = auth.list_users(max_results=page_size, page_token=page)
             next_page = page.next_page_token
 
             docs = ProviderFirebase.db.collection('zk-zauth-roles').document(name).get()
-            # for doc in docs:
-            #     roles_list.update(doc.to_dict())
 
             return docs.to_dict(), next_page, page._max_results#docs.to_dict()
         except Exception as e:
@@ -152,7 +150,7 @@ class ProviderFirebase(Provider):
 
     def list_all_roles(self, page: str, page_size: int):
         try:
-            page = auth.list_users(max_results=page_size,page_token=page)
+            page = auth.list_users(max_results=page_size, page_token=page)
             next_page = page.next_page_token
             docs = ProviderFirebase.db.collection('zk-zauth-roles').get()
             roles_list = []
