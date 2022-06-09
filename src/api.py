@@ -12,13 +12,19 @@ from business.providers import get_provider
 
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(
+    title="ZeAuth API", 
+    description="""
+    ZeAuth API
+    ZeAuth is an interface to the chosen identity provider for the deployed solution
+    """,
+)
 
 origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
 )
 

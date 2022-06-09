@@ -5,7 +5,7 @@ from pydantic import BaseModel, validator, ValidationError
 
 from business.models.roles import Roles
 
-from .permissions import Permission
+# from .permissions import Permission
 
 class User(BaseModel):
     id: Optional[Union[str, int]]
