@@ -106,11 +106,19 @@ delete.__doc__ = f" Delete a {model.name} by its id".expandtabs()
 
 @router.put('/{user_id}/on', tags=[model.plural], status_code=201)
 async def active_on(user_id: str):
-    return {}
+    try:
+        updated_user = auth_provider.user_active_on(user_id=user_id)
+        return {'updated user': updated_user.uid}
+    except Exception as e :
+        raise e 
 
 @router.put('/{user_id}/off', tags=[model.plural], status_code=201)
 async def active_off(user_id: str):
-    return {}
+    try:
+        updated_user = auth_provider.user_active_off(user_id=user_id)
+        return {'updated user': updated_user.uid}
+    except Exception as e :
+        raise e 
 
 
 

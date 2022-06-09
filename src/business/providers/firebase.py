@@ -125,6 +125,35 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
+    def user_active_on(self, user_id: str):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    disabled = "false"
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            raise e
+
+    def user_active_off(self, user_id: str):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    disabled = "true"
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            raise e
+        
+
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
         try:

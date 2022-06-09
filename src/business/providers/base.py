@@ -18,8 +18,9 @@ class Provider:
     def get_user(self, user_id: str):
         log.error(f"method get_user not implement for provider")
 
-    def update_user_roles(self, new_role: list[str], user_id: str):
+    def update_user_roles(self, new_role: List[str], user_id: str):
         log.error(f"method update_user_permissions not implement for provider")
+        
     def update_user(self, user_id: str, user: User):
         log.error(f"method update_user not implement for provider")
 
