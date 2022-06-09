@@ -21,7 +21,11 @@ app = FastAPI(
     """,
 )
 
-origins = ["*"]
+origins = [
+    'https://hoppscotch.io/',
+    'localhost'
+    ]
+
 
 app.add_middleware(
     CORSMiddleware,
