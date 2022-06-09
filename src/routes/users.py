@@ -39,7 +39,7 @@ async def create( user: User, token: str=Depends(ProtectedMethod)):
 
 create.__doc__ = f" Create a new {model.name}".expandtabs()
 
-
+# list users
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
 async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
     token.auth(model.permissions.read)
