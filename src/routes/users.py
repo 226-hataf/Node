@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 from business import User
 from business.models.users import UserResponseModel
@@ -25,6 +26,18 @@ model = ZKModel(**{
             'delete': ['zk-zeauth-delete']
         }
     })
+
+origins = ['*']
+
+
+router.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
 async def create(user: User, token: str=Depends(ProtectedMethod)):
