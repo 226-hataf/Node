@@ -191,3 +191,35 @@ class ProviderFirebase(Provider):
         except Exception as e:
             log.debug(e)
             raise HTTPException(403, "failed token verification")
+
+
+    def user_active_on(self, user_id: str):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    uid= user_id,
+                    disabled=False
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            raise e
+
+
+    def user_active_off(self, user_id: str):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    uid= user_id,
+                    disabled=True
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            raise e

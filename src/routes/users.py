@@ -27,7 +27,7 @@ model = ZKModel(**{
     })
 
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def create( user: User, token: str=Depends(ProtectedMethod)):
+async def create(user: User, token: str=Depends(ProtectedMethod)):
     token.auth(model.permissions.create)
     try:
         signed_up_user = auth_provider.signup(user=user)
@@ -56,10 +56,13 @@ async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=
         raise e
 
 
-list.__doc__ = f" List {model.plural}".expandtabs()
+list.__doc__ = f" List all {model.plural}".expandtabs()
 
-@router.put('/{user_id}/roles', tags=[model.plural], status_code=201,response_model=User)
+@router.put('/{user_id}/roles', tags=[model.plural], status_code=201, response_model=User)
 async def update_roles(user_id: str, new_role: List[str], token: str=Depends(ProtectedMethod)):
+    """
+    Update the roles of a user by its id and a list of roles
+    """
     token.auth(model.permissions.update)
     try:
         user = (auth_provider.update_user_roles(new_role=new_role, user_id=user_id))
@@ -106,14 +109,21 @@ delete.__doc__ = f" Delete a {model.name} by its id".expandtabs()
 
 @router.put('/{user_id}/on', tags=[model.plural], status_code=201)
 async def active_on(user_id: str):
-    return {}
+    try:
+        updated_user = auth_provider.user_active_on(user_id=user_id)
+        return {'updated user': updated_user.uid}
+    except Exception as e:
+        raise e
+        
+active_on.__doc__ = f" Set {model.name}".expandtabs()
 
 @router.put('/{user_id}/off', tags=[model.plural], status_code=201)
 async def active_off(user_id: str):
-    return {}
+    try:
+        updated_user = auth_provider.user_active_off(user_id=user_id)
+        return {'updated user': updated_user.uid}
+    except Exception as e:
+        raise e
 
-
-
-active_on.__doc__ = f" Set {model.name}".expandtabs()
 active_off.__doc__ = f" Delete a {model.name}".expandtabs()
 
