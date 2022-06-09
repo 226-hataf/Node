@@ -23,7 +23,9 @@ app = FastAPI(
 
 origins = [
     'https://hoppscotch.io/',
-    'localhost'
+    'http://localhost:9090',
+    'http://localhost:5000',
+    'http://localhost:8080'
     ]
 
 
