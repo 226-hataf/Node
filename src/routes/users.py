@@ -53,15 +53,16 @@ async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=
 
     except Exception as e:
         log.error(e)
-        print(e)
+        raise e
 
 
 list.__doc__ = f" List {model.plural}".expandtabs()
 
-@router.put('/{user_id}/roles', tags=[model.plural], status_code=201,response_model= User)
-async def update_roles(user_id: str, new_role: List[str] ):
+@router.put('/{user_id}/roles', tags=[model.plural], status_code=201,response_model=User)
+async def update_roles(user_id: str, new_role: List[str], token: str=Depends(ProtectedMethod)):
+    token.auth(model.permissions.update)
     try:
-        user = (auth_provider.update_user_roles(new_role=new_role, user_id=user_id ))
+        user = (auth_provider.update_user_roles(new_role=new_role, user_id=user_id))
         return user # list of permissins
     except Exception as e:
         log.error(e)
@@ -69,7 +70,8 @@ async def update_roles(user_id: str, new_role: List[str] ):
 
 
 @router.get('/{user_id}', tags=[model.plural], status_code=200, response_model=User, response_model_exclude={"password"})
-async def get(user_id: str):
+async def get(user_id: str, token: str=Depends(ProtectedMethod)):
+    token.auth(model.permissions.read)
     user_info = auth_provider.get_user(user_id=user_id)
     return user_info
 
@@ -77,7 +79,8 @@ get.__doc__ = f" Get a specific {model.name} by it s id".expandtabs()
 
 
 @router.put('/{user_id}', tags=[model.plural], status_code=200) #, response_model=User, response_model_exclude={"password"}
-async def update(user_id: str, user: User):
+async def update(user_id: str, user: User, token: str=Depends(ProtectedMethod)):
+    token.auth(model.permissions.update)
     try:
         updated_user = auth_provider.update_user(user_id=user_id, user=user)
         return {'updated user': updated_user.uid}
@@ -88,8 +91,9 @@ async def update(user_id: str, user: User):
 update.__doc__ = f" Update a {model.name} by its id and payload".expandtabs()
 
 
-@router.delete('/{user_id}', tags=[model.plural], status_code=202) # , response_model=User, response_model_include={"email"}
-async def delete(user_id: str):
+@router.delete('/{user_id}', tags=[model.plural], status_code=202)
+async def delete(user_id: str, token: str=Depends(ProtectedMethod)):
+    token.auth(model.permissions.delete)
     try:
         deleted_user = auth_provider.delete_user(user_id=user_id)
         return {"deleted": deleted_user.email}
