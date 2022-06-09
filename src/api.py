@@ -2,9 +2,10 @@ import os
 import importlib
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
+
 
 from core import log
 from business.providers.base import Provider
