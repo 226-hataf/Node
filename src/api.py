@@ -21,12 +21,14 @@ app = FastAPI(
     """,
 )
 
-origins = [
-    'https://hoppscotch.io',
-    'http://localhost:9090',
-    'http://localhost:5000',
-    'http://localhost:8080'
-    ]
+# origins = [
+#     'https://hoppscotch.io',
+#     'http://localhost:9090',
+#     'http://localhost:5000',
+#     'http://localhost:8080'
+#     ]
+
+origins = ['*']
 
 
 app.add_middleware(
