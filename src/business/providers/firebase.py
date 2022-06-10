@@ -63,13 +63,14 @@ class ProviderFirebase(Provider):
     def update_user(self, user_id: str, user: User):
         try:
             updated_user = auth.get_user(user_id)
+
             if updated_user:
                 user = auth.update_user(
                     uid=user_id,
                     email=user.email,
                     phone_number=user.phone,
                     password=user.password,
-                    display_name=user.full_name,
+                    display_name=self._enrich_user(user).full_name,
                     photo_url=user.avatar_url,
                 )
                 user.first_name = user.display_name.split(' ')[0]
