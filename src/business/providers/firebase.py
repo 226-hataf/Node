@@ -72,6 +72,8 @@ class ProviderFirebase(Provider):
                     display_name=user.full_name,
                     photo_url=user.avatar_url,
                 )
+                user.first_name = user.display_name.split(' ')[0]
+                user.last_name = user.display_name.split(' ')[1]
                 log.info(f'sucessfully updated user {user.uid}')
                 return user
             else:
