@@ -6,7 +6,7 @@ class Provider:
     def signup(self, user: User):
         log.error(f"method signup not implement for provider")
 
-    def signin(self, username: str, password: str):
+    def login(self, email: str, password: str):
         log.error(f"method signin not implement for provider")
 
     def delete_user(self, user_id: str):

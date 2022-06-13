@@ -11,6 +11,8 @@ from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
 
+from business.models.users import UserLoginSchema
+
 router = APIRouter()
 
 auth_provider: Provider = get_provider()
@@ -39,6 +41,18 @@ async def create(user: User, token: str=Depends(ProtectedMethod)):
         raise e
 
 create.__doc__ = f" Create a new {model.name}".expandtabs()
+
+@router.post("/login", tags=[model.plural])
+async def user_login(email: str, password: str):
+    try:
+        if auth_provider.login(email, password):
+            return signJWT(email)
+        else:
+            return HTTPException(status_code=403, detail="username or password are invalid")
+    except Exception as e :
+        raise e
+
+user_login.__doc__ = f" Create a new {model.name}".expandtabs()
 
 # list users
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)

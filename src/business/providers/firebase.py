@@ -10,6 +10,7 @@ from business.models.users import User
 from .base import Provider, DuplicateEmailError
 from core import log
 
+from business.models.users import *
 
 class ProviderFirebase(Provider):
     db = None
@@ -49,6 +50,12 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
+    def login(self, email: str, password: str):
+        try:
+            check_user = auth.get_user_by_email(email)
+            raise HTTPException(status_code=403, detail="username or password are invalid")
+        except Exception as e:
+            raise e
 
     def delete_user(self, user_id: str):
         try:
