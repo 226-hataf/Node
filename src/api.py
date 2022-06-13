@@ -1,5 +1,6 @@
 import os
 import importlib
+import pyrebase
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,10 +36,11 @@ origins = ['*']
 async def root():
     return {"message" :"ZeKoder security managment API"}
 
+
+
 @app.post('/verify')
 async def verify(token: str):
     """verify jwt token"""
-    auth_provider: Provider = get_provider()
     decoded = auth_provider.verify(token)
     return decoded
 

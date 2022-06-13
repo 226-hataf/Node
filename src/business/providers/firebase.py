@@ -5,8 +5,10 @@ from typing import List
 from fastapi import HTTPException
 import firebase_admin
 from firebase_admin import auth, firestore
+from requests import request
+import requests
 
-from business.models.users import User
+from business.models.users import *
 from .base import Provider, DuplicateEmailError
 from core import log
 
@@ -30,6 +32,25 @@ class ProviderFirebase(Provider):
         if user.full_name and (user.last_name is None or user.first_name is None):
             user.first_name, user.last_name = user.full_name.split(' ')
         return user
+
+    def login(user_info):
+        try:
+            headers = {
+                # Already added when you pass json=
+                # 'Content-Type': 'application/json',
+            }
+
+            json_data = {
+                'token': '[user_info]',
+                'returnSecureToken': True,
+            }
+
+            response =requests.post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk', headers=headers, json=json_data)
+            return response
+        except Exception as e :
+            raise e
+
+
 
     def signup(self, user: User):
         try:
@@ -131,6 +152,35 @@ class ProviderFirebase(Provider):
                 return self._cast_user(user._data)
         except Exception as e:
             raise e
+
+    def user_active_on(self, user_id: str):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    disabled = "false"
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            raise e
+
+    def user_active_off(self, user_id: str):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    disabled = "true"
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            raise e
+        
 
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
