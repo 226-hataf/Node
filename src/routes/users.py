@@ -22,6 +22,7 @@ model = ZKModel(**{
         "plural": 'users',
         "permissions": {
             'read': ['zk-zeauth-read'],
+            'list': ['zk-zeauth-list'],
             'create': ['zk-zeauth-create'],
             'update': ['zk-zeauth-update'],
             'delete': ['zk-zeauth-delete']
@@ -55,7 +56,7 @@ user_login.__doc__ = f" Create a new {model.name}".expandtabs()
 # list users
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
 async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
-    token.auth(model.permissions.read)
+    token.auth(model.permissions.list)
     try:
         user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size)
         return {
