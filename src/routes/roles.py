@@ -3,7 +3,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends
 
 from business.models.dependencies import CommonDependencies
-from business.models.roles import Roles
 from business.providers import get_provider
 from business.providers.base import Provider
 from core import log

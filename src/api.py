@@ -9,7 +9,7 @@ import uvicorn
 
 from core import log
 from business.providers.base import Provider
-from business.providers import get_provider
+# from business.providers import get_provider
 
 load_dotenv()
 

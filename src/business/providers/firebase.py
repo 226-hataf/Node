@@ -33,19 +33,19 @@ class ProviderFirebase(Provider):
             user.first_name, user.last_name = user.full_name.split(' ')
         return user
 
-    def login(user_info):
+    def login(self,user_info):
         try:
             headers = {
-                # Already added when you pass json=
-                # 'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             }
 
             json_data = {
-                'token': '[user_info]',
+                'email': user_info.email,
+                'password': user_info.password,
                 'returnSecureToken': True,
             }
 
-            response =requests.post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk', headers=headers, json=json_data)
+            response = requests.post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk', headers=headers, json=json_data)
             return response
         except Exception as e :
             raise e
@@ -68,13 +68,6 @@ class ProviderFirebase(Provider):
                 return ProviderFirebase._enrich_user(user)
         except auth.EmailAlreadyExistsError:
             raise DuplicateEmailError
-        except Exception as e:
-            raise e
-
-    def login(self, email: str, password: str):
-        try:
-            check_user = auth.get_user_by_email(email)
-            raise HTTPException(status_code=403, detail="username or password are invalid")
         except Exception as e:
             raise e
 

@@ -6,7 +6,7 @@ from business import User
 from business.models.users import UserResponseModel
 from business.providers.base import Provider, DuplicateEmailError
 from business.providers import get_provider
-from business.models.dependencies import CommonDependencies, login
+from business.models.dependencies import CommonDependencies
 from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
@@ -43,13 +43,13 @@ async def create(user: User, token: str=Depends(ProtectedMethod)):
 create.__doc__ = f" Create a new {model.name}".expandtabs()
 
 @router.post("/login", tags=[model.plural])
-async def user_login(self,user_info :UserLoginSchema):
+async def user_login(user_info :UserLoginSchema):
     try:
         user_verified = auth_provider.login(user_info) 
         return user_verified.dict()  
     except Exception as e :
         raise e
-login.__doc__ = f" Create a new {model.name}".expandtabs()    
+user_login.__doc__ = f" Create a new {model.name}".expandtabs()    
 
 
 # list users
