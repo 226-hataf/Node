@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
+from business.providers import get_provider
 
 
 from core import log
@@ -20,6 +21,8 @@ app = FastAPI(
     ZeAuth is an interface to the chosen identity provider for the deployed solution
     """,
 )
+
+auth_provider: Provider = get_provider()
 
 # origins = [
 #     'https://hoppscotch.io',
