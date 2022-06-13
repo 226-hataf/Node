@@ -5,11 +5,13 @@ from typing import List
 from fastapi import HTTPException
 import firebase_admin
 from firebase_admin import auth, firestore
+from requests import request
+import requests
 
-from business.models.users import User
+from business.models.users import *
 from .base import Provider, DuplicateEmailError
 from core import log
-
+import pyrebase
 
 class ProviderFirebase(Provider):
     db = None
@@ -29,6 +31,25 @@ class ProviderFirebase(Provider):
         if user.full_name and (user.last_name is None or user.first_name is None):
             user.first_name, user.last_name = user.full_name.split(' ')
         return user
+
+    def login(user_info):
+        try:
+            headers = {
+                # Already added when you pass json=
+                # 'Content-Type': 'application/json',
+            }
+
+            json_data = {
+                'token': '[user_info]',
+                'returnSecureToken': True,
+            }
+
+            response =requests.post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk', headers=headers, json=json_data)
+            return response
+        except Exception as e :
+            raise e
+
+
 
     def signup(self, user: User):
         try:

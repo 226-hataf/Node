@@ -1,12 +1,14 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from business.models import UserLoginSchema
+from auth import signJWT
 
 from business import User
 from business.models.users import UserResponseModel
 from business.providers.base import Provider, DuplicateEmailError
 from business.providers import get_provider
-from business.models.dependencies import CommonDependencies
+from business.models.dependencies import CommonDependencies, login
 from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
@@ -25,10 +27,8 @@ model = ZKModel(**{
             'delete': ['zk-zeauth-delete']
         }
     })
-
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def create( user: User, token: str=Depends(ProtectedMethod)):
-    token.auth(model.permissions.create)
+async def signup( user: User):
     try:
         signed_up_user = auth_provider.signup(user=user)
         return signed_up_user.dict()
@@ -37,7 +37,19 @@ async def create( user: User, token: str=Depends(ProtectedMethod)):
     except Exception as e:
         raise e
 
-create.__doc__ = f" Create a new {model.name}".expandtabs()
+signup.__doc__ = f" Create a new {model.name}".expandtabs()
+
+@router.post("/login", tags=[model.plural])
+async def user_login(self,user_info :UserLoginSchema):
+    try:
+        user_verified = auth_provider.login(user_info) 
+        if user_verified:
+           return user_verified
+        else:
+            return HTTPException (status_code=403, detail="username or password are invalid")
+    except Exception as e :
+        raise e
+login.__doc__ = f" Create a new {model.name}".expandtabs()    
 
 
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
