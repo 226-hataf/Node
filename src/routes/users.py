@@ -1,14 +1,13 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from business.models import UserLoginSchema
-from auth import signJWT
+from business.models.users import UserLoginSchema
 
 from business import User
 from business.models.users import UserResponseModel
 from business.providers.base import Provider, DuplicateEmailError
 from business.providers import get_provider
-from business.models.dependencies import CommonDependencies, login
+from business.models.dependencies import CommonDependencies
 from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
@@ -40,16 +39,13 @@ async def signup( user: User):
 signup.__doc__ = f" Create a new {model.name}".expandtabs()
 
 @router.post("/login", tags=[model.plural])
-async def user_login(self,user_info :UserLoginSchema):
+async def user_login(user_info :UserLoginSchema):
     try:
-        user_verified = auth_provider.login(user_info) 
-        if user_verified:
-           return user_verified
-        else:
-            return HTTPException (status_code=403, detail="username or password are invalid")
+        return auth_provider.login(user_info)
+            
     except Exception as e :
         raise e
-login.__doc__ = f" Create a new {model.name}".expandtabs()    
+user_login.__doc__ = f" Create a new {model.name}".expandtabs()    
 
 
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)

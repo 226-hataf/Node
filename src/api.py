@@ -1,6 +1,5 @@
 import os
 import importlib
-import pyrebase
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +7,7 @@ from dotenv import load_dotenv
 import uvicorn
 from business.providers.base import Provider
 from business.providers import get_provider
+from core import log
 
 load_dotenv()
 

@@ -1,7 +1,7 @@
 import ast
 from typing import List
-
-
+import os
+import json 
 from fastapi import HTTPException
 import firebase_admin
 from firebase_admin import auth, firestore
@@ -11,7 +11,6 @@ import requests
 from business.models.users import *
 from .base import Provider, DuplicateEmailError
 from core import log
-import pyrebase
 
 class ProviderFirebase(Provider):
     db = None
@@ -32,20 +31,24 @@ class ProviderFirebase(Provider):
             user.first_name, user.last_name = user.full_name.split(' ')
         return user
 
-    def login(user_info):
+    def login(self,user_info):
         try:
             headers = {
-                # Already added when you pass json=
-                # 'Content-Type': 'application/json',
+                'Content-Type': 'application/json',
             }
 
             json_data = {
-                'token': '[user_info]',
+                'email': user_info.email,
+                'password': user_info.password,
                 'returnSecureToken': True,
             }
 
-            response =requests.post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk', headers=headers, json=json_data)
-            return response
+            response =requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.environ.get('API_KEY')}", headers=headers, json=json_data)
+            if response.status_code == 200:
+                return json.loads(response.content.decode())["idToken"]
+            else:
+                return HTTPException (status_code=403, detail="username or password are invalid")
+        
         except Exception as e :
             raise e
 
