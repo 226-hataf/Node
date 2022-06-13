@@ -1,6 +1,5 @@
 import os
 import importlib
-import pyrebase
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

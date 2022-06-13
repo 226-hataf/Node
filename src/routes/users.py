@@ -1,8 +1,6 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from business.models import UserLoginSchema
-from auth import signJWT
 
 from business import User
 from business.models.users import UserResponseModel
@@ -42,31 +40,17 @@ async def create(user: User, token: str=Depends(ProtectedMethod)):
     except Exception as e:
         raise e
 
-signup.__doc__ = f" Create a new {model.name}".expandtabs()
+create.__doc__ = f" Create a new {model.name}".expandtabs()
 
 @router.post("/login", tags=[model.plural])
 async def user_login(self,user_info :UserLoginSchema):
     try:
         user_verified = auth_provider.login(user_info) 
-        if user_verified:
-           return user_verified
-        else:
-            return HTTPException (status_code=403, detail="username or password are invalid")
+        return user_verified.dict()  
     except Exception as e :
         raise e
 login.__doc__ = f" Create a new {model.name}".expandtabs()    
 
-@router.post("/login", tags=[model.plural])
-async def user_login(email: str, password: str):
-    try:
-        if auth_provider.login(email, password):
-            return signJWT(email)
-        else:
-            return HTTPException(status_code=403, detail="username or password are invalid")
-    except Exception as e :
-        raise e
-
-user_login.__doc__ = f" Create a new {model.name}".expandtabs()
 
 # list users
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
