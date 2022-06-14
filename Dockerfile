@@ -6,9 +6,10 @@ COPY ./src $APP_HOME
 WORKDIR $APP_HOME
 
 ADD jsc-chatbot-sa.json $APP_HOME
-ADD requirements $APP_HOME
+# ADD requirements $APP_HOME
 
-RUN pip3 install -r requirements
+RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+RUN poetry install 
 
 ENV PORT=8080
 ENV UVICORN_DEBUG=True
