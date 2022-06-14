@@ -1,13 +1,13 @@
-from typing import Dict, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
 
 class ZKModelPermission(BaseModel):
-    create: list[str]
-    read: list[str]
-    delete: list[str]
-    update: list[str]
+    create: List[str]
+    read: List[str]
+    delete: List[str]
+    update: List[str]
 
 class ZKModel(BaseModel):
     name: str

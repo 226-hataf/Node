@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from business.models.users import UserLoginSchema
 
 from business import User
 from business.models.users import UserResponseModel
@@ -25,11 +26,8 @@ model = ZKModel(**{
             'delete': ['zk-zeauth-delete']
         }
     })
-
-
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def create(user: User, token: str=Depends(ProtectedMethod)):
-    token.auth(model.permissions.create)
+async def signup( user: User):
     try:
         signed_up_user = auth_provider.signup(user=user)
         return signed_up_user.dict()
@@ -38,7 +36,16 @@ async def create(user: User, token: str=Depends(ProtectedMethod)):
     except Exception as e:
         raise e
 
-create.__doc__ = f" Create a new {model.name}".expandtabs()
+signup.__doc__ = f" Create a new {model.name}".expandtabs()
+
+@router.post("/login", tags=[model.plural])
+async def user_login(user_info :UserLoginSchema):
+    try:
+        return auth_provider.login(user_info)
+            
+    except Exception as e :
+        raise e
+user_login.__doc__ = f" Create a new {model.name}".expandtabs()    
 
 # list users
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
@@ -113,18 +120,18 @@ async def active_on(user_id: str):
     try:
         updated_user = auth_provider.user_active_on(user_id=user_id)
         return {'updated user': updated_user.uid}
-    except Exception as e:
-        raise e
-        
-active_on.__doc__ = f" Set {model.name}".expandtabs()
+    except Exception as e :
+        raise e 
 
 @router.put('/{user_id}/off', tags=[model.plural], status_code=201)
 async def active_off(user_id: str):
     try:
         updated_user = auth_provider.user_active_off(user_id=user_id)
         return {'updated user': updated_user.uid}
-    except Exception as e:
-        raise e
+    except Exception as e :
+        raise e 
+
+
 
 active_off.__doc__ = f" Delete a {model.name}".expandtabs()
 

@@ -37,3 +37,6 @@ class UserResponseModel(BaseModel):
     user_list: Optional[List[User]]
     page_size: Optional[int]
 
+class UserLoginSchema(BaseModel):
+    email:str
+    password:str

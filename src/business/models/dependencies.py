@@ -25,3 +25,6 @@ class ProtectedMethod:
             if permission in verified['zk-zeauth-permissions']:
                 return
         raise HTTPException(403, "user not authorized to do this action")
+
+
+

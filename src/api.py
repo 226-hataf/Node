@@ -5,40 +5,33 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
-
-
-from core import log
 from business.providers.base import Provider
 from business.providers import get_provider
+from core import log
 
 load_dotenv()
 
-app = FastAPI(
-    title="ZeAuth API", 
-    description="""
-    ZeAuth API
-    ZeAuth is an interface to the chosen identity provider for the deployed solution
-    """,
+app = FastAPI()
+
+
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
 )
 
-# origins = [
-#     'https://hoppscotch.io',
-#     'http://localhost:9090',
-#     'http://localhost:5000',
-#     'http://localhost:8080'
-#     ]
-
-origins = ['*']
-
-
+auth_provider: Provider = get_provider()
 @app.get('/')
 async def root():
     return {"message" :"ZeKoder security managment API"}
 
+
+
 @app.post('/verify')
 async def verify(token: str):
     """verify jwt token"""
-    auth_provider: Provider = get_provider()
     decoded = auth_provider.verify(token)
     return decoded
 
