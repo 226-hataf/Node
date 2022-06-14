@@ -11,6 +11,8 @@ RUN apt-get -qq update
 RUN apt-get -qq -y install curl
 
 RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+
+RUN cd $APP_HOME
 RUN $HOME/.poetry/bin/poetry install 
 
 ENV PORT=8080
