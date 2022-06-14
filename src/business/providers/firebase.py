@@ -47,7 +47,7 @@ class ProviderFirebase(Provider):
             if response.status_code == 200:
                 return json.loads(response.content.decode())["idToken"]
             else:
-                return HTTPException (status_code=403, detail="username or password are invalid")
+                raise HTTPException (status_code=403, detail="username or password are invalid")
         
         except Exception as e :
             raise e
