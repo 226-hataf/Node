@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, validator
 
-from business.models.permissions import Permission
+# from business.models.permissions import Permission
 
 
 class Roles(BaseModel):

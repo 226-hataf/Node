@@ -87,15 +87,18 @@ class ProviderFirebase(Provider):
     def update_user(self, user_id: str, user: User):
         try:
             updated_user = auth.get_user(user_id)
+
             if updated_user:
                 user = auth.update_user(
                     uid=user_id,
                     email=user.email,
                     phone_number=user.phone,
                     password=user.password,
-                    display_name=user.full_name,
+                    display_name=self._enrich_user(user).full_name,
                     photo_url=user.avatar_url,
                 )
+                user.first_name = user.display_name.split(' ')[0]
+                user.last_name = user.display_name.split(' ')[1]
                 log.info(f'sucessfully updated user {user.uid}')
                 return user
             else:
@@ -244,3 +247,35 @@ class ProviderFirebase(Provider):
         except Exception as e:
             log.debug(e)
             raise HTTPException(403, "failed token verification")
+
+
+    def user_active_on(self, user_id: str):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    uid= user_id,
+                    disabled=False
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            raise e
+
+
+    def user_active_off(self, user_id: str):
+        try:
+            updated_user = auth.get_user(user_id)
+            if updated_user:
+                user = auth.update_user(
+                    uid= user_id,
+                    disabled=True
+                )
+                log.info(f'sucessfully updated user {user.uid}')
+                return user
+            else:
+                raise HTTPException(status_code=404, detail="there is no registered user to update")
+        except Exception as e:
+            raise e

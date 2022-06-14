@@ -27,6 +27,9 @@ model = ZKModel(**{
 # Create
 @router.post('/', tags=[model.plural], status_code=201)
 async def create(name: str, permissions: List[str], description: Optional[str] = "", token: str=Depends(ProtectedMethod)):
+    """
+    Create a new role
+    """
     token.auth(model.permissions.create)
     try:
         roles = auth_provider.create_role(name=name, permissions=permissions, description=description)
@@ -38,6 +41,9 @@ async def create(name: str, permissions: List[str], description: Optional[str] =
 # Read
 @router.get('/', tags=[model.plural], status_code=200)
 async def list_roles(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
+    """
+    List all roles
+    """
     token.auth(model.permissions.read)
     try:
         role_list, next_page, page_size = auth_provider.list_all_roles(page=commons.page, page_size=commons.size)
@@ -51,8 +57,11 @@ async def list_roles(token: str=Depends(ProtectedMethod), commons: CommonDepende
         log.error(e)
 
 
-@router.get('/{role_id}', tags=[model.plural], status_code=200) # , response_model=Roles, response_model_exclude_none=True
+@router.get('/{role_id}', tags=[model.plural], status_code=200)
 async def roles(name: str,token: str=Depends(ProtectedMethod),  commons: CommonDependencies=Depends(CommonDependencies)):
+    """
+    List specific role by its name
+    """
     token.auth(model.permissions.read)
     try:
         role_list, next_page, page_size = auth_provider.list_specific_roles(name=name, page=commons.page, page_size=commons.size)
@@ -69,6 +78,9 @@ async def roles(name: str,token: str=Depends(ProtectedMethod),  commons: CommonD
 # Update
 @router.put('/{role_id}', tags=[model.plural], status_code=200)
 async def update_roles(role_id: str, permissions: List[str], description: Optional[str] = "", token: str=Depends(ProtectedMethod)):
+    """
+    Update specific role by its name
+    """
     token.auth(model.permissions.update)
     try:
         auth_provider.update_role(name=role_id, new_permissions=permissions, description=description)
@@ -81,6 +93,9 @@ async def update_roles(role_id: str, permissions: List[str], description: Option
 # Delete
 @router.delete('/{role_id}', tags=[model.plural], status_code=202)
 async def delete(role_id: str, token: str=Depends(ProtectedMethod)):
+    """
+    Delete a role by its name
+    """
     token.auth(model.permissions.delete)
     try:
         role_name = auth_provider.delete_role(name=role_id)
