@@ -1,4 +1,5 @@
 import ast
+import os
 from typing import List
 
 
@@ -22,6 +23,27 @@ class ProviderFirebase(Provider):
         if ProviderFirebase.db is None:
             firebase_admin.initialize_app()
             ProviderFirebase.db = firestore.client()
+            # ZeAuth Bootstraping
+            self.zeauth_bootstrap()
+
+    def zeauth_bootstrap(self):
+        # if there is no default admin user, create one, create roles and assign the roles to the admin user
+        user_info = {
+            'default_admin_email': os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gmail.com'), 'default_admin_password': os.environ.get('DEFAULT_ADMIN_PASSWORD', '12345ezgi123')
+        }
+        try:
+            user_model = User(email=user_info['default_admin_email'], password=user_info['default_admin_password'])
+        
+            user = self.signup(user=user_model)    
+            permissions = os.environ.get('DEFAULT_ADMIN_PERMISSIONS').split(',')
+            self.create_role(name=os.environ.get('DEFAULT_ADMIN_ROLES'), permissions=permissions, description="default admin role")
+            self.update_user_roles(user_id=user.id, new_role=[os.environ.get('DEFAULT_ADMIN_ROLES')])
+        except DuplicateEmailError:
+            return
+        except Exception as e:
+            log.debug(e)
+            raise("ZeAuth bootstraping failed cannot start properly, unexpected behavior may occur")
+
 
     @staticmethod
     def _enrich_user(user: User) -> User:
