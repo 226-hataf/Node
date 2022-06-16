@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from business.models.users import UserLoginSchema
+
 
 from business import User
 from business.models.users import UserResponseModel
@@ -26,26 +26,7 @@ model = ZKModel(**{
             'delete': ['zk-zeauth-delete']
         }
     })
-@router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def signup( user: User):
-    try:
-        signed_up_user = auth_provider.signup(user=user)
-        return signed_up_user.dict()
-    except DuplicateEmailError:
-        raise HTTPException(status_code=400, detail="this email is already linked to an account")
-    except Exception as e:
-        raise e
 
-signup.__doc__ = f" Create a new {model.name}".expandtabs()
-
-@router.post("/login", tags=[model.plural])
-async def user_login(user_info :UserLoginSchema):
-    try:
-        return auth_provider.login(user_info)
-            
-    except Exception as e :
-        raise e
-user_login.__doc__ = f" Create a new {model.name}".expandtabs()    
 
 # list users
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
