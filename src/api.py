@@ -1,43 +1,54 @@
 import os
 import importlib
-
+from fastapi import HTTPException
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from business.models.users import UserLoginSchema
 from dotenv import load_dotenv
 import uvicorn
+from business.providers.base import Provider,DuplicateEmailError
 from business.providers import get_provider
-
-
+from business import User
 from core import log
-from business.providers.base import Provider
-# from business.providers import get_provider
+
 
 load_dotenv()
 
-app = FastAPI(
-    title="ZeAuth API", 
-    description="""
-    ZeAuth API
-    ZeAuth is an interface to the chosen identity provider for the deployed solution
-    """,
+app = FastAPI()
+
+
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
 )
 
 auth_provider: Provider = get_provider()
-
-# origins = [
-#     'https://hoppscotch.io',
-#     'http://localhost:9090',
-#     'http://localhost:5000',
-#     'http://localhost:8080'
-#     ]
-
-origins = ['*']
-
-
 @app.get('/')
 async def root():
     return {"message" :"ZeKoder security managment API"}
 
+
+@app.post('/signup', status_code=201, response_model=User, response_model_exclude={"password"})
+async def signup( user: User):
+    try:
+        signed_up_user = auth_provider.signup(user=user)
+        return signed_up_user.dict()
+    except DuplicateEmailError:
+        raise HTTPException(status_code=400, detail="this email is already linked to an account")
+    except Exception as e:
+        raise e
+
+
+@app.post("/login")
+async def user_login(user_info :UserLoginSchema):
+    try:
+        return auth_provider.login(user_info)
+            
+    except Exception as e :
+        raise e 
 
 
 @app.post('/verify')
