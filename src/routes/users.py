@@ -2,7 +2,6 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
-
 from business import User
 from business.models.users import UserResponseModel
 from business.providers.base import Provider, DuplicateEmailError
@@ -11,6 +10,8 @@ from business.models.dependencies import CommonDependencies
 from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
+
+from business.models.users import UserLoginSchema
 
 router = APIRouter()
 
@@ -21,6 +22,7 @@ model = ZKModel(**{
         "plural": 'users',
         "permissions": {
             'read': ['zk-zeauth-read'],
+            'list': ['zk-zeauth-list'],
             'create': ['zk-zeauth-create'],
             'update': ['zk-zeauth-update'],
             'delete': ['zk-zeauth-delete']
@@ -28,10 +30,33 @@ model = ZKModel(**{
     })
 
 
+@router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
+async def create(user: User, token: str=Depends(ProtectedMethod)):
+    token.auth(model.permissions.create)
+    try:
+        signed_up_user = auth_provider.signup(user=user)
+        return signed_up_user.dict()
+    except DuplicateEmailError:
+        raise HTTPException(status_code=400, detail="this email is already linked to an account")
+    except Exception as e:
+        raise e
+
+create.__doc__ = f" Create a new {model.name}".expandtabs()
+
+@router.post("/login", tags=[model.plural])
+async def user_login(user_info :UserLoginSchema):
+    try:
+        user_verified = auth_provider.login(user_info) 
+        return user_verified.dict()  
+    except Exception as e :
+        raise e
+user_login.__doc__ = f" Create a new {model.name}".expandtabs()    
+
+
 # list users
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
 async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
-    token.auth(model.permissions.read)
+    token.auth(model.permissions.list)
     try:
         user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size)
         return {
@@ -101,18 +126,18 @@ async def active_on(user_id: str):
     try:
         updated_user = auth_provider.user_active_on(user_id=user_id)
         return {'updated user': updated_user.uid}
-    except Exception as e :
-        raise e 
+    except Exception as e:
+        raise e
+        
+active_on.__doc__ = f" Set {model.name}".expandtabs()
 
 @router.put('/{user_id}/off', tags=[model.plural], status_code=201)
 async def active_off(user_id: str):
     try:
         updated_user = auth_provider.user_active_off(user_id=user_id)
         return {'updated user': updated_user.uid}
-    except Exception as e :
-        raise e 
-
-
+    except Exception as e:
+        raise e
 
 active_off.__doc__ = f" Delete a {model.name}".expandtabs()
 

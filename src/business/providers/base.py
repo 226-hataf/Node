@@ -6,7 +6,7 @@ class Provider:
     def signup(self, user: User):
         log.error(f"method signup not implement for provider")
 
-    def signin(self, username: str, password: str):
+    def login(self, email: str, password: str):
         log.error(f"method signin not implement for provider")
 
     def delete_user(self, user_id: str):
@@ -18,9 +18,9 @@ class Provider:
     def get_user(self, user_id: str):
         log.error(f"method get_user not implement for provider")
 
-    def update_user_roles(self, new_role: List[str], user_id: str):
-        log.error(f"method update_user_permissions not implement for provider")
-        
+    def update_user_roles(self, new_role: list[str], user_id: str):
+        log.error(f"method update_user_roles not implement for provider")
+
     def update_user(self, user_id: str, user: User):
         log.error(f"method update_user not implement for provider")
 

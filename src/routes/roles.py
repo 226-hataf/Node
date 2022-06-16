@@ -17,6 +17,7 @@ model = ZKModel(**{
         "plural": 'roles',
         "permissions": {
             'read': ['zk-zeauth-read'],
+            'list': ['zk-zeauth-list'],
             'create': ['zk-zeauth-create'],
             'update': ['zk-zeauth-update'],
             'delete': ['zk-zeauth-delete']

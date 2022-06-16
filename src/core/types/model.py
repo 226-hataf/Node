@@ -8,6 +8,7 @@ class ZKModelPermission(BaseModel):
     read: List[str]
     delete: List[str]
     update: List[str]
+    list: List[str]
 
 class ZKModel(BaseModel):
     name: str

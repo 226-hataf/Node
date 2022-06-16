@@ -1,9 +1,8 @@
-import email
 import re
 from typing import Optional, Union, List
 from pydantic import BaseModel, validator, ValidationError
 
-from business.models.roles import Roles
+# from business.models.roles import Roles
 
 # from .permissions import Permission
 

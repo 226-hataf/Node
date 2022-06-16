@@ -1,4 +1,5 @@
 import ast
+import os
 from typing import List
 import os
 import json 
@@ -12,6 +13,8 @@ from business.models.users import *
 from .base import Provider, DuplicateEmailError
 from core import log
 
+from business.models.users import *
+
 class ProviderFirebase(Provider):
     db = None
 
@@ -20,6 +23,27 @@ class ProviderFirebase(Provider):
         if ProviderFirebase.db is None:
             firebase_admin.initialize_app()
             ProviderFirebase.db = firestore.client()
+            # ZeAuth Bootstraping
+            self.zeauth_bootstrap()
+
+    def zeauth_bootstrap(self):
+        # if there is no default admin user, create one, create roles and assign the roles to the admin user
+        user_info = {
+            'default_admin_email': os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gmail.com'), 'default_admin_password': os.environ.get('DEFAULT_ADMIN_PASSWORD', '12345ezgi123')
+        }
+        try:
+            user_model = User(email=user_info['default_admin_email'], password=user_info['default_admin_password'])
+        
+            user = self.signup(user=user_model)    
+            permissions = os.environ.get('DEFAULT_ADMIN_PERMISSIONS').split(',')
+            self.create_role(name=os.environ.get('DEFAULT_ADMIN_ROLES'), permissions=permissions, description="default admin role")
+            self.update_user_roles(user_id=user.id, new_role=[os.environ.get('DEFAULT_ADMIN_ROLES')])
+        except DuplicateEmailError:
+            return
+        except Exception as e:
+            log.debug(e)
+            raise("ZeAuth bootstraping failed cannot start properly, unexpected behavior may occur")
+
 
     @staticmethod
     def _enrich_user(user: User) -> User:
@@ -34,7 +58,7 @@ class ProviderFirebase(Provider):
     def login(self,user_info):
         try:
             headers = {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             }
 
             json_data = {
@@ -43,12 +67,8 @@ class ProviderFirebase(Provider):
                 'returnSecureToken': True,
             }
 
-            response =requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.environ.get('API_KEY')}", headers=headers, json=json_data)
-            if response.status_code == 200:
-                return json.loads(response.content.decode())["idToken"]
-            else:
-                raise HTTPException (status_code=403, detail="username or password are invalid")
-        
+            response = requests.post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk', headers=headers, json=json_data)
+            return response
         except Exception as e :
             raise e
 
@@ -72,7 +92,6 @@ class ProviderFirebase(Provider):
             raise DuplicateEmailError
         except Exception as e:
             raise e
-
 
     def delete_user(self, user_id: str):
         try:
