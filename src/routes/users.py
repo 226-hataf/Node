@@ -43,14 +43,6 @@ async def create(user: User, token: str=Depends(ProtectedMethod)):
 
 create.__doc__ = f" Create a new {model.name}".expandtabs()
 
-@router.post("/login", tags=[model.plural])
-async def user_login(user_info :UserLoginSchema):
-    try:
-        user_verified = auth_provider.login(user_info) 
-        return user_verified.dict()  
-    except Exception as e :
-        raise e
-user_login.__doc__ = f" Create a new {model.name}".expandtabs()    
 
 
 # list users
