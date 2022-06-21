@@ -52,6 +52,14 @@ class ProviderFirebase(Provider):
             user.first_name, user.last_name = user.full_name.split(' ')
         return user
 
+    def _cast_login_model(self, response: dict):
+        return LoginResponseModel(
+            user=User(email=response['email'], id=response['localId'], full_name=response['displayName']),
+            uid=response['localId'],
+            accessToken=response['idToken'],
+            refreshToken=response['refreshToken'],
+            expirationTime=response['expiresIn'],
+        )
 
     def login(self,user_info):
             try:
@@ -65,7 +73,7 @@ class ProviderFirebase(Provider):
                 }
                 response =requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.environ.get('API_KEY')}", headers=headers, json=json_data)
                 if response.status_code == 200:
-                    return json.loads(response.content.decode())["idToken"]
+                    return self._cast_login_model(json.loads(response.content.decode()))
                 else:
                     raise HTTPException (status_code=403, detail="username or password are invalid")
             except Exception as e :
