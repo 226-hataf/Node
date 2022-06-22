@@ -1,14 +1,11 @@
 import ast
 import os
 from typing import List
-import os
-import json 
 from fastapi import HTTPException
 import firebase_admin
 from firebase_admin import auth, firestore
-from requests import request
 import requests
-
+import json
 from business.models.users import *
 from .base import Provider, DuplicateEmailError
 from core import log
@@ -55,6 +52,14 @@ class ProviderFirebase(Provider):
             user.first_name, user.last_name = user.full_name.split(' ')
         return user
 
+    def _cast_login_model(self, response: dict):
+        return LoginResponseModel(
+            user=User(email=response['email'], id=response['localId'], full_name=response['displayName']),
+            uid=response['localId'],
+            accessToken=response['idToken'],
+            refreshToken=response['refreshToken'],
+            expirationTime=response['expiresIn'],
+        )
 
     def login(self,user_info):
             try:
@@ -68,12 +73,11 @@ class ProviderFirebase(Provider):
                 }
                 response =requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.environ.get('API_KEY')}", headers=headers, json=json_data)
                 if response.status_code == 200:
-                    return json.loads(response.content.decode())["idToken"]
+                    return self._cast_login_model(json.loads(response.content.decode()))
                 else:
                     raise HTTPException (status_code=403, detail="username or password are invalid")
             except Exception as e :
                 raise e
-
 
 
     def signup(self, user: User):
@@ -108,18 +112,15 @@ class ProviderFirebase(Provider):
     def update_user(self, user_id: str, user: User):
         try:
             updated_user = auth.get_user(user_id)
-
             if updated_user:
                 user = auth.update_user(
                     uid=user_id,
                     email=user.email,
                     phone_number=user.phone,
                     password=user.password,
-                    display_name=self._enrich_user(user).full_name,
+                    display_name=user.full_name,
                     photo_url=user.avatar_url,
                 )
-                user.first_name = user.display_name.split(' ')[0]
-                user.last_name = user.display_name.split(' ')[1]
                 log.info(f'sucessfully updated user {user.uid}')
                 return user
             else:

@@ -1,3 +1,4 @@
+import os
 import re
 from typing import Optional, Union, List
 from pydantic import BaseModel, validator, ValidationError
@@ -39,3 +40,11 @@ class UserResponseModel(BaseModel):
 class UserLoginSchema(BaseModel):
     email:str
     password:str
+
+
+class LoginResponseModel(BaseModel):
+    user: User
+    uid: str
+    accessToken: str
+    refreshToken: str
+    expirationTime: str
