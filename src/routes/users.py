@@ -11,8 +11,6 @@ from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
 
-from business.models.users import UserLoginSchema
-
 router = APIRouter()
 
 auth_provider: Provider = get_provider()
