@@ -16,12 +16,11 @@ class ProviderFirebase(Provider):
     db = None
 
     def __init__(self) -> None:
-        super().__init__()
         if ProviderFirebase.db is None:
             firebase_admin.initialize_app()
             ProviderFirebase.db = firestore.client()
-            # ZeAuth Bootstraping
-            self.zeauth_bootstrap()
+
+            super().__init__()
 
     def zeauth_bootstrap(self):
         # if there is no default admin user, create one, create roles and assign the roles to the admin user
@@ -155,7 +154,7 @@ class ProviderFirebase(Provider):
             if user_info:
                 return self._cast_user(user_info._data)
         except Exception as e:
-            raise HTTPException(status_code=404, detail="the user is not found")
+            raise HTTPException(status_code=404, detail="user not found")
 
 
     def update_user_roles(self, new_role: List[str], user_id: str):
