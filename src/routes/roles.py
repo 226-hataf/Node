@@ -1,10 +1,10 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from business.models.dependencies import CommonDependencies
 from business.providers import get_provider
-from business.providers.base import Provider
+from business.providers.base import *
 from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
@@ -38,16 +38,18 @@ async def create(name: str, permissions: List[str], description: Optional[str] =
         return {'roles': roles}
     except Exception as e:
         log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error")
 
-# Read
+
+# list all roles
 @router.get('/', tags=[model.plural], status_code=200)
-async def list_roles(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
+async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
     """
     List all roles
     """
     token.auth(model.permissions.read)
     try:
-        role_list, next_page, page_size = auth_provider.list_all_roles(page=commons.page, page_size=commons.size)
+        role_list, next_page, page_size = auth_provider.list_roles(page=commons.page, page_size=commons.size)
 
         return {
                 'roles': role_list,
@@ -56,8 +58,10 @@ async def list_roles(token: str=Depends(ProtectedMethod), commons: CommonDepende
             }
     except Exception as e:
         log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error")
 
 
+# get a role
 @router.get('/{role_id}', tags=[model.plural], status_code=200)
 async def roles(name: str,token: str=Depends(ProtectedMethod),  commons: CommonDependencies=Depends(CommonDependencies)):
     """
@@ -65,16 +69,12 @@ async def roles(name: str,token: str=Depends(ProtectedMethod),  commons: CommonD
     """
     token.auth(model.permissions.read)
     try:
-        role_list, next_page, page_size = auth_provider.list_specific_roles(name=name, page=commons.page, page_size=commons.size)
-
-        return {
-                'role_name': role_list, 
-                'next_page': next_page,
-                'page_size': page_size
-            }
+        return auth_provider.get_role(name)
+    except NotExisitngResourceError:
+        raise HTTPException(status_code=404, detail="attempt to get not existing role") 
     except Exception as e:
         log.error(e)
-    return {}
+        raise HTTPException(status_code=500, detail="unknown error")
 
 # Update
 @router.put('/{role_id}', tags=[model.plural], status_code=200)
@@ -87,9 +87,11 @@ async def update_roles(role_id: str, permissions: List[str], description: Option
         auth_provider.update_role(name=role_id, new_permissions=permissions, description=description)
 
         return {"updated role": role_id, "new permissions": permissions, "description": description}
+    except NotExisitngResourceError:
+        raise HTTPException(status_code=404, detail="attempt to update not existing role") 
     except Exception as e:
         log.error(e)
-        raise e
+        raise HTTPException(status_code=500, detail="unknown error")
 
 # Delete
 @router.delete('/{role_id}', tags=[model.plural], status_code=202)
@@ -101,6 +103,8 @@ async def delete(role_id: str, token: str=Depends(ProtectedMethod)):
     try:
         role_name = auth_provider.delete_role(name=role_id)
         return {"deleted role": role_name}
+    except NotExisitngResourceError:
+        raise HTTPException(status_code=404, detail="attempt to delete not existing role") 
     except Exception as e:
         log.error(e)
-        raise e
+        raise HTTPException(status_code=500, detail="unknown error")
