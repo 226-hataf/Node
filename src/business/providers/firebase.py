@@ -35,7 +35,6 @@ class ProviderFirebase(Provider):
             self.update_user_roles(user_id=user.id, new_role=[os.environ.get('DEFAULT_ADMIN_ROLES')])
         except DuplicateEmailError as e:
             log.debug('email used for bootstraping already exists')
-            raise e
         except Exception as e:
             log.error(e)
             raise("ZeAuth bootstraping failed cannot start properly, unexpected behavior may occur")
