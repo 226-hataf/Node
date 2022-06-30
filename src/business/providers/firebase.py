@@ -1,13 +1,12 @@
 import ast
 import os
 from typing import List
-from fastapi import HTTPException
 import firebase_admin
 from firebase_admin import auth, firestore
 import requests
 import json
 from business.models.users import *
-from .base import Provider, DuplicateEmailError
+from .base import *
 from core import log
 
 from business.models.users import *
@@ -34,10 +33,11 @@ class ProviderFirebase(Provider):
             permissions = os.environ.get('DEFAULT_ADMIN_PERMISSIONS').split(',')
             self.create_role(name=os.environ.get('DEFAULT_ADMIN_ROLES'), permissions=permissions, description="default admin role")
             self.update_user_roles(user_id=user.id, new_role=[os.environ.get('DEFAULT_ADMIN_ROLES')])
-        except DuplicateEmailError:
-            return
+        except DuplicateEmailError as e:
+            log.debug('email used for bootstraping already exists')
+            raise e
         except Exception as e:
-            log.debug(e)
+            log.error(e)
             raise("ZeAuth bootstraping failed cannot start properly, unexpected behavior may occur")
 
 
@@ -74,7 +74,7 @@ class ProviderFirebase(Provider):
                 if response.status_code == 200:
                     return self._cast_login_model(json.loads(response.content.decode()))
                 else:
-                    raise HTTPException (status_code=403, detail="username or password are invalid")
+                    raise InvalidCredentialsError('failed login')
             except Exception as e :
                 raise e
 
@@ -94,7 +94,7 @@ class ProviderFirebase(Provider):
                 user.id = new_user.uid
                 return ProviderFirebase._enrich_user(user)
         except auth.EmailAlreadyExistsError:
-            raise DuplicateEmailError
+            raise DuplicateEmailError('duplicate email registration attempt')
         except Exception as e:
             raise e
 
@@ -103,7 +103,7 @@ class ProviderFirebase(Provider):
             deleted_user = auth.get_user(user_id) # find the user to delete by its id
             if deleted_user:
                 auth.delete_user(deleted_user.uid) # delete the user by its unique id
-                log.info(f'successfully deleted user {deleted_user.uid}')
+                log.debug(f'successfully deleted user {deleted_user.uid}')
                 return deleted_user
         except Exception as e:
             raise e
@@ -120,13 +120,13 @@ class ProviderFirebase(Provider):
                     display_name=user.full_name,
                     photo_url=user.avatar_url,
                 )
-                log.info(f'sucessfully updated user {user.uid}')
+                log.debug(f'sucessfully updated user {user.uid}')
                 return user
             else:
-                raise HTTPException(status_code=404, detail="there is no registered user to update")
+                raise NotExisitngResourceError('attempt to update not existing user')
         except Exception as e:
             log.error(e)
-            # raise e
+            raise e
 
     def _cast_user(self, data: dict):
         return User(
@@ -153,8 +153,11 @@ class ProviderFirebase(Provider):
             user_info = auth.get_user(user_id)
             if user_info:
                 return self._cast_user(user_info._data)
+            else:
+                raise NotExisitngResourceError()
+
         except Exception as e:
-            raise HTTPException(status_code=404, detail="user not found")
+            raise e
 
 
     def update_user_roles(self, new_role: List[str], user_id: str):
@@ -178,12 +181,13 @@ class ProviderFirebase(Provider):
             updated_user = auth.get_user(user_id)
             if updated_user:
                 user = auth.update_user(
-                    disabled = "false"
+                    uid= user_id,
+                    disabled =False
                 )
                 log.info(f'sucessfully updated user {user.uid}')
                 return user
             else:
-                raise HTTPException(status_code=404, detail="there is no registered user to update")
+                raise NotExisitngResourceError('attempt to activate not existing user')
         except Exception as e:
             raise e
 
@@ -192,15 +196,16 @@ class ProviderFirebase(Provider):
             updated_user = auth.get_user(user_id)
             if updated_user:
                 user = auth.update_user(
-                    disabled = "true"
-                )
-                log.info(f'sucessfully updated user {user.uid}')
+                    uid= user_id,
+                    disabled=True                
+                    )
+                log.debug(f'sucessfully updated user {user.uid}')
                 return user
             else:
-                raise HTTPException(status_code=404, detail="there is no registered user to update")
+                raise NotExisitngResourceError('attempt to deactivate not existing user')
         except Exception as e:
             raise e
-        
+
 
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
@@ -213,30 +218,29 @@ class ProviderFirebase(Provider):
         except Exception as e:
             log.error(e)
 
-    def list_specific_roles(self, name: str, page: str, page_size: int):
+    def get_role(self, name: str):
         try:
-            page = auth.list_users(max_results=page_size, page_token=page)
-            next_page = page.next_page_token
 
-            docs = ProviderFirebase.db.collection('zk-zauth-roles').document(name).get()
-
-            return docs.to_dict(), next_page, page._max_results#docs.to_dict()
+            doc = ProviderFirebase.db.collection('zk-zauth-roles').document(name).get()
+            if doc:
+                return doc.to_dict()
+            else:
+                raise NotExisitngResourceError(f"'{name}' role not found")
         except Exception as e:
             log.error(e)
             log.error("no such document")
 
-    def list_all_roles(self, page: str, page_size: int):
+    def list_roles(self, page: str, page_size: int):
         try:
-            page = auth.list_users(max_results=page_size, page_token=page)
+            # page = auth.list_users(max_ results=page_size, page_token=page)
             next_page = page.next_page_token
             docs = ProviderFirebase.db.collection('zk-zauth-roles').get()
             roles_list = []
             for doc in docs:
                 roles_list.append(doc.to_dict())
-            return roles_list, next_page, page._max_results
+            return roles_list, 0, 0
         except Exception as e:
-            log.error(e)
-            log.error("no such document")
+            raise e
 
 
     def update_role(self, name: str, new_permissions: List[str], description: str):
@@ -245,9 +249,9 @@ class ProviderFirebase(Provider):
             if doc.get()._exists:
                 doc.update({'role_name': name, 'permissions': new_permissions, 'description': description})
             else:
-                raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")
+                raise NotExisitngResourceError('attemtp to update not exisitng role')
         except Exception as e:
-            log.error(e)
+            raise e
 
 
     def delete_role(self, name: str):
@@ -257,9 +261,9 @@ class ProviderFirebase(Provider):
                 doc.delete()
                 return name
             else:
-                raise HTTPException(status_code=404, detail=f"there is no role named '{name}'")
+                raise NotExisitngResourceError('attempt to delete not existing role')
         except Exception as e:
-            log.error(e)
+            raise e
 
     def verify(self, token: str):
         try:
@@ -267,36 +271,7 @@ class ProviderFirebase(Provider):
             return decoded_token
         except Exception as e:
             log.debug(e)
-            raise HTTPException(403, "failed token verification")
+            raise InvalidTokenError('failed token verification')
 
 
-    def user_active_on(self, user_id: str):
-        try:
-            updated_user = auth.get_user(user_id)
-            if updated_user:
-                user = auth.update_user(
-                    uid= user_id,
-                    disabled=False
-                )
-                log.info(f'sucessfully updated user {user.uid}')
-                return user
-            else:
-                raise HTTPException(status_code=404, detail="there is no registered user to update")
-        except Exception as e:
-            raise e
 
-
-    def user_active_off(self, user_id: str):
-        try:
-            updated_user = auth.get_user(user_id)
-            if updated_user:
-                user = auth.update_user(
-                    uid= user_id,
-                    disabled=True
-                )
-                log.info(f'sucessfully updated user {user.uid}')
-                return user
-            else:
-                raise HTTPException(status_code=404, detail="there is no registered user to update")
-        except Exception as e:
-            raise e

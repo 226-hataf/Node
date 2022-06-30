@@ -1,6 +1,7 @@
 from typing import List
 from business.models.users import User
 from core import log
+
 class Provider:
     def __init__(self) -> None:
         # ZeAuth Bootstraping
@@ -40,10 +41,10 @@ class Provider:
     def create_role(self, name: str, permissions: List[str], description: str):
         log.error(f'method create_role not implemented for firebase provider')
     
-    def list_specific_roles(self, name: str, page: str, page_size: int):
+    def get_role(self, name: str, page: str, page_size: int):
         log.error(f'method list_specific_roles not implemented for firebase provider')
 
-    def list_all_roles(self, page: str, page_size: int):
+    def list_roles(self, page: str, page_size: int):
         log.error(f'method list_all_roles not implemented for firebase provider')
 
     def update_role(self, name: str, new_permissions: List[str], description: str):
@@ -63,4 +64,16 @@ class Provider:
 
 
 class DuplicateEmailError(Exception):
+    pass
+
+class UnauthorizedError(Exception):
+    pass
+
+class InvalidTokenError(Exception):
+    pass
+
+class InvalidCredentialsError(Exception):
+    pass
+
+class NotExisitngResourceError(Exception):
     pass

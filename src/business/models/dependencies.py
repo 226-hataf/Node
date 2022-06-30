@@ -24,7 +24,7 @@ class ProtectedMethod:
         for permission in model_required_permissions:
             if permission in verified['zk-zeauth-permissions']:
                 return
-        raise HTTPException(401, "user not authorized to do this action")
+        raise HTTPException(403, "user not authorized to do this action")
 
 
 
