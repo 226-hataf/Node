@@ -5,6 +5,7 @@ from fastapi.security import HTTPBearer
 
 from business.providers import get_provider
 from business.providers.base import Provider
+from core import log
 
 auth_schema = HTTPBearer()
 auth_provider: Provider = get_provider()
@@ -17,10 +18,14 @@ class CommonDependencies():
 
 class ProtectedMethod:
     def __init__(self, token: str = Depends(auth_schema)):
+        log.debug(f"verifying token: {token.credentials}")
         self.credentials = token.credentials
 
     def auth(self, model_required_permissions):
-        verified = auth_provider.verify(self.credentials)
+        try:
+            verified = auth_provider.verify(self.credentials)
+        except:
+            raise HTTPException(401, "user not authenticated or using invalid token")           
         for permission in model_required_permissions:
             if permission in verified['zk-zeauth-permissions']:
                 return

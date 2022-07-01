@@ -67,12 +67,13 @@ class ProviderFirebase(Provider):
                 json_data = {
                     'email': user_info.email,
                     'password': user_info.password,
-                    'returnSecureToken': True,
+                    'returnSecureToken': 'true',
                 }
                 response =requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.environ.get('API_KEY')}", headers=headers, json=json_data)
                 if response.status_code == 200:
                     return self._cast_login_model(json.loads(response.content.decode()))
                 else:
+                    log.debug(response.json()['error']['message'])
                     raise InvalidCredentialsError('failed login')
             except Exception as e :
                 raise e
@@ -96,6 +97,17 @@ class ProviderFirebase(Provider):
             raise DuplicateEmailError('duplicate email registration attempt')
         except Exception as e:
             raise e
+
+
+    def verify(self, token: str):
+        try:
+            decoded_token = auth.verify_id_token(token)
+            return decoded_token
+        except Exception as e:
+            log.debug(e)
+            raise InvalidTokenError('failed token verification')
+
+
 
     def delete_user(self, user_id: str):
         try:
@@ -231,13 +243,10 @@ class ProviderFirebase(Provider):
 
     def list_roles(self, page: str, page_size: int):
         try:
-            # page = auth.list_users(max_ results=page_size, page_token=page)
-            next_page = page.next_page_token
-            docs = ProviderFirebase.db.collection('zk-zauth-roles').get()
-            roles_list = []
-            for doc in docs:
-                roles_list.append(doc.to_dict())
-            return roles_list, 0, 0
+            offset = page_size*(int(page)-1)
+            docs = ProviderFirebase.db.collection('zk-zauth-roles').limit(page_size).offset(offset).get()
+            roles_list = [doc.to_dict() for doc in docs]
+            return roles_list, int(page)+1, page_size
         except Exception as e:
             raise e
 
@@ -263,14 +272,4 @@ class ProviderFirebase(Provider):
                 raise NotExisitngResourceError('attempt to delete not existing role')
         except Exception as e:
             raise e
-
-    def verify(self, token: str):
-        try:
-            decoded_token = auth.verify_id_token(token)
-            return decoded_token
-        except Exception as e:
-            log.debug(e)
-            raise InvalidTokenError('failed token verification')
-
-
 
