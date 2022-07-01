@@ -50,7 +50,7 @@ async def user_login(user_info :UserLoginSchema):
         return auth_provider.login(user_info)
     except InvalidCredentialsError as e:
         log.error(e)
-        raise HTTPException(401, "neither username nor password is not matching our records")
+        raise HTTPException(401, "username or password is matching our records")
     except Exception as e :
         log.error(e)
         raise e 
