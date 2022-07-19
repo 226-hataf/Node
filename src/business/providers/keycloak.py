@@ -26,10 +26,12 @@ class ProviderKeycloak(Provider):
             if user_id_keycloak:
                 ProviderKeycloak.admin_user_created = True
             else:
-                self.keycloak_admin.create_user({"email": os.environ.get('DEFAULT_ADMIN_EMAIL'),
-                            "username": os.environ.get('DEFAULT_ADMIN_EMAIL'),
-                            "enabled": True,
-                            "firstName": "Example",
-                            "lastName": "Example"})
+                self.keycloak_admin.create_user(
+                    {"email": os.environ.get('DEFAULT_ADMIN_EMAIL'),
+                    "username": os.environ.get('DEFAULT_ADMIN_EMAIL'),
+                    "enabled": True,
+                    "firstName": "Example",
+                    "lastName": "Example"}
+                )
 
                 ProviderKeycloak.admin_user_created = True
