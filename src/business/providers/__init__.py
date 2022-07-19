@@ -1,5 +1,7 @@
 import os
 
+from business.providers.keycloak import ProviderKeycloak
+
 from .firebase import ProviderFirebase
 
 def get_provider():
@@ -7,5 +9,7 @@ def get_provider():
 
     if provider.upper() == 'FIREBASE':
         return ProviderFirebase()
+    elif provider.upper() == 'KEYCLOAK':
+        return ProviderKeycloak()
     else:
         raise Exception(f"Unknwon provider <{provider}>")
