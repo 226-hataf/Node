@@ -4,14 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from business import User
 from business.models.users import UserResponseModel
-from business.providers.base import Provider, DuplicateEmailError
+from business.providers.base import *
 from business.providers import get_provider
 from business.models.dependencies import CommonDependencies
 from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
-
-from business.models.users import UserLoginSchema
 
 router = APIRouter()
 
@@ -37,7 +35,7 @@ async def create(user: User, token: str=Depends(ProtectedMethod)):
         signed_up_user = auth_provider.signup(user=user)
         return signed_up_user.dict()
     except DuplicateEmailError:
-        raise HTTPException(status_code=400, detail="this email is already linked to an account")
+        raise HTTPException(status_code=403, detail=f"'{user.email}' email is already linked to an account")
     except Exception as e:
         raise e
 
@@ -64,6 +62,7 @@ async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=
 
 list.__doc__ = f" List all {model.plural}".expandtabs()
 
+#assign roles to a user
 @router.put('/{user_id}/roles', tags=[model.plural], status_code=201, response_model=User)
 async def update_roles(user_id: str, new_role: List[str], token: str=Depends(ProtectedMethod)):
     """
@@ -73,16 +72,28 @@ async def update_roles(user_id: str, new_role: List[str], token: str=Depends(Pro
     try:
         user = (auth_provider.update_user_roles(new_role=new_role, user_id=user_id))
         return user # list of permissins
+    except NotExisitngResourceError:
+        raise HTTPException(status_code=404, detail="attempt to update not existing user")
     except Exception as e:
         log.error(e)
-        raise e
+        raise HTTPException(status_code=500, detail="unknown error")
 
 
 @router.get('/{user_id}', tags=[model.plural], status_code=200, response_model=User, response_model_exclude={"password"})
 async def get(user_id: str, token: str=Depends(ProtectedMethod)):
     token.auth(model.permissions.read)
-    user_info = auth_provider.get_user(user_id=user_id)
-    return user_info
+    
+    try:
+        user_info = auth_provider.get_user(user_id=user_id)
+        return user_info
+    
+    except NotExisitngResourceError as e:
+        log.debug(e)
+        raise HTTPException(status_code=404, detail="attempt to get not existing user")
+    except Exception as e:
+        log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error")
+
 
 get.__doc__ = f" Get a specific {model.name} by it s id".expandtabs()
 
@@ -93,9 +104,12 @@ async def update(user_id: str, user: User, token: str=Depends(ProtectedMethod)):
     try:
         updated_user = auth_provider.update_user(user_id=user_id, user=user)
         return {'updated user': updated_user.uid}
+    except NotExisitngResourceError:
+        log.debug(e)
+        raise HTTPException(status_code=404, detail="attempt to update not existing user")
     except Exception as e:
         log.error(e)
-        raise e
+        raise HTTPException(status_code=500, detail="unknown error")
 
 update.__doc__ = f" Update a {model.name} by its id and payload".expandtabs()
 
@@ -106,10 +120,12 @@ async def delete(user_id: str, token: str=Depends(ProtectedMethod)):
     try:
         deleted_user = auth_provider.delete_user(user_id=user_id)
         return {"deleted": deleted_user.email}
+    except NotExisitngResourceError as e:
+        log.debug(e)
+        raise HTTPException(status_code=404, detail="attempt to delete not existing user")
     except Exception as e:
         log.error(e)
-        raise e
-    # return {}
+        raise HTTPException(status_code=500, detail="unknown error")
 
 delete.__doc__ = f" Delete a {model.name} by its id".expandtabs()
 
@@ -118,8 +134,11 @@ async def active_on(user_id: str):
     try:
         updated_user = auth_provider.user_active_on(user_id=user_id)
         return {'updated user': updated_user.uid}
+    except NotExisitngResourceError as e:
+        log.debug(e)
+        raise HTTPException(status_code=404, detail="attempt to activate not existing user")
     except Exception as e:
-        raise e
+        raise HTTPException(status_code=500, detail="unknown error")
         
 active_on.__doc__ = f" Set {model.name}".expandtabs()
 
@@ -128,8 +147,11 @@ async def active_off(user_id: str):
     try:
         updated_user = auth_provider.user_active_off(user_id=user_id)
         return {'updated user': updated_user.uid}
+    except NotExisitngResourceError as e:
+        log.debug(e)
+        raise HTTPException(status_code=404, detail="attempt to deactivate not existing user")
     except Exception as e:
-        raise e
+        raise HTTPException(status_code=500, detail="unknown error")
 
 active_off.__doc__ = f" Delete a {model.name}".expandtabs()
 

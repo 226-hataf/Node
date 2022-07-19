@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from business.models.users import UserLoginSchema
 from dotenv import load_dotenv
 import uvicorn
-from business.providers.base import Provider,DuplicateEmailError
+from business.providers.base import *
 from business.providers import get_provider
 from business import User
 from core import log
@@ -36,9 +36,11 @@ async def signup( user: User):
     try:
         signed_up_user = auth_provider.signup(user=user)
         return signed_up_user.dict()
-    except DuplicateEmailError:
-        raise HTTPException(status_code=400, detail="this email is already linked to an account")
+    except DuplicateEmailError as e:
+        log.error(e)
+        raise HTTPException(status_code=403, detail=f"'{user.email}' email is already linked to an account")
     except Exception as e:
+        log.error(e)
         raise e
 
 
@@ -46,16 +48,23 @@ async def signup( user: User):
 async def user_login(user_info :UserLoginSchema):
     try:
         return auth_provider.login(user_info)
-            
+    except InvalidCredentialsError as e:
+        log.error(e)
+        raise HTTPException(401, "username or password is matching our records")
     except Exception as e :
+        log.error(e)
         raise e 
 
 
 @app.post('/verify')
 async def verify(token: str):
     """verify jwt token"""
-    decoded = auth_provider.verify(token)
-    return decoded
+    try:
+        decoded = auth_provider.verify(token)
+        return decoded
+    except InvalidTokenError as e:
+        log.error(e)
+        raise HTTPException(401, "failed token verification")
 
 # load all routes dynamically
 for module in os.listdir(f"{os.path.dirname(__file__)}/routes"):
