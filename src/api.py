@@ -37,11 +37,11 @@ async def signup( user: User):
         signed_up_user = auth_provider.signup(user=user)
         return signed_up_user.dict()
     except DuplicateEmailError as e:
-        log.error(e)
+        log.debug(e)
         raise HTTPException(status_code=403, detail=f"'{user.email}' email is already linked to an account")
     except Exception as e:
         log.error(e)
-        raise e
+        raise HTTPException(status_code=500, detail='unknown error. check the logs')
 
 
 @app.post("/login")

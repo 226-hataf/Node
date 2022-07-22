@@ -9,7 +9,17 @@ class Provider:
 
     def zeauth_bootstrap(self):
         log.error(f"method zeauth_bootstrap not implement for firebase provider")
-
+    
+    @staticmethod
+    def _enrich_user(user: User) -> User:
+        if user.full_name is None and (user.first_name or user.last_name):
+            first_name = user.first_name if user.first_name is not None else ''
+            last_name = user.last_name if user.last_name is not None else ''
+            user.full_name = str(first_name) + ' ' + str(last_name)
+        if user.full_name and (user.last_name is None or user.first_name is None):
+            user.first_name, user.last_name = user.full_name.split(' ')
+        return user
+        
     def signup(self, user: User):
         log.error(f"method signup not implement for firebase provider")
 
