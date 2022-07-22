@@ -22,7 +22,6 @@ class ProtectedMethod:
         self.credentials = token.credentials
 
     def auth(self, model_required_permissions):
-        return
         try:
             verified = auth_provider.verify(self.credentials)
         except:
