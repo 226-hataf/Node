@@ -40,15 +40,6 @@ class ProviderFirebase(Provider):
             raise("ZeAuth bootstraping failed cannot start properly, unexpected behavior may occur")
 
 
-    @staticmethod
-    def _enrich_user(user: User) -> User:
-        if user.full_name is None and (user.first_name or user.last_name):
-            first_name = user.first_name if user.first_name is not None else ''
-            last_name = user.last_name if user.last_name is not None else ''
-            user.full_name = str(first_name) + ' ' + str(last_name)
-        if user.full_name and (user.last_name is None or user.first_name is None):
-            user.first_name, user.last_name = user.full_name.split(' ')
-        return user
 
     def _cast_login_model(self, response: dict):
         return LoginResponseModel(
@@ -81,7 +72,7 @@ class ProviderFirebase(Provider):
 
     def signup(self, user: User):
         try:
-            user = ProviderFirebase._enrich_user(user)
+            user = Provider._enrich_user(user)
             if user.email is not None:
                 new_user = auth.create_user(
                     email=user.email,
@@ -92,7 +83,7 @@ class ProviderFirebase(Provider):
                 )
                 log.info(f'sucessfully created new user: {new_user.uid}')
                 user.id = new_user.uid
-                return ProviderFirebase._enrich_user(user)
+                return Provider._enrich_user(user)
         except auth.EmailAlreadyExistsError:
             raise DuplicateEmailError('duplicate email registration attempt')
         except Exception as e:
