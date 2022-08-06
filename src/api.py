@@ -14,7 +14,7 @@ from core import log
 
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(title="ZeAuth")
 
 
 origins = ["*"]
