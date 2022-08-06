@@ -12,28 +12,12 @@ class ProviderKeycloak(Provider):
     admin_user_created = None
 
     def __init__(self) -> None:
-        # self.access_token = KeycloakOpenID.token(self,
-        #     grant_type='authorization_code',
-        #     code='the_code_you_get_from_auth_url_callback',
-        #     redirect_uri="your_call_back_url")
-
-        # access token url: (post) f"{keycloak_url}/realms/{realm}/protocol/openid-connect/token"
-        # data = {
-        #     "grant_type": "client_credentials",
-        #     "client_id": os.environ.get('CLIENT_ID'),
-        #     "client_secret": os.environ.get('CLIENT_SECRET')
-        #     }
-        # headers = {
-        #     'Content-Type': 'application/x-www-form-urlencoded'
-        # }
-        # response = requests.post(f"{os.environ.get('KEYCLOAK_URL')}/{os.environ.get('REALM_NAME')}/clients-initial-access", data=data, headers=headers)
-        # self.access_token = response.json()['access_token']
 
         self.keycloak_admin = KeycloakAdmin(
             server_url="https://accounts.dev.zekoder.com",
             client_id=os.environ.get('CLIENT_ID'),
             realm_name=os.environ.get('REALM_NAME'),
-            client_secret_key=os.environ.get('SECRET') # access_token
+            client_secret_key=os.environ.get('SECRET')
         )
         self.token = self.keycloak_admin.token
         super().__init__()
