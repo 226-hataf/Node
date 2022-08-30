@@ -2,10 +2,20 @@
 Environemnt variables:
 ​
 
-AUTH_TYPE: Valid values [firebase]
+AUTH_TYPE: Valid values [firebase, keycloak]
 
 AUTH_PROVIDER: firebase
 GOOGLE_APPLICATIONS_CREDENTIALS: C:/Users/ezgis/Desktop/zeauth/zeauth/jsc-chatbot-sa.json
+
+AUTH_PROVIDER: keycloak
+CLIENT_ID=account
+DIGITS=1
+KEYCLOAK_URL=https://accounts.dev.zekoder.com
+LENGTH=8
+REALM_NAME=zeauth-dev
+SECRET=...
+SPECIAL_CHARACTERS=1
+UPPERCASE=1
 
 UVICORN_PORT: 8080
 UVICORN_WORKERS: 1
