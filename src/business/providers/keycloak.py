@@ -1,16 +1,26 @@
 import email
-
+import json
 import requests
 from core import log
 import os
 from business.models.users import User
 from business.providers.base import DuplicateEmailError, Provider
 from keycloak import KeycloakAdmin, KeycloakOpenID, KeycloakPostError
+from business.models.users import *
+from .base import *
 
 
 class ProviderKeycloak(Provider):
     admin_user_created = None
 
+    def _cast_login_model(self, response: dict, username):
+        return LoginResponseModel(
+            user=User(email=username, id=response['session_state']),
+            uid=response['session_state'],
+            accessToken=response['access_token'],
+            refreshToken=response['refresh_token'],
+            expirationTime=response['expires_in'],
+        )
     def __init__(self) -> None:
 
         self.keycloak_admin = KeycloakAdmin(
@@ -64,11 +74,11 @@ class ProviderKeycloak(Provider):
         try:
             return self.keycloak_admin.create_user(
                 {"email": email,
-                "username": username,
-                "enabled": enabled,
-                "firstName": firstname,
-                "lastName": lastname,
-                },
+                 "username": username,
+                 "enabled": enabled,
+                 "firstName": firstname,
+                 "lastName": lastname,
+                 },
                 exist_ok=False
             )
         except Exception as e:
@@ -88,3 +98,25 @@ class ProviderKeycloak(Provider):
             return Provider._enrich_user(user)
         except Exception as e:
             raise DuplicateEmailError(f"<{user.email}> already exists")
+
+    def login(self, user_info):
+        try:
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            data = {
+                'username': user_info.email,
+                'password': user_info.password,
+                'client_id': os.environ.get('CLIENT_ID'),
+                'grant_type': 'password',
+                'client_secret': os.environ.get('SECRET')
+            }
+            response = requests.post(
+                f"{os.environ.get('KEYCLOAK_URL')}/realms/{os.environ.get('REALM_NAME')}/protocol/openid-connect/token",
+                headers=headers, data=data)
+            if response.status_code == 200:
+                return self._cast_login_model(json.loads(response.content.decode()), user_info.email)
+            log.debug(response.json()['error_description'])
+            raise InvalidCredentialsError('failed login')
+        except Exception as e:
+            raise e
