@@ -5,22 +5,25 @@ from core import log
 import os
 from business.models.users import User
 from business.providers.base import DuplicateEmailError, Provider
-from keycloak import KeycloakAdmin, KeycloakOpenID, KeycloakPostError
+from keycloak import KeycloakAdmin, KeycloakOpenID, KeycloakPostError, KeycloakConnectionError, \
+    KeycloakAuthenticationError
 from business.models.users import *
 from .base import *
+
+
+def cast_login_model(response: dict, username):
+    return LoginResponseModel(
+        user=User(email=username, id=response['session_state']),
+        uid=response['session_state'],
+        accessToken=response['access_token'],
+        refreshToken=response['refresh_token'],
+        expirationTime=response['expires_in'],
+    )
 
 
 class ProviderKeycloak(Provider):
     admin_user_created = None
 
-    def _cast_login_model(self, response: dict, username):
-        return LoginResponseModel(
-            user=User(email=username, id=response['session_state']),
-            uid=response['session_state'],
-            accessToken=response['access_token'],
-            refreshToken=response['refresh_token'],
-            expirationTime=response['expires_in'],
-        )
     def __init__(self) -> None:
 
         self.keycloak_admin = KeycloakAdmin(
@@ -30,8 +33,13 @@ class ProviderKeycloak(Provider):
             client_secret_key=os.environ.get('SECRET')
         )
         self.token = self.keycloak_admin.token
+        self.keycloak_openid = KeycloakOpenID(
+            server_url=os.environ.get('KEYCLOAK_URL'),
+            client_id=os.environ.get('CLIENT_ID'),
+            realm_name=os.environ.get('REALM_NAME'),
+            client_secret_key=os.environ.get('SECRET')
+        )
         super().__init__()
-
 
     def zeauth_bootstrap(self):
         if ProviderKeycloak.admin_user_created:
@@ -43,7 +51,7 @@ class ProviderKeycloak(Provider):
                 "firstname": "Master",
                 "lastname": "Account"
             }
-            
+
             self.update_password_policy()
 
             try:
@@ -52,7 +60,6 @@ class ProviderKeycloak(Provider):
                 log.error(f"user <{ os.environ.get('DEFAULT_ADMIN_EMAIL')}> already exists")
 
             ProviderKeycloak.admin_user_created = True
-
 
     def update_password_policy(self) -> str:
         try:
@@ -101,22 +108,16 @@ class ProviderKeycloak(Provider):
 
     def login(self, user_info):
         try:
-            headers = {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-            data = {
-                'username': user_info.email,
-                'password': user_info.password,
-                'client_id': os.environ.get('CLIENT_ID'),
-                'grant_type': 'password',
-                'client_secret': os.environ.get('SECRET')
-            }
-            response = requests.post(
-                f"{os.environ.get('KEYCLOAK_URL')}/realms/{os.environ.get('REALM_NAME')}/protocol/openid-connect/token",
-                headers=headers, data=data)
-            if response.status_code == 200:
-                return self._cast_login_model(json.loads(response.content.decode()), user_info.email)
-            log.debug(response.json()['error_description'])
+            response = self.keycloak_openid.token(user_info.email, user_info.password)
+            log.info(response)
+            if response:
+                return cast_login_model(response, user_info.email)
+        except KeycloakAuthenticationError as err:
+            log.debug(f"Keycloak Authentication Error: {err}")
             raise InvalidCredentialsError('failed login')
+        except KeycloakConnectionError as err:
+            log.error(err)
+            raise err
         except Exception as e:
+            log.error(e)
             raise e
