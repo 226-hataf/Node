@@ -87,3 +87,11 @@ class InvalidCredentialsError(Exception):
 
 class NotExisitngResourceError(Exception):
     pass
+
+
+class CustomKeycloakConnectionError(Exception):
+    pass
+
+
+class CustomKeycloakPostError(Exception):
+    pass

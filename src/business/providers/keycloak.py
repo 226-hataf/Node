@@ -9,6 +9,7 @@ from keycloak import KeycloakAdmin, KeycloakOpenID, KeycloakPostError, KeycloakC
     KeycloakAuthenticationError
 from business.models.users import *
 from .base import *
+from business.providers.base import *
 
 
 def cast_login_model(response: dict, username):
@@ -114,10 +115,13 @@ class ProviderKeycloak(Provider):
                 return cast_login_model(response, user_info.email)
         except KeycloakAuthenticationError as err:
             log.debug(f"Keycloak Authentication Error: {err}")
-            raise InvalidCredentialsError('failed login')
+            raise InvalidCredentialsError('failed login') from err
         except KeycloakConnectionError as err:
+            log.error(f"Un-able to connect with Keycloak. Error: {err}")
+            raise CustomKeycloakConnectionError(err) from err
+        except KeycloakPostError as err:
             log.error(err)
-            raise err
+            raise CustomKeycloakPostError(err.error_message) from err
         except Exception as e:
             log.error(e)
             raise e
