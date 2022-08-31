@@ -50,16 +50,7 @@ async def user_login(user_info: UserLoginSchema):
         return auth_provider.login(user_info)
     except InvalidCredentialsError as e:
         log.error(e)
-        raise HTTPException(401, "username or password is not matching our records") from e
-
-    except CustomKeycloakConnectionError as err:
-        log.error(f"Un-able to connect with Keycloak. Error: {err}")
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, 'Un-able to connect with Keycloak.') from err
-
-    except CustomKeycloakPostError as err:
-        log.error(f"user_login. Error: {err}")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid client credentials") from err
-
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records") from e
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
