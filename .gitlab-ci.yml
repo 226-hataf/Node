@@ -1,29 +1,37 @@
+# You can override the included template(s) by including variable overrides
+# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
+# Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/#customizing-settings
+# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
+# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
+# Note that environment variables can be set in several places
+# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 image: google/cloud-sdk:latest
-
 variables:
   DEV_PROJECT: jsc-chatbot
-  DEV_REGION:  us-central1
+  DEV_REGION: us-central1
   DEV_APP: zkdoer-zeauth-dev
-
-# dev build
 dev_build_deploy:
-  # when to run
   only:
     refs:
-      - dev
-
+    - dev
   environment:
     name: dev
     url: https://zekoder.com/dev
-
   before_script:
-    - echo $JSC_CHATBOT_SA > jsc-chatbot-sa.json
-    - echo $DEV_GOOGLE_APPLICATIONS_CREDENTIALS > google-sa.json
-    - ls
-    - export GOOGLE_APPLICATIONS_CREDENTIALS=$PWD/google-sa.json
-    - gcloud auth activate-service-account --key-file google-sa.json # Activate your service account
-    - gcloud auth configure-docker # Configure docker environment
-    - gcloud config set project $DEV_PROJECT #Set the GCP Project ID to the variable name
+  - echo $JSC_CHATBOT_SA > jsc-chatbot-sa.json
+  - echo $DEV_GOOGLE_APPLICATIONS_CREDENTIALS > google-sa.json
+  - ls
+  - export GOOGLE_APPLICATIONS_CREDENTIALS=$PWD/google-sa.json
+  - gcloud auth activate-service-account --key-file google-sa.json
+  - gcloud auth configure-docker
+  - gcloud config set project $DEV_PROJECT
   script:
-    - gcloud builds submit --tag gcr.io/$DEV_PROJECT/$DEV_APP #Run the gcloud build command to build our image
-    - gcloud run deploy $DEV_APP --image gcr.io/$DEV_PROJECT/$DEV_APP --region=$DEV_REGION --platform managed --allow-unauthenticated # Run the gcloud run deploy command to deploy our new service
+  - gcloud builds submit --tag gcr.io/$DEV_PROJECT/$DEV_APP
+  - gcloud run deploy $DEV_APP --image gcr.io/$DEV_PROJECT/$DEV_APP --region=$DEV_REGION
+    --platform managed --allow-unauthenticated
+stages:
+- test
+sast:
+  stage: test
+include:
+- template: Security/SAST.gitlab-ci.yml
