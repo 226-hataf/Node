@@ -48,3 +48,8 @@ class LoginResponseModel(BaseModel):
     accessToken: str
     refreshToken: str
     expirationTime: str
+
+
+class ResetPasswordSchema(BaseModel):
+    username: str
+    password: str

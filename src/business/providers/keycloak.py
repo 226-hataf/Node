@@ -6,7 +6,7 @@ import os
 from business.models.users import User
 from business.providers.base import DuplicateEmailError, Provider
 from keycloak import KeycloakAdmin, KeycloakOpenID, KeycloakPostError, KeycloakConnectionError, \
-    KeycloakAuthenticationError
+    KeycloakAuthenticationError, keycloak_admin
 from business.models.users import *
 from .base import *
 from business.providers.base import *
@@ -28,7 +28,7 @@ class ProviderKeycloak(Provider):
     def __init__(self) -> None:
 
         self.keycloak_admin = KeycloakAdmin(
-            server_url="https://accounts.dev.zekoder.com",
+            server_url=os.environ.get('KEYCLOAK_URL'),
             client_id=os.environ.get('CLIENT_ID'),
             realm_name=os.environ.get('REALM_NAME'),
             client_secret_key=os.environ.get('SECRET')
@@ -109,7 +109,8 @@ class ProviderKeycloak(Provider):
 
     def login(self, user_info):
         try:
-            response = self.keycloak_openid.token(user_info.email, user_info.password)
+            response = self.keycloak_openid.token(user_info.email, user_info.password, grant_type='password')
+            self.keycloak_openid.userinfo(response['access_token'])
             log.info(response)
             if response:
                 return cast_login_model(response, user_info.email)
@@ -125,3 +126,42 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             log.error(e)
             raise e
+
+    def reset_password(self, user_info):
+        try:
+            # keycloak_admin.create_user({
+            #     "email": "example@example.com",
+            #     "username": "example@example.com",
+            #     "enabled": True,
+            #     "firstName": "Example",
+            #     "lastName": "Example",
+            #     "credentials": [{
+            #         "value": "secret",
+            #         "type": "password"
+            #     }]
+            # })
+            # Update User Password
+            users=self.keycloak_admin.get_users(query={
+                "email": user_info.username
+            })
+            if users and len(users) == 1:
+                reset_pass = self.keycloak_admin.set_user_password(
+                    user_id=users[0]["id"],
+                    password=user_info.password,
+                    temporary=False
+                )
+
+            # response = self.keycloak_openid.token(user_info.email, user_info.password)
+            # log.info(response)
+            if reset_pass:
+                return reset_pass
+        except KeycloakConnectionError as err:
+            log.error(f"Un-able to connect with Keycloak. Error: {err}")
+            raise CustomKeycloakConnectionError(err) from err
+        except KeycloakPostError as err:
+            log.error(err)
+            raise CustomKeycloakPostError(err.error_message) from err
+        except Exception as err:
+            log.error(err)
+            raise err
+
