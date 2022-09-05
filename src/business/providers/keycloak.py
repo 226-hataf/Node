@@ -165,7 +165,6 @@ class ProviderKeycloak(Provider):
     def reset_password_verify(self, reset_password: ResetPasswordVerifySchema):
         try:
             email = get_redis(reset_password.reset_key)
-            print(email)
             users = self.keycloak_admin.get_users(query={"email": email})
             if users and len(users) == 1:
                 self.keycloak_admin.set_user_password(
