@@ -52,4 +52,8 @@ class LoginResponseModel(BaseModel):
 
 class ResetPasswordSchema(BaseModel):
     username: str
-    password: str
+
+
+class ResetPasswordVerifySchema(BaseModel):
+    reset_key: str
+    new_password: str

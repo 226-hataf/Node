@@ -95,3 +95,11 @@ class CustomKeycloakConnectionError(Exception):
 
 class CustomKeycloakPostError(Exception):
     pass
+
+
+class UserNotFoundError(Exception):
+    pass
+
+
+class CustomKeycloakPutError(Exception):
+    pass
