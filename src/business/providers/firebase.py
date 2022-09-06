@@ -264,3 +264,10 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
+
+def reset_password(self, user_info):
+    raise NotExisitngResourceError('Not implemented yet.')
+
+
+def reset_password_verify(self, reset_password):
+    raise NotExisitngResourceError('Not implemented yet.')
