@@ -10,14 +10,14 @@ client = TestClient(app)
 
 
 # USERS
-def test_get_users():
-    access_token = test_get_access_token()
-    headers = {
-        "accept": "application/json",
-        "Authorization": f"Bearer {access_token}"
-    }
-    response = client.get('/users', headers=headers)
-    # assert response.status_code == status.HTTP_403_FORBIDDEN
+# def test_get_users():
+#     access_token = test_get_access_token()
+#     headers = {
+#         "accept": "application/json",
+#         "Authorization": f"Bearer {access_token}"
+#     }
+#     response = client.get('/users', headers=headers)
+#     assert response.status_code == status.HTTP_200_OK
 
 
 def test_list():

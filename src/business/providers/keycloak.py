@@ -187,3 +187,12 @@ class ProviderKeycloak(Provider):
         except Exception as err:
             log.error(err)
             raise err
+
+    def verify(self, token: str):
+        try:
+            userinfo = self.keycloak_openid.userinfo(token)
+            log.info(userinfo)
+            return userinfo
+        except Exception as e:
+            log.debug(e)
+            raise InvalidTokenError('failed token verification') from e
