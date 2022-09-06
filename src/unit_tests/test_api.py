@@ -1,27 +1,31 @@
-import pytest, pydantic
-from business.models.users import User
+import pydantic
+import pytest
 from fastapi.testclient import TestClient
-from api import app
+from fastapi import status
+
+from ..api import app
+from src.business.models.users import User
 
 client = TestClient(app)
+
 
 # USERS
 def test_list():
     response = client.get('/users')
-    assert response.status_code == 200
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 # def test_update():
 #     response = client.get('/users/86NrHXybNRfxf9zbyQvsHvfvru02')
 
 
-
 def test_user_model_proper():
-    pm = User(id="user_test", email="test@example.com", first_name="ezgisu", last_name="tuncel")
+    pm = User(id="user_test", email="test@example.com", first_name="ezgisu", last_name="tuncel", full_name="ezgisu tuncel")
     assert pm.id == "user_test"
     assert pm.email == "test@example.com"
     assert pm.first_name == "ezgisu"
     assert pm.last_name == "tuncel"
     assert pm.full_name =="ezgisu tuncel"
+
 
 def test_user_model_improper():
     with pytest.raises(pydantic.ValidationError):
