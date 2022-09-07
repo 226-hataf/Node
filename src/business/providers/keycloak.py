@@ -10,7 +10,6 @@ from business.models.users import *
 from .base import *
 from business.providers.base import *
 import uuid
-from fastapi.responses import JSONResponse
 from fastapi import status
 from  src.redis_service.redis_service import set_redis, get_redis
 from ..models.users import ResetPasswordVerifySchema
@@ -151,7 +150,7 @@ class ProviderKeycloak(Provider):
                 subject="Reset Password",
                 body=reset_password_url
             )
-            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "email has been sent"})
+            return True
         except KeycloakConnectionError as err:
             log.error(f"Un-able to connect with Keycloak. Error: {err}")
             raise CustomKeycloakConnectionError(err) from err
@@ -164,7 +163,11 @@ class ProviderKeycloak(Provider):
 
     def reset_password_verify(self, reset_password: ResetPasswordVerifySchema):
         try:
-            email = get_redis(reset_password.reset_key)
+            try:
+                email = get_redis(reset_password.reset_key)
+            except Exception as err:
+                log.error(err)
+                raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!")
             users = self.keycloak_admin.get_users(query={"email": email})
             if users and len(users) == 1:
                 self.keycloak_admin.set_user_password(
@@ -176,7 +179,7 @@ class ProviderKeycloak(Provider):
             response = self.keycloak_openid.token(email, reset_password.new_password)
             log.info(response)
             if response:
-                return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Password has been reset."})
+                return response
         except KeycloakConnectionError as err:
             log.error(f"Un-able to connect with Keycloak. Error: {err}")
             raise CustomKeycloakConnectionError(err) from err

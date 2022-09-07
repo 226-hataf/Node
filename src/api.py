@@ -10,6 +10,7 @@ from business.providers.base import *
 from business.providers import get_provider
 from business import User
 from core import log
+from fastapi.responses import JSONResponse
 
 
 load_dotenv()
@@ -59,7 +60,10 @@ async def user_login(user_info: UserLoginSchema):
 @app.post("/reset-password")
 async def reset_password(user_info: ResetPasswordSchema):
     try:
-        return await auth_provider.reset_password(user_info)
+        response = await auth_provider.reset_password(user_info)
+        if response:
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "email has been sent"})
+
     except UserNotFoundError as err:
         log.error(err)
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
@@ -74,10 +78,16 @@ async def reset_password(user_info: ResetPasswordSchema):
 @app.post("/reset-password/verify")
 def reset_password_verify(reset_pass: ResetPasswordVerifySchema):
     try:
-        return auth_provider.reset_password_verify(reset_pass)
+        response = auth_provider.reset_password_verify(reset_pass)
+        if response:
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Password has been reset."})
+
     except CustomKeycloakPutError as err:
         log.error(err)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
+    except IncorrectResetKeyError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err))
     except NotExisitngResourceError as err:
         log.error(err)
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
