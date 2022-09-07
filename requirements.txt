@@ -53,3 +53,4 @@ urllib3==1.26.9
 uvicorn==0.17.6
 python-keycloak==2.1.1
 fastapi_mail==1.1.4
+mock~=4.0.3
