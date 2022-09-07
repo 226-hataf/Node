@@ -1,7 +1,7 @@
 import os
 import importlib
 from fastapi import HTTPException
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from business.models.users import UserLoginSchema
 from dotenv import load_dotenv
@@ -45,15 +45,15 @@ async def signup( user: User):
 
 
 @app.post("/login")
-async def user_login(user_info :UserLoginSchema):
+async def user_login(user_info: UserLoginSchema):
     try:
         return auth_provider.login(user_info)
     except InvalidCredentialsError as e:
         log.error(e)
-        raise HTTPException(401, "username or password is not matching our records")
-    except Exception as e :
-        log.error(e)
-        raise e 
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records") from e
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
 
 
 @app.post('/verify')
