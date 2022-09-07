@@ -60,13 +60,14 @@ async def user_login(user_info: UserLoginSchema):
 @app.post("/resend_confirmation_email")
 async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema):
     try:
-        return auth_provider.resend_confirmation_email(user_info)
-    except InvalidCredentialsError as err:
+        return await auth_provider.resend_confirmation_email(user_info)
+    except UserNotFoundError as err:
         log.error(err)
-        raise HTTPException(401, "username or password is not matching our records")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
     except Exception as err:
         log.error(err)
-        raise HTTPException(401, str(err))
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
+
 
 @app.post("/reset-password")
 async def reset_password(user_info: ResetPasswordSchema):

@@ -106,6 +106,13 @@ class ProviderKeycloak(Provider):
         try:
             created_user = self._create_user(email=user.email, username=user.email, firstname=user.first_name,
                                              lastname=user.last_name)
+
+            self.keycloak_admin.update_user(user_id=created_user,
+                                            payload={
+                                                "requiredActions": ["VERIFY_EMAIL"],
+                                                "emailVerified": False
+                                            })
+
             # Send Verify Email
             # response = self.keycloak_admin.send_verify_email(user_id='user_id_keycloak')
             log.info(f'sucessfully created new user: {created_user}')
@@ -135,12 +142,29 @@ class ProviderKeycloak(Provider):
 
     async def resend_confirmation_email(self, user_info):
         try:
+            users = self.keycloak_admin.get_users(query={
+                "email": user_info.username
+            })
+            if len(users) == 0:
+                raise UserNotFoundError(f"User '{user_info.username}' not in system")
             await send_email(
                 recipients=[user_info.username],
                 subject="Confirm email",
                 body="will fill later"
             )
+            self.keycloak_admin.update_user(user_id=users[0]["id"],
+                                            payload={"requiredActions": [], "emailVerified": True})
+
             return True
+        except KeycloakAuthenticationError as err:
+            log.debug(f"Keycloak Authentication Error: {err}")
+            raise InvalidCredentialsError('failed login') from err
+        except KeycloakConnectionError as err:
+            log.error(f"Un-able to connect with Keycloak. Error: {err}")
+            raise CustomKeycloakConnectionError(err) from err
+        except KeycloakPostError as err:
+            log.error(err)
+            raise CustomKeycloakPostError(err.error_message) from err
         except Exception as err:
             log.error(err)
             raise err
