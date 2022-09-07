@@ -11,6 +11,7 @@ from core import log
 
 from business.models.users import *
 
+
 class ProviderFirebase(Provider):
     db = None
 
@@ -24,22 +25,22 @@ class ProviderFirebase(Provider):
     def zeauth_bootstrap(self):
         # if there is no default admin user, create one, create roles and assign the roles to the admin user
         user_info = {
-            'default_admin_email': os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gmail.com'), 'default_admin_password': os.environ.get('DEFAULT_ADMIN_PASSWORD', '12345ezgi123')
+            'default_admin_email': os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gmail.com'),
+            'default_admin_password': os.environ.get('DEFAULT_ADMIN_PASSWORD', '12345ezgi123')
         }
         try:
             user_model = User(email=user_info['default_admin_email'], password=user_info['default_admin_password'])
-        
-            user = self.signup(user=user_model)    
+
+            user = self.signup(user=user_model)
             permissions = os.environ.get('DEFAULT_ADMIN_PERMISSIONS').split(',')
-            self.create_role(name=os.environ.get('DEFAULT_ADMIN_ROLES'), permissions=permissions, description="default admin role")
+            self.create_role(name=os.environ.get('DEFAULT_ADMIN_ROLES'), permissions=permissions,
+                             description="default admin role")
             self.update_user_roles(user_id=user.id, new_role=[os.environ.get('DEFAULT_ADMIN_ROLES')])
         except DuplicateEmailError as e:
             log.debug('email used for bootstraping already exists')
         except Exception as e:
             log.error(e)
-            raise("ZeAuth bootstraping failed cannot start properly, unexpected behavior may occur")
-
-
+            raise ("ZeAuth bootstraping failed cannot start properly, unexpected behavior may occur")
 
     def _cast_login_model(self, response: dict):
         return LoginResponseModel(
@@ -50,25 +51,26 @@ class ProviderFirebase(Provider):
             expirationTime=response['expiresIn'],
         )
 
-    def login(self,user_info):
-            try:
-                headers = {
-                    'Content-Type': 'application/json'
-                }
-                json_data = {
-                    'email': user_info.email,
-                    'password': user_info.password,
-                    'returnSecureToken': 'true',
-                }
-                response =requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.environ.get('API_KEY')}", headers=headers, json=json_data)
-                if response.status_code == 200:
-                    return self._cast_login_model(json.loads(response.content.decode()))
-                else:
-                    log.debug(response.json()['error']['message'])
-                    raise InvalidCredentialsError('failed login')
-            except Exception as e :
-                raise e
-
+    def login(self, user_info):
+        try:
+            headers = {
+                'Content-Type': 'application/json'
+            }
+            json_data = {
+                'email': user_info.email,
+                'password': user_info.password,
+                'returnSecureToken': 'true',
+            }
+            response = requests.post(
+                f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.environ.get('API_KEY')}",
+                headers=headers, json=json_data)
+            if response.status_code == 200:
+                return self._cast_login_model(json.loads(response.content.decode()))
+            else:
+                log.debug(response.json()['error']['message'])
+                raise InvalidCredentialsError('failed login')
+        except Exception as e:
+            raise e
 
     def signup(self, user: User):
         try:
@@ -78,7 +80,7 @@ class ProviderFirebase(Provider):
                     email=user.email,
                     password=user.password,
                     phone_number=user.phone,
-                    display_name= user.full_name,
+                    display_name=user.full_name,
                     photo_url=user.avatar_url,
                 )
                 log.info(f'sucessfully created new user: {new_user.uid}')
@@ -89,7 +91,6 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
-
     def verify(self, token: str):
         try:
             decoded_token = auth.verify_id_token(token)
@@ -98,13 +99,11 @@ class ProviderFirebase(Provider):
             log.debug(e)
             raise InvalidTokenError('failed token verification')
 
-
-
     def delete_user(self, user_id: str):
         try:
-            deleted_user = auth.get_user(user_id) # find the user to delete by its id
+            deleted_user = auth.get_user(user_id)  # find the user to delete by its id
             if deleted_user:
-                auth.delete_user(deleted_user.uid) # delete the user by its unique id
+                auth.delete_user(deleted_user.uid)  # delete the user by its unique id
                 log.debug(f'successfully deleted user {deleted_user.uid}')
                 return deleted_user
         except Exception as e:
@@ -136,13 +135,15 @@ class ProviderFirebase(Provider):
             email=data['email'],
             verified=data['emailVerified'],
             createdAt=data['createdAt'],
-            permissions = ast.literal_eval(data["customAttributes"])['zk-zeauth-permissions'] if "customAttributes" in data else [], 
-            roles = ast.literal_eval(data["customAttributes"])["zk-zeauth-roles"] if "customAttributes" in data else [],full_name=data['displayName'] if "displayName" in data else None
+            permissions=ast.literal_eval(data["customAttributes"])[
+                'zk-zeauth-permissions'] if "customAttributes" in data else [],
+            roles=ast.literal_eval(data["customAttributes"])["zk-zeauth-roles"] if "customAttributes" in data else [],
+            full_name=data['displayName'] if "displayName" in data else None
         )
-        
+
     def list_users(self, page: str, page_size: int):
         try:
-            result = auth.list_users(max_results=page_size,page_token=page)
+            result = auth.list_users(max_results=page_size, page_token=page)
             users = [self._cast_user(user._data) for user in result.users]
 
             return users, result.next_page_token, result._max_results
@@ -161,7 +162,6 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
-
     def update_user_roles(self, new_role: List[str], user_id: str):
         try:
             uid = user_id
@@ -169,11 +169,12 @@ class ProviderFirebase(Provider):
             if update_user_role:
                 new_permissions = []
                 for role in new_role:
-                    role_ref =  ProviderFirebase.db.collection("zk-zauth-roles").document(role).get()
+                    role_ref = ProviderFirebase.db.collection("zk-zauth-roles").document(role).get()
                     for pre in role_ref._data["permissions"]:
                         new_permissions.append(pre)
-                auth.set_custom_user_claims(uid, {"zk-zeauth-permissions" : new_permissions, "zk-zeauth-roles" : new_role})
-                user= auth.get_user(user_id)
+                auth.set_custom_user_claims(uid,
+                                            {"zk-zeauth-permissions": new_permissions, "zk-zeauth-roles": new_role})
+                user = auth.get_user(user_id)
                 return self._cast_user(user._data)
         except Exception as e:
             raise e
@@ -183,8 +184,8 @@ class ProviderFirebase(Provider):
             updated_user = auth.get_user(user_id)
             if updated_user:
                 user = auth.update_user(
-                    uid= user_id,
-                    disabled =False
+                    uid=user_id,
+                    disabled=False
                 )
                 log.info(f'sucessfully updated user {user.uid}')
                 return user
@@ -198,16 +199,15 @@ class ProviderFirebase(Provider):
             updated_user = auth.get_user(user_id)
             if updated_user:
                 user = auth.update_user(
-                    uid= user_id,
-                    disabled=True                
-                    )
+                    uid=user_id,
+                    disabled=True
+                )
                 log.debug(f'sucessfully updated user {user.uid}')
                 return user
             else:
                 raise NotExisitngResourceError('attempt to deactivate not existing user')
         except Exception as e:
             raise e
-
 
     # CRUD ROLES
     def create_role(self, name: str, permissions: List[str], description: str):
@@ -234,13 +234,12 @@ class ProviderFirebase(Provider):
 
     def list_roles(self, page: str, page_size: int):
         try:
-            offset = page_size*(int(page)-1)
+            offset = page_size * (int(page) - 1)
             docs = ProviderFirebase.db.collection('zk-zauth-roles').limit(page_size).offset(offset).get()
             roles_list = [doc.to_dict() for doc in docs]
-            return roles_list, int(page)+1, page_size
+            return roles_list, int(page) + 1, page_size
         except Exception as e:
             raise e
-
 
     def update_role(self, name: str, new_permissions: List[str], description: str):
         try:
@@ -251,7 +250,6 @@ class ProviderFirebase(Provider):
                 raise NotExisitngResourceError('attemtp to update not exisitng role')
         except Exception as e:
             raise e
-
 
     def delete_role(self, name: str):
         try:
@@ -264,10 +262,8 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
+    def reset_password(self, user_info):
+        raise NotExisitngResourceError('Not implemented yet.')
 
-def reset_password(self, user_info):
-    raise NotExisitngResourceError('Not implemented yet.')
-
-
-def reset_password_verify(self, reset_password):
-    raise NotExisitngResourceError('Not implemented yet.')
+    def reset_password_verify(self, reset_password):
+        raise NotExisitngResourceError('Not implemented yet.')
