@@ -120,3 +120,15 @@ class ProviderKeycloak(Provider):
             raise InvalidCredentialsError('failed login')
         except Exception as e:
             raise e
+
+    async def resend_confirmation_email(self, user_info):
+        try:
+            await send_email(
+                recipients=[user_info.username],
+                subject="Confirm email",
+                body="will fill later"
+            )
+            return True
+        except Exception as err:
+            log.error(err)
+            raise err

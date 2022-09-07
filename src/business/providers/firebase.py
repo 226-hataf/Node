@@ -264,3 +264,6 @@ class ProviderFirebase(Provider):
         except Exception as e:
             raise e
 
+    def resend_confirmation_email(self):
+        raise NotExisitngResourceError('Not implemented yet.')
+

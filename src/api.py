@@ -3,7 +3,7 @@ import importlib
 from fastapi import HTTPException
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from business.models.users import UserLoginSchema
+from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema
 from dotenv import load_dotenv
 import uvicorn
 from business.providers.base import *
@@ -11,11 +11,9 @@ from business.providers import get_provider
 from business import User
 from core import log
 
-
 load_dotenv()
 
 app = FastAPI(title="ZeAuth")
-
 
 origins = ["*"]
 app.add_middleware(
@@ -26,13 +24,15 @@ app.add_middleware(
 )
 
 auth_provider: Provider = get_provider()
+
+
 @app.get('/')
 async def root():
-    return {"message" :"ZeKoder security managment API"}
+    return {"message": "ZeKoder security managment API"}
 
 
 @app.post('/signup', status_code=201, response_model=User, response_model_exclude={"password"})
-async def signup( user: User):
+async def signup(user: User):
     try:
         signed_up_user = auth_provider.signup(user=user)
         return signed_up_user.dict()
@@ -45,15 +45,27 @@ async def signup( user: User):
 
 
 @app.post("/login")
-async def user_login(user_info :UserLoginSchema):
+async def user_login(user_info: UserLoginSchema):
     try:
         return auth_provider.login(user_info)
     except InvalidCredentialsError as e:
         log.error(e)
         raise HTTPException(401, "username or password is not matching our records")
-    except Exception as e :
+    except Exception as e:
         log.error(e)
-        raise e 
+        raise e
+
+
+@app.post("/resend_confirmation_email")
+async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema):
+    try:
+        return auth_provider.resend_confirmation_email(user_info)
+    except InvalidCredentialsError as err:
+        log.error(err)
+        raise HTTPException(401, "username or password is not matching our records")
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(401, str(err))
 
 
 @app.post('/verify')
@@ -65,6 +77,7 @@ async def verify(token: str):
     except InvalidTokenError as e:
         log.error(e)
         raise HTTPException(401, "failed token verification")
+
 
 # load all routes dynamically
 for module in os.listdir(f"{os.path.dirname(__file__)}/routes"):
@@ -89,4 +102,6 @@ app.add_middleware(
 )
 
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="localhost", port=int(os.environ.get('UVICORN_PORT', 8080)), reload=bool(os.environ.get('UVICORN_RELOAD', True)), debug=bool(os.environ.get('UVICORN_DEBUG', True)), workers=int(os.environ.get('UVICORN_WORKERS',1)))
+    uvicorn.run("api:app", host="localhost", port=int(os.environ.get('UVICORN_PORT', 8080)),
+                reload=bool(os.environ.get('UVICORN_RELOAD', True)), debug=bool(os.environ.get('UVICORN_DEBUG', True)),
+                workers=int(os.environ.get('UVICORN_WORKERS', 1)))
