@@ -2,3 +2,4 @@ src/env
 env
 __pycache__
 .env
+venv

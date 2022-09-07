@@ -1,15 +1,19 @@
-import email
-import json
 import requests
 from core import log
 import os
+import json
 from business.models.users import User
 from business.providers.base import DuplicateEmailError, Provider
 from keycloak import KeycloakAdmin, KeycloakOpenID, KeycloakPostError, KeycloakConnectionError, \
-    KeycloakAuthenticationError
+    KeycloakAuthenticationError, KeycloakPutError
 from business.models.users import *
 from .base import *
 from business.providers.base import *
+import uuid
+from fastapi import status
+from  src.redis_service.redis_service import set_redis, get_redis
+from ..models.users import ResetPasswordVerifySchema
+from src.email_service.mail_service import send_email
 
 
 def cast_login_model(response: dict, username):
@@ -28,7 +32,7 @@ class ProviderKeycloak(Provider):
     def __init__(self) -> None:
 
         self.keycloak_admin = KeycloakAdmin(
-            server_url="https://accounts.dev.zekoder.com",
+            server_url=os.environ.get('KEYCLOAK_URL'),
             client_id=os.environ.get('CLIENT_ID'),
             realm_name=os.environ.get('REALM_NAME'),
             client_secret_key=os.environ.get('SECRET')
@@ -58,7 +62,7 @@ class ProviderKeycloak(Provider):
             try:
                 self._create_user(**default_admin)
             except:
-                log.error(f"user <{ os.environ.get('DEFAULT_ADMIN_EMAIL')}> already exists")
+                log.error(f"user <{os.environ.get('DEFAULT_ADMIN_EMAIL')}> already exists")
 
             ProviderKeycloak.admin_user_created = True
 
@@ -74,11 +78,12 @@ class ProviderKeycloak(Provider):
             password_policy = {"passwordPolicy": f"{length} and {specialChars} and {upperCase} and {digits}"}
             headers = {"Authorization": f"Bearer {self.token['access_token']}"}
 
-            response = requests.put(f"{os.environ.get('KEYCLOAK_URL')}/admin/realms/{os.environ.get('REALM_NAME')}", headers=headers, json=password_policy)
+            response = requests.put(f"{os.environ.get('KEYCLOAK_URL')}/admin/realms/{os.environ.get('REALM_NAME')}",
+                                    headers=headers, json=password_policy)
         except Exception as e:
             raise e
 
-    def _create_user(self, email: str, username: str, firstname: str, lastname: str, enabled: bool=True) -> str:
+    def _create_user(self, email: str, username: str, firstname: str, lastname: str, enabled: bool = True) -> str:
         try:
             return self.keycloak_admin.create_user(
                 {"email": email,
@@ -92,14 +97,15 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             raise DuplicateEmailError('the user is already exists')
 
-    def signup(self, user: User)-> User:
+    def signup(self, user: User) -> User:
         # check ifuser exists
         # if exists raises DuplicateEmailError error
         # if not, create the new user disabled
         # TODO: send verification email with verfification link
-        
+
         try:
-            created_user = self._create_user(email=user.email, username=user.email, firstname=user.first_name, lastname=user.last_name)
+            created_user = self._create_user(email=user.email, username=user.email, firstname=user.first_name,
+                                             lastname=user.last_name)
             # Send Verify Email
             # response = self.keycloak_admin.send_verify_email(user_id='user_id_keycloak')
             log.info(f'sucessfully created new user: {created_user}')
@@ -109,7 +115,8 @@ class ProviderKeycloak(Provider):
 
     def login(self, user_info):
         try:
-            response = self.keycloak_openid.token(user_info.email, user_info.password)
+            response = self.keycloak_openid.token(user_info.email, user_info.password, grant_type='password')
+            self.keycloak_openid.userinfo(response['access_token'])
             log.info(response)
             if response:
                 return cast_login_model(response, user_info.email)
@@ -125,3 +132,61 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             log.error(e)
             raise e
+
+    async def reset_password(self, user_info):
+        try:
+            users = self.keycloak_admin.get_users(query={
+                "email": user_info.username
+            })
+            if len(users) == 0:
+                raise UserNotFoundError(f"User '{user_info.username}' not in system")
+
+            reset_key = hash(uuid.uuid4().hex)
+            set_redis(reset_key, user_info.username)
+
+            reset_password_url = f"dev.zekoder.com/resetpassword/{reset_key}"
+            await send_email(
+                recipients=[user_info.username],
+                subject="Reset Password",
+                body=reset_password_url
+            )
+            return True
+        except KeycloakConnectionError as err:
+            log.error(f"Un-able to connect with Keycloak. Error: {err}")
+            raise CustomKeycloakConnectionError(err) from err
+        except KeycloakPostError as err:
+            log.error(err)
+            raise CustomKeycloakPostError(err.error_message) from err
+        except Exception as err:
+            log.error(err)
+            raise err
+
+    def reset_password_verify(self, reset_password: ResetPasswordVerifySchema):
+        try:
+            try:
+                email = get_redis(reset_password.reset_key)
+            except Exception as err:
+                log.error(err)
+                raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!")
+            users = self.keycloak_admin.get_users(query={"email": email})
+            if users and len(users) == 1:
+                self.keycloak_admin.set_user_password(
+                    user_id=users[0]["id"],
+                    password=reset_password.new_password,
+                    temporary=False
+                )
+
+            response = self.keycloak_openid.token(email, reset_password.new_password)
+            log.info(response)
+            if response:
+                return response
+        except KeycloakConnectionError as err:
+            log.error(f"Un-able to connect with Keycloak. Error: {err}")
+            raise CustomKeycloakConnectionError(err) from err
+        except KeycloakPutError as err:
+            log.error(err)
+            message = json.loads(err.error_message)
+            raise CustomKeycloakPutError(message["error_description"]) from err
+        except Exception as err:
+            log.error(err)
+            raise err
