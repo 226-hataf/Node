@@ -52,3 +52,12 @@ class LoginResponseModel(BaseModel):
     accessToken: str
     refreshToken: str
     expirationTime: str
+
+
+class ResetPasswordSchema(BaseModel):
+    username: str
+
+
+class ResetPasswordVerifySchema(BaseModel):
+    reset_key: str
+    new_password: str

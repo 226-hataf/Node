@@ -1,15 +1,16 @@
 import os
 import importlib
 from fastapi import HTTPException
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema
+from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema, ResetPasswordSchema, ResetPasswordVerifySchema
 from dotenv import load_dotenv
 import uvicorn
 from business.providers.base import *
 from business.providers import get_provider
 from business import User
 from core import log
+from fastapi.responses import JSONResponse
 
 load_dotenv()
 
@@ -50,10 +51,10 @@ async def user_login(user_info: UserLoginSchema):
         return auth_provider.login(user_info)
     except InvalidCredentialsError as e:
         log.error(e)
-        raise HTTPException(401, "username or password is not matching our records")
-    except Exception as e:
-        log.error(e)
-        raise e
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records")
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
 
 
 @app.post("/resend_confirmation_email")
@@ -66,6 +67,44 @@ async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema):
     except Exception as err:
         log.error(err)
         raise HTTPException(401, str(err))
+
+@app.post("/reset-password")
+async def reset_password(user_info: ResetPasswordSchema):
+    try:
+        response = await auth_provider.reset_password(user_info)
+        if response:
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "email has been sent"})
+
+    except UserNotFoundError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
+    except NotExisitngResourceError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
+
+
+@app.post("/reset-password/verify")
+def reset_password_verify(reset_pass: ResetPasswordVerifySchema):
+    try:
+        response = auth_provider.reset_password_verify(reset_pass)
+        if response:
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Password has been reset."})
+
+    except CustomKeycloakPutError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
+    except IncorrectResetKeyError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err))
+    except NotExisitngResourceError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
 
 
 @app.post('/verify')
