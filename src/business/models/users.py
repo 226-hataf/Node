@@ -42,6 +42,10 @@ class UserLoginSchema(BaseModel):
     password:str
 
 
+class ResendConfirmationEmailSchema(BaseModel):
+    username: str
+
+
 class LoginResponseModel(BaseModel):
     user: User
     uid: str

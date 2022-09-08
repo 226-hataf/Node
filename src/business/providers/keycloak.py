@@ -10,8 +10,7 @@ from business.models.users import *
 from .base import *
 from business.providers.base import *
 import uuid
-from fastapi import status
-from  src.redis_service.redis_service import set_redis, get_redis
+from src.redis_service.redis_service import set_redis, get_redis
 from ..models.users import ResetPasswordVerifySchema
 from src.email_service.mail_service import send_email
 
@@ -97,7 +96,7 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             raise DuplicateEmailError('the user is already exists')
 
-    def signup(self, user: User) -> User:
+    async def signup(self, user: User) -> User:
         # check ifuser exists
         # if exists raises DuplicateEmailError error
         # if not, create the new user disabled
@@ -106,6 +105,29 @@ class ProviderKeycloak(Provider):
         try:
             created_user = self._create_user(email=user.email, username=user.email, firstname=user.first_name,
                                              lastname=user.last_name)
+
+            self.keycloak_admin.update_user(user_id=created_user,
+                                            payload={
+                                                "requiredActions": ["VERIFY_EMAIL"],
+                                                "emailVerified": False
+                                            })
+
+            confirm_email_key = hash(uuid.uuid4().hex)
+            set_redis(confirm_email_key, user.username)
+
+            confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
+
+            with open("index.html", "r", encoding="utf-8") as index_file:
+                email_template = index_file.read() \
+                    .replace("{{first_name}}", user.first_name) \
+                    .replace("{{verification_link}}", confirm_email_url)
+
+                await send_email(
+                    recipients=[user.username],
+                    subject="Confirm email",
+                    body=email_template
+                )
+
             # Send Verify Email
             # response = self.keycloak_admin.send_verify_email(user_id='user_id_keycloak')
             log.info(f'sucessfully created new user: {created_user}')
@@ -132,6 +154,49 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             log.error(e)
             raise e
+
+    async def resend_confirmation_email(self, user_info):
+        try:
+            users = self.keycloak_admin.get_users(query={
+                "email": user_info.username
+            })
+            if len(users) == 0:
+                raise UserNotFoundError(f"User '{user_info.username}' not in system")
+
+            self.keycloak_admin.update_user(user_id=users[0]["id"],
+                                            payload={
+                                                "requiredActions": ["VERIFY_EMAIL"],
+                                                "emailVerified": False
+                                            })
+
+            confirm_email_key = hash(uuid.uuid4().hex)
+            set_redis(confirm_email_key, user_info.username)
+
+            confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
+            with open("index.html", "r", encoding="utf-8") as index_file:
+                email_template = index_file.read()\
+                    .replace("{{first_name}}", users[0]["firstName"])\
+                    .replace("{{verification_link}}", confirm_email_url)
+
+                await send_email(
+                    recipients=[user_info.username],
+                    subject="Confirm email",
+                    body=email_template
+                )
+
+            return "Confirmation email sent!"
+        except KeycloakAuthenticationError as err:
+            log.debug(f"Keycloak Authentication Error: {err}")
+            raise InvalidCredentialsError('failed login') from err
+        except KeycloakConnectionError as err:
+            log.error(f"Un-able to connect with Keycloak. Error: {err}")
+            raise CustomKeycloakConnectionError(err) from err
+        except KeycloakPostError as err:
+            log.error(err)
+            raise CustomKeycloakPostError(err.error_message) from err
+        except Exception as err:
+            log.error(err)
+            raise err
 
     async def reset_password(self, user_info):
         try:
