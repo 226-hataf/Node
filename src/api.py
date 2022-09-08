@@ -3,7 +3,7 @@ import importlib
 from fastapi import HTTPException
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from business.models.users import UserLoginSchema, ResetPasswordSchema, ResetPasswordVerifySchema
+from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema, ResetPasswordSchema, ResetPasswordVerifySchema
 from dotenv import load_dotenv
 import uvicorn
 from business.providers.base import *
@@ -12,11 +12,9 @@ from business import User
 from core import log
 from fastapi.responses import JSONResponse
 
-
 load_dotenv()
 
 app = FastAPI(title="ZeAuth")
-
 
 origins = ["*"]
 app.add_middleware(
@@ -27,15 +25,17 @@ app.add_middleware(
 )
 
 auth_provider: Provider = get_provider()
+
+
 @app.get('/')
 async def root():
-    return {"message" :"ZeKoder security managment API"}
+    return {"message": "ZeKoder security managment API"}
 
 
 @app.post('/signup', status_code=201, response_model=User, response_model_exclude={"password"})
-async def signup( user: User):
+async def signup(user: User):
     try:
-        signed_up_user = auth_provider.signup(user=user)
+        signed_up_user = await auth_provider.signup(user=user)
         return signed_up_user.dict()
     except DuplicateEmailError as e:
         log.debug(e)
@@ -51,7 +51,19 @@ async def user_login(user_info: UserLoginSchema):
         return auth_provider.login(user_info)
     except InvalidCredentialsError as e:
         log.error(e)
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records") from e
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records")
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
+
+
+@app.post("/resend_confirmation_email")
+async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema):
+    try:
+        return await auth_provider.resend_confirmation_email(user_info)
+    except UserNotFoundError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
@@ -106,6 +118,7 @@ async def verify(token: str):
         log.error(e)
         raise HTTPException(401, "failed token verification")
 
+
 # load all routes dynamically
 for module in os.listdir(f"{os.path.dirname(__file__)}/routes"):
     if module == '__init__.py' or module[-3:] != '.py':
@@ -129,4 +142,6 @@ app.add_middleware(
 )
 
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="localhost", port=int(os.environ.get('UVICORN_PORT', 8080)), reload=bool(os.environ.get('UVICORN_RELOAD', True)), debug=bool(os.environ.get('UVICORN_DEBUG', True)), workers=int(os.environ.get('UVICORN_WORKERS',1)))
+    uvicorn.run("api:app", host="localhost", port=int(os.environ.get('UVICORN_PORT', 8080)),
+                reload=bool(os.environ.get('UVICORN_RELOAD', True)), debug=bool(os.environ.get('UVICORN_DEBUG', True)),
+                workers=int(os.environ.get('UVICORN_WORKERS', 1)))
