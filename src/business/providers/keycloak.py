@@ -10,7 +10,6 @@ from business.models.users import *
 from .base import *
 from business.providers.base import *
 import uuid
-from src.email_template.email_template import get_email_template
 from src.redis_service.redis_service import set_redis, get_redis
 from ..models.users import ResetPasswordVerifySchema
 from src.email_service.mail_service import send_email
@@ -118,11 +117,16 @@ class ProviderKeycloak(Provider):
 
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
 
-            await send_email(
-                recipients=[User.username],
-                subject="Confirm email",
-                body=get_email_template(user.first_name, confirm_email_url)
-            )
+            with open("index.html", "r", encoding="utf-8") as index_file:
+                email_template = index_file.read() \
+                    .replace("{{first_name}}", user.first_name) \
+                    .replace("{{verification_link}}", confirm_email_url)
+
+                await send_email(
+                    recipients=[user.username],
+                    subject="Confirm email",
+                    body=email_template
+                )
 
             # Send Verify Email
             # response = self.keycloak_admin.send_verify_email(user_id='user_id_keycloak')
@@ -169,12 +173,16 @@ class ProviderKeycloak(Provider):
             set_redis(confirm_email_key, user_info.username)
 
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
-            print(users[0])
-            await send_email(
-                recipients=[user_info.username],
-                subject="Confirm email",
-                body=get_email_template(users[0]["firstName"], confirm_email_url)
-            )
+            with open("index.html", "r", encoding="utf-8") as index_file:
+                email_template = index_file.read()\
+                    .replace("{{first_name}}", users[0]["firstName"])\
+                    .replace("{{verification_link}}", confirm_email_url)
+
+                await send_email(
+                    recipients=[user_info.username],
+                    subject="Confirm email",
+                    body=email_template
+                )
 
             return "Confirmation email sent!"
         except KeycloakAuthenticationError as err:
