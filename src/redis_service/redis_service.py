@@ -9,8 +9,8 @@ redi = redis.Redis(
 ONE_HOUR_IN_SECONDS = 3600
 
 
-def set_redis(key, value):
-    redi.set(key, value, ex=ONE_HOUR_IN_SECONDS * 24)
+def set_redis(key, value, expiry_hours=24):
+    redi.set(key, value, ex=ONE_HOUR_IN_SECONDS * expiry_hours)
 
 
 def get_redis(key):

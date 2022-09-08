@@ -35,7 +35,7 @@ async def root():
 @app.post('/signup', status_code=201, response_model=User, response_model_exclude={"password"})
 async def signup(user: User):
     try:
-        signed_up_user = auth_provider.signup(user=user)
+        signed_up_user = await auth_provider.signup(user=user)
         return signed_up_user.dict()
     except DuplicateEmailError as e:
         log.debug(e)

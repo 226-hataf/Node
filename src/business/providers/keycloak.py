@@ -10,8 +10,8 @@ from business.models.users import *
 from .base import *
 from business.providers.base import *
 import uuid
-from fastapi import status
-from  src.redis_service.redis_service import set_redis, get_redis
+from src.email_template.email_template import get_email_template
+from src.redis_service.redis_service import set_redis, get_redis
 from ..models.users import ResetPasswordVerifySchema
 from src.email_service.mail_service import send_email
 
@@ -97,7 +97,7 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             raise DuplicateEmailError('the user is already exists')
 
-    def signup(self, user: User) -> User:
+    async def signup(self, user: User) -> User:
         # check ifuser exists
         # if exists raises DuplicateEmailError error
         # if not, create the new user disabled
@@ -112,6 +112,17 @@ class ProviderKeycloak(Provider):
                                                 "requiredActions": ["VERIFY_EMAIL"],
                                                 "emailVerified": False
                                             })
+
+            confirm_email_key = hash(uuid.uuid4().hex)
+            set_redis(confirm_email_key, user.username)
+
+            confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
+
+            await send_email(
+                recipients=[User.username],
+                subject="Confirm email",
+                body=get_email_template(user.first_name, confirm_email_url)
+            )
 
             # Send Verify Email
             # response = self.keycloak_admin.send_verify_email(user_id='user_id_keycloak')
@@ -147,15 +158,25 @@ class ProviderKeycloak(Provider):
             })
             if len(users) == 0:
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
+
+            self.keycloak_admin.update_user(user_id=users[0]["id"],
+                                            payload={
+                                                "requiredActions": ["VERIFY_EMAIL"],
+                                                "emailVerified": False
+                                            })
+
+            confirm_email_key = hash(uuid.uuid4().hex)
+            set_redis(confirm_email_key, user_info.username)
+
+            confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
+            print(users[0])
             await send_email(
                 recipients=[user_info.username],
                 subject="Confirm email",
-                body="will fill later"
+                body=get_email_template(users[0]["firstName"], confirm_email_url)
             )
-            self.keycloak_admin.update_user(user_id=users[0]["id"],
-                                            payload={"requiredActions": [], "emailVerified": True})
 
-            return True
+            return "Confirmation email sent!"
         except KeycloakAuthenticationError as err:
             log.debug(f"Keycloak Authentication Error: {err}")
             raise InvalidCredentialsError('failed login') from err
