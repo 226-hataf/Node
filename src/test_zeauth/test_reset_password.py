@@ -1,26 +1,30 @@
 from src.business.models.users import ResetPasswordSchema
-# from src.business.providers.keycloak import ProviderKeycloak
-from unittest import mock
-from mock import patch
+from src.business.providers.keycloak import ProviderKeycloak
+import pytest
+from src.test_zeauth.keycloak_fixtures import mocked_keycloak_admin, mocked_keycloak_open_id, mocked_set_redis, \
+    mocked_send_email, mocked_keycloak_admin_empty_user
 
 
-@patch("keycloak.KeycloakOpenID")
-@patch("keycloak.KeycloakAdmin")
-def test_reset_password(mock_Keycloak_admin, mock_keycloak_open_id):
-    reset_pass_schema = ResetPasswordSchema(username="abdul")
-    assert reset_pass_schema.username == "abdul"
+@pytest.mark.asyncio
+async def test_reset_password_success(mocked_keycloak_admin, mocked_keycloak_open_id, mocked_set_redis,
+                                      mocked_send_email):
+    keycloak = ProviderKeycloak()
 
-    token = {
-        'access_token': 'eyJhbGciOiJS3hLusczkmp6Nk4',
-        'expires_in': 300,
-        'refresh_expires_in': 0,
-        'token_type': 'Bearer',
-        'not-before-policy': 0,
-        'scope': 'email profile'
-    }
-    mock_Keycloak_admin.return_value = mock.Mock(**{
-        "status_code": 200,
-        "json.return_value": {"token": token}
-    })
-    # keycloak = ProviderKeycloak()
+    reset_pass_schema = ResetPasswordSchema(username="abdul@gmail.com")
+    assert reset_pass_schema.username == "abdul@gmail.com"
 
+    reset_password = await keycloak.reset_password(reset_pass_schema)
+    assert reset_password == True
+
+
+@pytest.mark.asyncio
+async def test_reset_password_fail(mocked_keycloak_admin_empty_user, mocked_keycloak_open_id, mocked_set_redis,
+                                   mocked_send_email):
+    keycloak = ProviderKeycloak()
+
+    reset_pass_schema = ResetPasswordSchema(username="abdul@gmail.com")
+    assert reset_pass_schema.username == "abdul@gmail.com"
+
+    with pytest.raises(Exception) as empty_user_err:
+        await keycloak.reset_password(reset_pass_schema)
+    assert str(empty_user_err.value) == "User 'abdul@gmail.com' not in system"
