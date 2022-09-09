@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.fixture()
-def mocked_keycloak_admin(mocker):  # mocker is pytest-mock fixture
+def mocked_keycloak_admin(mocker):
     token = {
         'access_token': 'eyJhbGciOiJS3hLusczkmp6Nk4',
         'expires_in': 300,
@@ -20,28 +20,36 @@ def mocked_keycloak_admin(mocker):  # mocker is pytest-mock fixture
         "client_secret_key": "test",
         "connection": "ConnectionManager",
         "token": token,
-        "get_users.return_value": users_list
+        "get_users.return_value": users_list,
+        "set_user_password.return_value": True
     }))
 
 
 @pytest.fixture()
-def mocked_keycloak_open_id(mocker):  # mocker is pytest-mock fixture
+def mocked_keycloak_open_id(mocker):
+    token = {
+        "session_state": "23434554645454",
+        "access_token": "sdklklfg",
+        "refresh_token": "sdfsdfkj",
+        "expires_in": "sdd"
+    }
     mocker.patch('src.business.providers.keycloak.KeycloakOpenID', return_value=mocker.Mock(**{
         "authorization": "test auth",
         "client_id": "account",
         "client_secret_key": "test",
         "connection": "ConnectionManager",
         "realm_name": "zeauth-dev",
+        "token.return_value": token
     }))
 
 
 @pytest.fixture()
-def mocked_set_redis(mocker):  # mocker is pytest-mock fixture
+def mocked_set_redis(mocker):
     mocker.patch('src.redis_service.redis_service.set_redis', return_value=mocker.Mock())
 
 
 @pytest.fixture()
-def mocked_send_email(mocker):  # mocker is pytest-mock fixture
+def mocked_send_email(mocker):
     mocker.patch('src.email_service.mail_service.send_email', return_value=mocker.Mock())
 
 
@@ -65,3 +73,8 @@ def mocked_keycloak_admin_empty_user(mocker):
         "token": token,
         "get_users.return_value": users_list
     }))
+
+
+@pytest.fixture()
+def mocked_get_redis(mocker):
+    mocker.patch('src.business.providers.keycloak.get_redis', return_value=mocker.Mock("abdul@gmail.com"))
