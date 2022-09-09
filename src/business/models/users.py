@@ -3,6 +3,7 @@ import re
 from typing import Optional, Union, List
 from pydantic import BaseModel, validator, ValidationError
 
+
 # from business.models.roles import Roles
 
 # from .permissions import Permission
@@ -28,18 +29,21 @@ class User(BaseModel):
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             raise ValueError("invalid email format")
         return email
-    
+
+
 class Config:
     orm_mode = True
+
 
 class UserResponseModel(BaseModel):
     next_page: Optional[str]
     user_list: Optional[List[User]]
     page_size: Optional[int]
 
+
 class UserLoginSchema(BaseModel):
-    email:str
-    password:str
+    email: str
+    password: str
 
 
 class ResendConfirmationEmailSchema(BaseModel):

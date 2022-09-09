@@ -117,7 +117,8 @@ class ProviderKeycloak(Provider):
 
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
 
-            with open("index.html", "r", encoding="utf-8") as index_file:
+            directory = os.path.dirname(__file__)
+            with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
                     .replace("{{first_name}}", user.first_name) \
                     .replace("{{verification_link}}", confirm_email_url)
@@ -133,6 +134,7 @@ class ProviderKeycloak(Provider):
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
         except Exception as e:
+            print(e, "="*45)
             raise DuplicateEmailError(f"<{user.email}> already exists")
 
     def login(self, user_info):

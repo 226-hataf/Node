@@ -11,7 +11,8 @@ def mocked_keycloak_admin(mocker):
         'not-before-policy': 0,
         'scope': 'email profile'
     }
-    users_list = [{"id": "2334423423", "email": "abdul@gmail.com", "firstName": "Abdul"}]
+    user = {"id": "2334423423", "email": "abdul@gmail.com", "firstName": "Abdul"}
+    users_list = [user]
 
     mocker.patch('src.business.providers.keycloak.KeycloakAdmin', return_value=mocker.Mock(**{
         "name": "mock_Keycloak_admin mocked",
@@ -22,7 +23,9 @@ def mocked_keycloak_admin(mocker):
         "token": token,
         "get_users.return_value": users_list,
         "set_user_password.return_value": {},
-        "update_user.return_value": {}
+        "update_user.return_value": {},
+        "userinfo.return_value": user,
+        "create_user.return_value": "2334423423"
     }))
 
 
