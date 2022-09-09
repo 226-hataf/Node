@@ -18,8 +18,8 @@ async def test_reset_password_success(mocked_keycloak_admin, mocked_keycloak_ope
 
 
 @pytest.mark.asyncio
-async def test_reset_password_fail(mocked_keycloak_admin_empty_user, mocked_keycloak_open_id, mocked_set_redis,
-                                   mocked_send_email):
+async def test_reset_password_empty_user_err(mocked_keycloak_admin_empty_user, mocked_keycloak_open_id,
+                                             mocked_set_redis, mocked_send_email):
     keycloak = ProviderKeycloak()
 
     reset_pass_schema = ResetPasswordSchema(username="abdul@gmail.com")

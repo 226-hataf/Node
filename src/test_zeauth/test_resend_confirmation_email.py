@@ -18,8 +18,8 @@ async def test_resend_confirmation_email_success(mocked_keycloak_admin, mocked_s
 
 
 @pytest.mark.asyncio
-async def test_resend_confirmation_email_fail(mocked_keycloak_admin_empty_user,
-                                              mocked_set_redis, mocked_send_email):
+async def test_resend_confirmation_empty_user_err(mocked_keycloak_admin_empty_user, mocked_set_redis,
+                                                  mocked_send_email):
     keycloak = ProviderKeycloak()
 
     reset_pass_schema = ResendConfirmationEmailSchema(username="abdul@gmail.com")
