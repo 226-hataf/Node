@@ -173,7 +173,8 @@ class ProviderKeycloak(Provider):
             set_redis(confirm_email_key, user_info.username)
 
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
-            with open("index.html", "r", encoding="utf-8") as index_file:
+            directory = os.path.dirname(__file__)
+            with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read()\
                     .replace("{{first_name}}", users[0]["firstName"])\
                     .replace("{{verification_link}}", confirm_email_url)

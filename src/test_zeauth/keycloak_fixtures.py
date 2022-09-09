@@ -11,7 +11,7 @@ def mocked_keycloak_admin(mocker):
         'not-before-policy': 0,
         'scope': 'email profile'
     }
-    users_list = [{"id": "2334423423", "email": "abdul@gmail.com"}]
+    users_list = [{"id": "2334423423", "email": "abdul@gmail.com", "firstName": "Abdul"}]
 
     mocker.patch('src.business.providers.keycloak.KeycloakAdmin', return_value=mocker.Mock(**{
         "name": "mock_Keycloak_admin mocked",
@@ -21,7 +21,8 @@ def mocked_keycloak_admin(mocker):
         "connection": "ConnectionManager",
         "token": token,
         "get_users.return_value": users_list,
-        "set_user_password.return_value": True
+        "set_user_password.return_value": {},
+        "update_user.return_value": {}
     }))
 
 
@@ -50,7 +51,7 @@ def mocked_set_redis(mocker):
 
 @pytest.fixture()
 def mocked_send_email(mocker):
-    mocker.patch('src.email_service.mail_service.send_email', return_value=mocker.Mock())
+    mocker.patch('src.business.providers.keycloak.send_email', return_value=mocker.Mock())
 
 
 @pytest.fixture()
