@@ -32,9 +32,9 @@ def mocked_zeauth_bootstrap(mocker):
 
 @pytest.fixture()
 def mocked_login_request_post(mocker):
+    byte_str = b'{"localId": "2334423423", "email": "abdul@gmail.com", "displayName": "Abdul Reman", "idToken": ' \
+               b'"sdfkjf", "expiresIn": 300, "refreshToken": "sdfdf"}'
     mocker.patch('src.business.providers.firebase.requests.post', return_value=mocker.Mock(**{
-        # "status_code": 200,
-        "content": {
-            "name": "Abdul"
-        }
+        "status_code": 200,
+        "content": byte_str
     }))

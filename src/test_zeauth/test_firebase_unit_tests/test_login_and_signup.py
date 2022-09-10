@@ -22,14 +22,14 @@ def test_signup_success(mocked_firebase_init_app, mocked_firestore_client, mocke
     assert signup.last_name == "Rehman"
 
 
-# def test_login_success(mocked_firebase_init_app, mocked_firestore_client, mocked_login_request_post):
-#     firebase = ProviderFirebase()
-#
-#     login_schema = UserLoginSchema(email="abdul@gmail.com", password="test123")
-#     assert login_schema.email == "abdul@gmail.com"
-#     assert login_schema.password == "test123"
-#
-#     logged_in = firebase.login(login_schema)
-#
-#     assert logged_in.user.id == '23434554645454'
-#     assert logged_in.user.email == 'abdul@gmail.com'
+def test_login_success(mocked_firebase_init_app, mocked_firestore_client, mocked_login_request_post):
+    firebase = ProviderFirebase()
+
+    login_schema = UserLoginSchema(email="abdul@gmail.com", password="test123")
+    assert login_schema.email == "abdul@gmail.com"
+    assert login_schema.password == "test123"
+
+    logged_in = firebase.login(login_schema)
+
+    assert logged_in.user.id == '2334423423'
+    assert logged_in.user.email == 'abdul@gmail.com'
