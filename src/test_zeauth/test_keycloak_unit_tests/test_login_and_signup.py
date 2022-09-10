@@ -23,7 +23,7 @@ async def test_signup_success(mocked_keycloak_open_id, mocked_keycloak_admin, mo
     assert signup.last_name == "Rehman"
 
 
-def test_login_success(mocked_keycloak_open_id):
+def test_login_success(mocked_keycloak_open_id, mocked_keycloak_admin):
     keycloak = ProviderKeycloak()
 
     login_schema = UserLoginSchema(email="abdul@gmail.com", password="test123")

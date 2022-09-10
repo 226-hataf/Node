@@ -1,12 +1,12 @@
 from src.business.models.users import ResendConfirmationEmailSchema
 from src.business.providers.keycloak import ProviderKeycloak
 import pytest
-from src.test_zeauth.keycloak_fixtures import mocked_keycloak_admin, mocked_set_redis, mocked_send_email,\
-    mocked_keycloak_admin_empty_user
+from src.test_zeauth.keycloak_fixtures import mocked_keycloak_admin, mocked_keycloak_open_id, mocked_set_redis, \
+    mocked_send_email, mocked_keycloak_admin_empty_user
 
 
 @pytest.mark.asyncio
-async def test_resend_confirmation_email_success(mocked_keycloak_admin, mocked_set_redis,
+async def test_resend_confirmation_email_success(mocked_keycloak_admin, mocked_keycloak_open_id, mocked_set_redis,
                                                  mocked_send_email):
     keycloak = ProviderKeycloak()
 
@@ -18,8 +18,8 @@ async def test_resend_confirmation_email_success(mocked_keycloak_admin, mocked_s
 
 
 @pytest.mark.asyncio
-async def test_resend_confirmation_empty_user_err(mocked_keycloak_admin_empty_user, mocked_set_redis,
-                                                  mocked_send_email):
+async def test_resend_confirmation_empty_user_err(mocked_keycloak_admin_empty_user, mocked_keycloak_open_id,
+                                                  mocked_set_redis, mocked_send_email):
     keycloak = ProviderKeycloak()
 
     confirm_email_schema = ResendConfirmationEmailSchema(username="abdul@gmail.com")
