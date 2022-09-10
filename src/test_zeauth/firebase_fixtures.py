@@ -38,3 +38,10 @@ def mocked_login_request_post(mocker):
         "status_code": 200,
         "content": byte_str
     }))
+
+
+@pytest.fixture()
+def mocked_login_fail_request_post(mocker):
+    mocker.patch('src.business.providers.firebase.requests.post', return_value=mocker.MagicMock(status_code=401, **{
+        "error": {"message": "failed login"}
+    }))

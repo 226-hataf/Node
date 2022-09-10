@@ -1,7 +1,8 @@
 from src.business.models.users import UserLoginSchema, User
 from src.business.providers.firebase import ProviderFirebase
 from src.test_zeauth.firebase_fixtures import mocked_firebase_init_app, mocked_firestore_client, \
-    mocked_auth_create_user, mocked_zeauth_bootstrap, mocked_login_request_post
+    mocked_auth_create_user, mocked_zeauth_bootstrap, mocked_login_request_post, mocked_login_fail_request_post
+import pytest
 
 
 def test_signup_success(mocked_firebase_init_app, mocked_firestore_client, mocked_auth_create_user,
@@ -33,3 +34,17 @@ def test_login_success(mocked_firebase_init_app, mocked_firestore_client, mocked
 
     assert logged_in.user.id == '2334423423'
     assert logged_in.user.email == 'abdul@gmail.com'
+
+
+@pytest.mark.asyncio
+def test_login_fail(mocked_firebase_init_app, mocked_firestore_client, mocked_login_fail_request_post):
+    firebase = ProviderFirebase()
+
+    login_schema = UserLoginSchema(email="abdul@gmail.com", password="test123")
+    assert login_schema.email == "abdul@gmail.com"
+    assert login_schema.password == "test123"
+
+    with pytest.raises(Exception) as login_fail:
+        firebase.login(login_schema)
+    assert str(login_fail.value) == "failed login"
+
