@@ -18,11 +18,23 @@ def mocked_firestore_client(mocker):
 
 
 @pytest.fixture()
-def mocked_auth_create_user(mocker):
-    mocker.patch('src.business.providers.firebase.auth', return_value=mocker.Mock(**{
-        "name": "create_user",
-        "create_user.return_value": {"uid": "2343543543432"}
-    }))
+def mocked_firebase_auth_create_user(mocker):
+    mocker.patch('src.business.providers.firebase.auth.create_user', return_value=mocker.MagicMock(uid="2343543543432"))
+
+
+@pytest.fixture()
+def mocked_firebase_auth_delete_user(mocker):
+    mocker.patch('src.business.providers.firebase.auth.delete_user', return_value=mocker.MagicMock(uid="2343543543432"))
+
+
+@pytest.fixture()
+def mocked_firebase_auth_update_user(mocker):
+    mocker.patch('src.business.providers.firebase.auth.update_user', return_value=mocker.MagicMock(uid="2343543543432"))
+
+
+@pytest.fixture()
+def mocked_firebase_auth_get_user(mocker):
+    mocker.patch('src.business.providers.firebase.auth.get_user', return_value=mocker.MagicMock(uid="2343543543432"))
 
 
 @pytest.fixture()

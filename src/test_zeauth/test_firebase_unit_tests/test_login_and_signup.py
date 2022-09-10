@@ -1,11 +1,11 @@
 from src.business.models.users import UserLoginSchema, User
 from src.business.providers.firebase import ProviderFirebase
 from src.test_zeauth.firebase_fixtures import mocked_firebase_init_app, mocked_firestore_client, \
-    mocked_auth_create_user, mocked_zeauth_bootstrap, mocked_login_request_post, mocked_login_fail_request_post
+    mocked_firebase_auth_create_user, mocked_zeauth_bootstrap, mocked_login_request_post, mocked_login_fail_request_post
 import pytest
 
 
-def test_signup_success(mocked_firebase_init_app, mocked_firestore_client, mocked_auth_create_user,
+def test_signup_success(mocked_firebase_init_app, mocked_firestore_client, mocked_firebase_auth_create_user,
                         mocked_zeauth_bootstrap):
     firebase = ProviderFirebase()
 
