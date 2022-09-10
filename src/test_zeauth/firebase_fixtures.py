@@ -38,6 +38,23 @@ def mocked_firebase_auth_get_user(mocker):
 
 
 @pytest.fixture()
+def mocked_firebase_auth_verify_id_token(mocker):
+    mocker.patch('src.business.providers.firebase.auth.verify_id_token', return_value=mocker.MagicMock(uid="2343543543432"))
+
+
+@pytest.fixture()
+def mocked_firebase_auth_list_users(mocker):
+    user = {
+        "localId": "2343543543432",
+        "email": "abdul@gmail.com",
+        "emailVerified": True,
+        "createdAt": "10-10-2022"
+    }
+    list_users = [user]
+    mocker.patch('src.business.providers.firebase.auth.list_users', return_value=mocker.MagicMock(list_users))
+
+
+@pytest.fixture()
 def mocked_zeauth_bootstrap(mocker):
     mocker.patch('src.business.providers.firebase.ProviderFirebase.zeauth_bootstrap', return_value=mocker.Mock())
 

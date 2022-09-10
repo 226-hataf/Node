@@ -36,7 +36,6 @@ def test_login_success(mocked_firebase_init_app, mocked_firestore_client, mocked
     assert logged_in.user.email == 'abdul@gmail.com'
 
 
-@pytest.mark.asyncio
 def test_login_fail(mocked_firebase_init_app, mocked_firestore_client, mocked_login_fail_request_post):
     firebase = ProviderFirebase()
 
