@@ -49,7 +49,7 @@ def mocked_keycloak_open_id(mocker):
 
 @pytest.fixture()
 def mocked_set_redis(mocker):
-    mocker.patch('src.redis_service.redis_service.set_redis', return_value=mocker.Mock())
+    mocker.patch('src.business.providers.keycloak.set_redis', return_value=mocker.Mock())
 
 
 @pytest.fixture()
