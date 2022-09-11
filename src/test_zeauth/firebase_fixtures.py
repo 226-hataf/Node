@@ -45,6 +45,11 @@ def mocked_firebase_auth_get_user(mocker):
 
 
 @pytest.fixture()
+def mocked_firebase_auth_get_user_error(mocker):
+    mocker.patch('src.business.providers.firebase.auth.get_user', return_value=None)
+
+
+@pytest.fixture()
 def mocked_firebase_auth_verify_id_token(mocker):
     mocker.patch('src.business.providers.firebase.auth.verify_id_token',
                  return_value=mocker.MagicMock(uid="2343543543432"))
