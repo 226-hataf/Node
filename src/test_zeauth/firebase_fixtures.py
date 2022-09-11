@@ -11,9 +11,18 @@ def mocked_firebase_init_app(mocker):
 
 @pytest.fixture()
 def mocked_firestore_client(mocker):
-    mocker.patch('src.business.providers.firebase.firestore', return_value=mocker.Mock(**{
+    return mocker.patch('src.business.providers.firebase.firestore', return_value=mocker.MagicMock(**{
         "name": "firestore client",
-        "client.return_value": {}
+        "client.return_value": mocker.MagicMock(**{
+            "collection.return_value": mocker.MagicMock(**{
+                ".document.return_value": mocker.MagicMock(**{
+                    "get.return_value": mocker.MagicMock(**{"to_dict.return_value": mocker.MagicMock(**{
+                        "name": "Abdul",
+                        "test": "test"
+                    })})
+                })
+            })
+        })
     }))
 
 
