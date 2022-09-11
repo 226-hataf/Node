@@ -34,7 +34,14 @@ def mocked_firebase_auth_update_user(mocker):
 
 @pytest.fixture()
 def mocked_firebase_auth_get_user(mocker):
-    mocker.patch('src.business.providers.firebase.auth.get_user', return_value=mocker.MagicMock(uid="2343543543432"))
+    mocker.patch('src.business.providers.firebase.auth.get_user', return_value=mocker.MagicMock(
+        uid="2343543543432",
+        **{"_data": {
+            "localId": "2343543543432",
+            "email": "abdul@gmail.com",
+            "emailVerified": True,
+            "createdAt": "10-10-2022"
+        }}))
 
 
 @pytest.fixture()
