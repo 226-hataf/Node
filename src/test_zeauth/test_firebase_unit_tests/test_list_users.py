@@ -7,5 +7,9 @@ def test_list_users_success(mocked_firebase_init_app, mocked_firestore_client, m
                             mocked_zeauth_bootstrap):
     firebase = ProviderFirebase()
 
-    list_users = firebase.list_users(page_size=3, page=3)
-    assert list_users[0].id == "2343543543432"
+    list_users, next_page_token, max_results = firebase.list_users(page_size=3, page=3)
+    user = list_users[0]
+    assert user.id == "2343543543432"
+    assert user.email == "abdul@gmail.com"
+    assert user.verified is True
+    assert user.createdAt == "10-10-2022"
