@@ -13,7 +13,7 @@ image: google/cloud-sdk:latest
 variables:
   PROVIDER: zekoder
   APP: zeauth
-  DEV_PROJECT: zekoder-dev
+  DEV_PROJECT: zekoder-dev-349809
   DEV_REGION: us-central1
 
 
@@ -25,6 +25,7 @@ build dev:
   environment:
     name: dev
     url: https://zekoder.com/dev
+    
   before_script:
   - echo $ZEKODER_SA > google-sa.json
   - ls
@@ -32,6 +33,7 @@ build dev:
   - gcloud auth activate-service-account --key-file google-sa.json
   - gcloud auth configure-docker
   - gcloud config set project $DEV_PROJECT
+
   script:
   - gcloud builds submit --tag gcr.io/$DEV_PROJECT/$PROVIDER/$APP
   # - gcloud run deploy $DEV_APP --image gcr.io/$DEV_PROJECT/$DEV_APP --region=$DEV_REGION
