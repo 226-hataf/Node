@@ -6,14 +6,14 @@
 # Note that environment variables can be set in several places
 # See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 stages:
-  - build
   - test
+  - build
+
 
 image: google/cloud-sdk:latest
 variables:
   PROVIDER: zekoder
   APP: zeauth
-  VERSION: "1"
   DEV_PROJECT: zekoder-dev-349809
   DEV_REGION: us-central1
   REGISTERY: us.gcr.io
@@ -37,7 +37,7 @@ build dev:
   - gcloud config set project $DEV_PROJECT
 
   script:
-  - gcloud builds submit --tag $REGISTERY/$DEV_PROJECT/$PROVIDER/$APP:$VERSION
+  - gcloud builds submit --tag $REGISTERY/$DEV_PROJECT/$PROVIDER/$APP:$CI_COMMIT_SHORT_SHA
   # - gcloud run deploy $DEV_APP --image gcr.io/$DEV_PROJECT/$DEV_APP --region=$DEV_REGION
     # --platform managed --allow-unauthenticated
 
