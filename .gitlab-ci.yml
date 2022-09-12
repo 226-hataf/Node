@@ -12,7 +12,12 @@ variables:
   DEV_PROJECT: zekoder-dev
   DEV_REGION: us-central1
 
-dev build:
+stages:
+  - build
+
+
+build dev:
+  stage: build
   only:
     refs:
     - dev
