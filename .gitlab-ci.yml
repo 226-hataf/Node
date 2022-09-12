@@ -12,7 +12,7 @@ variables:
   DEV_PROJECT: zekoder-dev
   DEV_REGION: us-central1
 
-dev_build_deploy:
+dev build:
   only:
     refs:
     - dev
@@ -20,7 +20,7 @@ dev_build_deploy:
     name: dev
     url: https://zekoder.com/dev
   before_script:
-  - echo $ZEKODER_SA > google_sa.json
+  - echo $ZEKODER_SA > google-sa.json
   - ls
   - export GOOGLE_APPLICATIONS_CREDENTIALS=$PWD/google-sa.json
   - gcloud auth activate-service-account --key-file google-sa.json
