@@ -70,6 +70,7 @@ class ProviderFirebase(Provider):
                 log.debug(response.json()['error']['message'])
                 raise InvalidCredentialsError('failed login')
         except Exception as e:
+            log.error(e)
             raise e
 
     def signup(self, user: User):
