@@ -7,9 +7,11 @@
 # See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 image: google/cloud-sdk:latest
 variables:
-  DEV_PROJECT: jsc-chatbot
+  PROVIDER: zekoder
+  APP: zeauth
+  DEV_PROJECT: zekoder-dev
   DEV_REGION: us-central1
-  DEV_APP: zkdoer-zeauth-dev
+
 dev_build_deploy:
   only:
     refs:
@@ -18,17 +20,17 @@ dev_build_deploy:
     name: dev
     url: https://zekoder.com/dev
   before_script:
-  - echo $JSC_CHATBOT_SA > jsc-chatbot-sa.json
-  - echo $DEV_GOOGLE_APPLICATIONS_CREDENTIALS > google-sa.json
+  - echo $ZEKODER_SA > google_sa.json
   - ls
   - export GOOGLE_APPLICATIONS_CREDENTIALS=$PWD/google-sa.json
   - gcloud auth activate-service-account --key-file google-sa.json
   - gcloud auth configure-docker
   - gcloud config set project $DEV_PROJECT
   script:
-  - gcloud builds submit --tag gcr.io/$DEV_PROJECT/$DEV_APP
-  - gcloud run deploy $DEV_APP --image gcr.io/$DEV_PROJECT/$DEV_APP --region=$DEV_REGION
-    --platform managed --allow-unauthenticated
+  - gcloud builds submit --tag gcr.io/$DEV_PROJECT/$PROVIDER/$APP
+  # - gcloud run deploy $DEV_APP --image gcr.io/$DEV_PROJECT/$DEV_APP --region=$DEV_REGION
+    # --platform managed --allow-unauthenticated
+
 stages:
 - test
 sast:
