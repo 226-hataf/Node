@@ -39,13 +39,15 @@ build dev:
   - gcloud config set project $PROJECT
   - export APP_NAME=$PROVIDER-$APP-$BRANCH
   - export IMAGE_NAME=$REGISTERY/$PROJECT/$PROVIDER/$APP:$CI_COMMIT_SHORT_SHA
-  - echo "Image name= $IMAGE_NAME"
   - sed -i.bak -e "s+IMAGE+$IMAGE_NAME+" -e "s/SERVICE/$APP_NAME/" knative.yaml
-  
+  - cat native.yaml
+  - echo
+
   script:
+  # build via cloud build
   - gcloud builds submit --tag $IMAGE_NAME
-  - gcloud run services replace --platform managed --region=$REGION knative.yaml # $APP_NAME --image $IMAGE_NAME --region=$REGION
-    # --platform managed --allow-unauthenticated
+  # deploy to cloud run
+  - gcloud run services replace --platform managed --region=$REGION knative.yaml
   - gcloud run services set-iam-policy $APP_NAME policy.yaml
 
 

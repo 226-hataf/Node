@@ -23,3 +23,7 @@ spec:
             value: "8"
           - name: SPECIAL_CHARACTERS
             value: "1"
+          - name: API_VERSION
+            value: "0.1"
+          - name: API_KEY
+            value: "AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk"
