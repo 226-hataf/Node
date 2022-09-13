@@ -44,7 +44,7 @@ build dev:
   
   script:
   - gcloud builds submit --tag $IMAGE_NAME
-  - gcloud run services replace --platform managed knative.yaml # $APP_NAME --image $IMAGE_NAME --region=$REGION
+  - gcloud run services replace --platform managed --region=$REGION knative.yaml # $APP_NAME --image $IMAGE_NAME --region=$REGION
     # --platform managed --allow-unauthenticated
   - gcloud run services set-iam-policy $APP_NAME policy.yaml
 
