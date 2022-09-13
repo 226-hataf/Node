@@ -1,0 +1,25 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: SERVICE
+
+spec:
+  template:
+    spec:
+      containers:
+      - image: IMAGE
+        env:
+          - name: AUTH_PROVIDER
+            value: keycloak
+          - name: KEYCLOAK_URL
+            value: https://accounts.dev.zekoder.com
+          - name: REALM_NAME
+            value: zeauth-dev
+          - name: UPPERCASE
+            value: 1
+          - name: DIGITS
+            value: 1
+          - name: LENGTH
+            value: 8
+          - name: SPECIAL_CHARACTERS
+            value: 1
