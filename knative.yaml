@@ -16,10 +16,10 @@ spec:
           - name: REALM_NAME
             value: zeauth-dev
           - name: UPPERCASE
-            value: 1
+            value: "1"
           - name: DIGITS
-            value: 1
+            value: "1"
           - name: LENGTH
-            value: 8
+            value: "8"
           - name: SPECIAL_CHARACTERS
-            value: 1
+            value: "1"
