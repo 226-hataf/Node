@@ -48,7 +48,11 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
 async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
     token.auth(model.permissions.list)
     try:
-        user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size)
+        user_list, next_page, page_size = auth_provider.list_users(
+            page=commons.page,
+            page_size=commons.size,
+            search=commons.search
+        )
         return {
             'next_page': next_page,
             'page_size': page_size,

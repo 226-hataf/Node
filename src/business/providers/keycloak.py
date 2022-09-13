@@ -294,9 +294,7 @@ class ProviderKeycloak(Provider):
             full_name=full_name
         )
 
-    def list_users(self, page: str, page_size: int):
-        # search for future use
-        search = None
+    def list_users(self, page: str, page_size: int, search: str):
         try:
             users = self.keycloak_admin.get_users(query={"first": page, "max": page_size, "search": search})
 

@@ -11,9 +11,10 @@ auth_schema = HTTPBearer()
 auth_provider: Provider = get_provider()
 
 class CommonDependencies():
-    def __init__(self, page: Optional[str] = 1, size: Optional[int] = 20):
+    def __init__(self, page: Optional[str] = 1, size: Optional[int] = 20, search: Optional[str] = ''):
         self.page = page
         self.size = size
+        self.search = search
 
 
 class ProtectedMethod:
