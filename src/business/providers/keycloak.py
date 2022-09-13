@@ -150,7 +150,7 @@ class ProviderKeycloak(Provider):
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
         except Exception as e:
-            print(e, "=" * 45)
+            log.error(e)
             raise DuplicateEmailError(f"<{user.email}> already exists")
 
     def login(self, user_info):
