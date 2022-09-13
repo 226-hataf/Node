@@ -1,3 +1,5 @@
+import ast
+import datetime
 import requests
 from core import log
 import os
@@ -267,3 +269,43 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             log.debug(e)
             raise InvalidTokenError('failed token verification') from e
+
+    def _cast_user(self, data: dict):
+        full_name = data['firstName']
+        if data['lastName']:
+            full_name = f"{full_name} {data['lastName']}"
+        # createdAt = datetime.datetime.fromtimestamp(data['createdTimestamp'])
+        clients = self.keycloak_admin.get_clients()
+        client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
+                         None)
+        roles = self.keycloak_admin.get_client_roles_of_user(user_id=data['id'], client_id=client_id)
+        roles_list = []
+        for rol in roles:
+            roles_list.append(rol["name"])
+        print(data["access"])
+        return User(
+            id=data['id'],
+            email=data['username'],
+            verified=data['emailVerified'],
+            createdAt=data['createdTimestamp'],
+            permissions=ast.literal_eval(data["access"])[
+                'zk-zeauth-permissions'] if "customAttributes" in data else [],
+            roles=roles_list,
+            full_name=full_name
+        )
+
+    def list_users(self, page: str, page_size: int):
+        # search for future use
+        search = None
+        try:
+            users = self.keycloak_admin.get_users(query={"first": page, "max": page_size, "search": search})
+
+            users = [self._cast_user(user) for user in users]
+            next_page = int(page) + 1
+            return users, next_page, page_size
+
+        except Exception as e:
+            raise e
+
+
+
