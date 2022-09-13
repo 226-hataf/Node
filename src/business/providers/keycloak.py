@@ -122,6 +122,13 @@ class ProviderKeycloak(Provider):
             created_user = self._create_user_signup(email=user.email, username=user.email, firstname=user.first_name,
                                                     lastname=user.last_name, secret=user.password)
 
+            clients = self.keycloak_admin.get_clients()
+            client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')), None)
+
+            client_roles = self.keycloak_admin.get_client_roles(client_id=client_id)
+            user_roles = [rol for rol in client_roles if rol["name"] in user.roles]
+            self.keycloak_admin.assign_client_role(client_id=client_id, user_id=created_user, roles=user_roles)
+
             self.keycloak_admin.update_user(user_id=created_user,
                                             payload={
                                                 "requiredActions": ["VERIFY_EMAIL"],
@@ -136,8 +143,8 @@ class ProviderKeycloak(Provider):
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
-                    .replace("{{first_name}}", user.first_name) \
-                    .replace("{{verification_link}}", confirm_email_url)
+                            .replace("{{first_name}}", user.first_name) \
+                            .replace("{{verification_link}}", confirm_email_url)
 
                 await send_email(
                     recipients=[user.username],
@@ -150,7 +157,7 @@ class ProviderKeycloak(Provider):
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
         except DuplicateEmailError as err:
-            log.debug(err)
+            log.error(err)
             raise DuplicateEmailError(f"<{user.email}> already exists")
         except Exception as err:
             log.error(err)
