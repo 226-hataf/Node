@@ -5,7 +5,7 @@ COPY ./src $APP_HOME
 
 WORKDIR $APP_HOME
 
-ADD jsc-chatbot-sa.json $APP_HOME
+# ADD jsc-chatbot-sa.json $APP_HOME
 ADD requirements.txt $APP_HOME
 # RUN apt-get -qq update
 # RUN apt-get -qq -y install curl
