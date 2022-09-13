@@ -149,9 +149,12 @@ class ProviderKeycloak(Provider):
             # response = self.keycloak_admin.send_verify_email(user_id='user_id_keycloak')
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
-        except Exception as e:
-            log.error(e)
+        except DuplicateEmailError as err:
+            log.debug(err)
             raise DuplicateEmailError(f"<{user.email}> already exists")
+        except Exception as err:
+            log.error(err)
+            raise err
 
     def login(self, user_info):
         try:
