@@ -113,11 +113,6 @@ class ProviderKeycloak(Provider):
             raise DuplicateEmailError('the user is already exists')
 
     async def signup(self, user: User) -> User:
-        # check ifuser exists
-        # if exists raises DuplicateEmailError error
-        # if not, create the new user disabled
-        # TODO: send verification email with verfification link
-
         try:
             created_user = self._create_user_signup(email=user.email, username=user.email, firstname=user.first_name,
                                                     lastname=user.last_name, secret=user.password)
@@ -152,8 +147,6 @@ class ProviderKeycloak(Provider):
                     body=email_template
                 )
 
-            # Send Verify Email
-            # response = self.keycloak_admin.send_verify_email(user_id='user_id_keycloak')
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
         except DuplicateEmailError as err:
