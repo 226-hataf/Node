@@ -39,7 +39,7 @@ build dev:
   - gcloud config set project $PROJECT
   - export APP_NAME=$PROVIDER-$APP-$BRANCH
   - export IMAGE_NAME=$REGISTERY/$PROJECT/$PROVIDER/$APP:$CI_COMMIT_SHORT_SHA
-
+  - echo "Image name= $IMAGE_NAME"
   - sed -i.bak -e "s+IMAGE+$IMAGE_NAME+" -e "s/SERVICE/$APP_NAME/" knative.yaml
   
   script:
