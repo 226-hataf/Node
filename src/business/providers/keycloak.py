@@ -96,6 +96,22 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             raise DuplicateEmailError('the user is already exists')
 
+    def _create_user_signup(self, email: str, username: str, secret, firstname: str, lastname: str,
+                            enabled: bool = True) -> str:
+        try:
+            return self.keycloak_admin.create_user(
+                {"email": email,
+                 "username": username,
+                 "enabled": enabled,
+                 "firstName": firstname,
+                 "lastName": lastname,
+                 "credentials": [{"value": secret, "type": "password", }]
+                 },
+                exist_ok=False
+            )
+        except Exception as e:
+            raise DuplicateEmailError('the user is already exists')
+
     async def signup(self, user: User) -> User:
         # check ifuser exists
         # if exists raises DuplicateEmailError error
@@ -103,8 +119,8 @@ class ProviderKeycloak(Provider):
         # TODO: send verification email with verfification link
 
         try:
-            created_user = self._create_user(email=user.email, username=user.email, firstname=user.first_name,
-                                             lastname=user.last_name)
+            created_user = self._create_user_signup(email=user.email, username=user.email, firstname=user.first_name,
+                                                    lastname=user.last_name, secret=user.password)
 
             self.keycloak_admin.update_user(user_id=created_user,
                                             payload={
@@ -134,7 +150,7 @@ class ProviderKeycloak(Provider):
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
         except Exception as e:
-            print(e, "="*45)
+            print(e, "=" * 45)
             raise DuplicateEmailError(f"<{user.email}> already exists")
 
     def login(self, user_info):
@@ -177,8 +193,8 @@ class ProviderKeycloak(Provider):
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
-                email_template = index_file.read()\
-                    .replace("{{first_name}}", users[0]["firstName"])\
+                email_template = index_file.read() \
+                    .replace("{{first_name}}", users[0]["firstName"]) \
                     .replace("{{verification_link}}", confirm_email_url)
 
                 await send_email(
