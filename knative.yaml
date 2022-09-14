@@ -1,0 +1,45 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: SERVICE
+
+spec:
+  template:
+    spec:
+      containers:
+      - image: IMAGE
+        env:
+          - name: AUTH_PROVIDER
+            value: keycloak
+          - name: KEYCLOAK_URL
+            value: https://accounts.dev.zekoder.com
+          - name: REALM_NAME
+            value: zeauth-dev
+          - name: UPPERCASE
+            value: "1"
+          - name: DIGITS
+            value: "1"
+          - name: LENGTH
+            value: "8"
+          - name: SPECIAL_CHARACTERS
+            value: "1"
+          - name: API_VERSION
+            value: "0.1"
+          - name: API_KEY
+            value: "AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk"
+          - name: REDIS_PORT
+            value: "6379"
+          - name: REDIS_HOST
+            value: redis-zeauth-headless.zk-core.svc.cluster.local
+          - name: REDIS_PASSWORD
+            value: pyG91wKKQX
+          - name: MAIL_FROM
+            value: noreply@zekoder.net
+          - name: MAIL_PASSWORD
+            value: BNbJK7xOWByxwHX4k3d1di/gjaVv9qaQr2XkTV5kKYZW
+          - name: MAIL_PORT
+            value: 587
+          - name: MAIL_SERVER
+            value: email-smtp.eu-central-1.amazonaws.com
+          - name: MAIL_USERNAME
+            value: AKIAWA3RKI66PIK3AQSO

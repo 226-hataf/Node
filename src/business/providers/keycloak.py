@@ -12,9 +12,9 @@ from business.models.users import *
 from .base import *
 from business.providers.base import *
 import uuid
-from src.redis_service.redis_service import set_redis, get_redis
+from redis_service.redis_service import set_redis, get_redis
 from ..models.users import ResetPasswordVerifySchema
-from src.email_service.mail_service import send_email
+from email_service.mail_service import send_email
 
 
 def cast_login_model(response: dict, username):
