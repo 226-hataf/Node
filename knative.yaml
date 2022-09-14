@@ -38,7 +38,7 @@ spec:
           - name: MAIL_PASSWORD
             value: BNbJK7xOWByxwHX4k3d1di/gjaVv9qaQr2XkTV5kKYZW
           - name: MAIL_PORT
-            value: 587
+            value: "587"
           - name: MAIL_SERVER
             value: email-smtp.eu-central-1.amazonaws.com
           - name: MAIL_USERNAME
