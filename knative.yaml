@@ -28,8 +28,8 @@ spec:
           - name: API_KEY
             value: "AIzaSyAvo2Ih4JAQaiTUCJGglcQaWR8IncIkdVk"
           - name: REDIS_PORT
-            value: 6379
+            value: "6379"
           - name: REDIS_HOST
             value: redis-zeauth-headless.zk-core.svc.cluster.local
           - name: REDIS_PASSWORD
-            value: hgjhgh
+            value: pyG91wKKQX
