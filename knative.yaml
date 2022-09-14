@@ -34,12 +34,12 @@ spec:
           - name: REDIS_PASSWORD
             value: pyG91wKKQX
           - name: MAIL_FROM
-            value: noreply@zekoder.net
+            value: "noreply@zekoder.net"
           - name: MAIL_PASSWORD
-            value: BNbJK7xOWByxwHX4k3d1di/gjaVv9qaQr2XkTV5kKYZW
+            value: "BNbJK7xOWByxwHX4k3d1di/gjaVv9qaQr2XkTV5kKYZW"
           - name: MAIL_PORT
             value: "587"
           - name: MAIL_SERVER
-            value: email-smtp.eu-central-1.amazonaws.com
+            value: "email-smtp.eu-central-1.amazonaws.com"
           - name: MAIL_USERNAME
-            value: AKIAWA3RKI66PIK3AQSO
+            value: "AKIAWA3RKI66PIK3AQSO"
