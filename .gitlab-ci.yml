@@ -13,14 +13,16 @@ stages:
 image: google/cloud-sdk:latest
 variables:
   PROVIDER: zekoder
-  APP: zeauth
-  DEV_PROJECT: zekoder-dev-349809
-  DEV_REGION: us-central1
-  REGISTERY: us.gcr.io
+  APP: zeauth  
 
 
 build dev:
   stage: build
+  variables:
+    BRANCH: dev
+    REGION: us-central1
+    PROJECT: zekoder-dev-349809
+    REGISTERY: us.gcr.io
   only:
     refs:
     - dev
@@ -34,12 +36,19 @@ build dev:
   - export GOOGLE_APPLICATIONS_CREDENTIALS=$PWD/google-sa.json
   - gcloud auth activate-service-account --key-file google-sa.json
   - gcloud auth configure-docker $REGISTERY
-  - gcloud config set project $DEV_PROJECT
+  - gcloud config set project $PROJECT
+  - export APP_NAME=$PROVIDER-$APP-$BRANCH
+  - export IMAGE_NAME=$REGISTERY/$PROJECT/$PROVIDER/$APP:$CI_COMMIT_SHORT_SHA
+  - sed -i.bak -e "s+IMAGE+$IMAGE_NAME+" -e "s/SERVICE/$APP_NAME/" knative.yaml
+  - cat knative.yaml
+  - echo
 
   script:
-  - gcloud builds submit --tag $REGISTERY/$DEV_PROJECT/$PROVIDER/$APP:$CI_COMMIT_SHORT_SHA
-  # - gcloud run deploy $DEV_APP --image gcr.io/$DEV_PROJECT/$DEV_APP --region=$DEV_REGION
-    # --platform managed --allow-unauthenticated
+  # build via cloud build
+  - gcloud builds submit --tag $IMAGE_NAME
+  # deploy to cloud run
+  - gcloud run services replace --platform managed --region=$REGION knative.yaml
+  - gcloud run services set-iam-policy $APP_NAME policy.yaml
 
 
 sast:

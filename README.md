@@ -40,4 +40,12 @@ Redis configurations
 ```
 REDIS_PORT: 6379
 REDIS_HOST: localhost
+REDIS_PASSWORD: 
 ```
+
+
+Must be enabled for Cloud run
+
+- Cloud build
+- Cloud run
+- Cloud Run Admin API
