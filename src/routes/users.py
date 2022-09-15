@@ -61,7 +61,7 @@ async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=
 
     except Exception as e:
         log.error(e)
-        raise e
+        raise HTTPException(status_code=500, detail="unknown error")
 
 
 list.__doc__ = f" List all {model.plural}".expandtabs()

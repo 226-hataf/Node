@@ -134,7 +134,7 @@ class ProviderKeycloak(Provider):
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
         except Exception as e:
-            print(e, "="*45)
+            print(e, "=" * 45)
             raise DuplicateEmailError(f"<{user.email}> already exists")
 
     def login(self, user_info):
@@ -177,8 +177,8 @@ class ProviderKeycloak(Provider):
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
-                email_template = index_file.read()\
-                    .replace("{{first_name}}", users[0]["firstName"])\
+                email_template = index_file.read() \
+                    .replace("{{first_name}}", users[0]["firstName"]) \
                     .replace("{{verification_link}}", confirm_email_url)
 
                 await send_email(
@@ -280,7 +280,6 @@ class ProviderKeycloak(Provider):
         roles_list = []
         for rol in roles:
             roles_list.append(rol["name"])
-        print(data["access"])
         return User(
             id=data['id'],
             email=data['username'],
@@ -292,16 +291,28 @@ class ProviderKeycloak(Provider):
             full_name=full_name
         )
 
-    def list_users(self, page: str, page_size: int, search: str):
+    def list_users(self, page: str, page_size: int, search: str = None):
         try:
-            users = self.keycloak_admin.get_users(query={"first": page, "max": page_size, "search": search})
+            users_count = 0
+            next_page = int(page)
+            users_data = []
+            while users_count < page_size:
+                users = self.keycloak_admin.get_users(query={"first": next_page, "max": page_size})
+                if users is None or len(users) == 0:
+                    users_count = page_size * 2
+                else:
+                    for user in users:
+                        if search:
+                            user = next((self._cast_user(user) for value in user.values() if search in str(value)), None)
+                            if user:
+                                users_data.append(user)
+                        else:
+                            users_data.append(self._cast_user(user))
+                    users_count = len(users_data)
+                    next_page += page_size
 
-            users = [self._cast_user(user) for user in users]
-            next_page = int(page) + 1
-            return users, next_page, page_size
+            return users_data, next_page, page_size
 
         except Exception as e:
+            log.error(e)
             raise e
-
-
-
