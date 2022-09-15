@@ -8,6 +8,12 @@ spec:
     spec:
       containers:
       - image: IMAGE
+        startupProbe:
+                httpGet:
+                  path: /
+                initialDelaySeconds: 30
+                periodSeconds: 60
+                failureThreshold: 3
         env:
           - name: AUTH_PROVIDER
             value: "keycloak"

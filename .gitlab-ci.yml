@@ -46,7 +46,7 @@ build dev:
   - gcloud builds submit --tag $IMAGE_NAME
   # deploy to cloud run
   - gcloud run services replace --platform managed --region=$REGION knative.yaml
-  - gcloud run services set-iam-policy $APP_NAME policy.yaml
+  - gcloud run services set-iam-policy --region=$REGION $APP_NAME policy.yaml
 
 
 sast:
