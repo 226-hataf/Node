@@ -2,6 +2,8 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: SERVICE
+  annotations:
+    run.googleapis.com/launch-stage: BETA
 
 spec:
   template:
