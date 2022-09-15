@@ -80,6 +80,7 @@ class ProviderKeycloak(Provider):
             response = requests.put(f"{os.environ.get('KEYCLOAK_URL')}/admin/realms/{os.environ.get('REALM_NAME')}",
                                     headers=headers, json=password_policy)
         except Exception as e:
+            log.error(e)
             raise e
 
     def _create_user(self, email: str, username: str, firstname: str, lastname: str, enabled: bool = True) -> str:
