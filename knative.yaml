@@ -19,6 +19,8 @@ spec:
             value: "zeauth-dev"
           - name: SECRET
             value: "Ms1DG2RhOGjTgW9a0MwIABMZRqGMIymg"
+          - name: PYTHONUNBUFFERED
+            value: "1"
           - name: UPPERCASE
             value: "1"
           - name: DIGITS
