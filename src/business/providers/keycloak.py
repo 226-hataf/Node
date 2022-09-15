@@ -77,11 +77,9 @@ class ProviderKeycloak(Provider):
 
             # definiton of password policy
             password_policy = {"passwordPolicy": f"{length} and {specialChars} and {upperCase} and {digits}"}
-            headers = {"Authorization": f"Bearer {self.token['access_token']}"}
-
-            response = requests.put(f"{os.environ.get('KEYCLOAK_URL')}/admin/realms/{os.environ.get('REALM_NAME')}",
-                                    headers=headers, json=password_policy)
+            self.keycloak_admin.update_realm(realm_name=os.getenv('REALM_NAME'), payload=password_policy)
         except Exception as e:
+            log.error(e)
             raise e
 
     def _create_user(self, email: str, username: str, firstname: str, lastname: str, enabled: bool = True) -> str:
