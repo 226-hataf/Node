@@ -34,9 +34,9 @@ spec:
           - name: DIGITS
             value: "1"
           - name: LENGTH
-            value: "8"
+            value: "12"
           - name: SPECIAL_CHARACTERS
-            value: "1"
+            value: "0"
           - name: API_VERSION
             value: "0.1"
           - name: API_KEY
