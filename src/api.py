@@ -37,6 +37,9 @@ async def signup(user: User):
     try:
         signed_up_user = await auth_provider.signup(user=user)
         return signed_up_user.dict()
+    except PasswordPolicyError as e:
+        log.debug(e)
+        raise HTTPException(status_code=403, detail=f"Password Policy not met.")
     except DuplicateEmailError as e:
         log.debug(e)
         raise HTTPException(status_code=403, detail=f"'{user.email}' email is already linked to an account")

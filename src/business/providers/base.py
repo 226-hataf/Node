@@ -77,6 +77,8 @@ class Provider:
 class DuplicateEmailError(Exception):
     pass
 
+class PasswordPolicyError(Exception):
+    pass
 
 class UnauthorizedError(Exception):
     pass

@@ -1,5 +1,7 @@
 import ast
 import datetime
+
+import keycloak
 import requests
 from core import log
 import os
@@ -31,7 +33,9 @@ class ProviderKeycloak(Provider):
     admin_user_created = None
 
     def __init__(self) -> None:
+        super().__init__()
 
+    def setup_keycloak(self):
         self.keycloak_admin = KeycloakAdmin(
             server_url=os.environ.get('KEYCLOAK_URL'),
             client_id=os.environ.get('CLIENT_ID'),
@@ -45,7 +49,6 @@ class ProviderKeycloak(Provider):
             realm_name=os.environ.get('REALM_NAME'),
             client_secret_key=os.environ.get('SECRET')
         )
-        super().__init__()
 
     def zeauth_bootstrap(self):
         if ProviderKeycloak.admin_user_created:
@@ -98,17 +101,24 @@ class ProviderKeycloak(Provider):
 
     def _create_user_signup(self, email: str, username: str, secret, firstname: str, lastname: str,
                             enabled: bool = True) -> str:
-        try:
-            return self.keycloak_admin.create_user(
-                {"email": email,
+        user = {"email": email,
                  "username": username,
                  "enabled": enabled,
                  "firstName": firstname,
                  "lastName": lastname,
                  "credentials": [{"value": secret, "type": "password", }]
-                 },
-                exist_ok=False
-            )
+                 }
+        try:
+            return self.keycloak_admin.create_user(user, exist_ok=False)
+        except keycloak.exceptions.KeycloakAuthenticationError as ex:
+            self.setup_keycloak()
+            return self.keycloak_admin.create_user(user, exist_ok=False)
+        except keycloak.exceptions.KeycloakPostError as e:
+            log.error(f'Error create user signup: {type(e)} - {str(e)}')
+            if e.error_message.index('Password'):
+                raise PasswordPolicyError('Password policy not met.')
+            else:
+                raise DuplicateEmailError('The user is already exists.')
         except Exception as e:
             log.error(f'Error create user signup: {type(e)} - {str(e)}')
             raise DuplicateEmailError('the user is already exists')
