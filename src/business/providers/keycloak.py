@@ -284,6 +284,7 @@ class ProviderKeycloak(Provider):
             id=data['id'],
             email=data['username'],
             verified=data['emailVerified'],
+            user_status=data['enabled'],
             createdAt=data['createdTimestamp'],
             permissions=ast.literal_eval(data["access"])[
                 'zk-zeauth-permissions'] if "customAttributes" in data else [],
@@ -291,7 +292,7 @@ class ProviderKeycloak(Provider):
             full_name=full_name
         )
 
-    def list_users(self, page: str, page_size: int, search: str = None):
+    def list_users(self, page: str, user_status: bool, page_size: int, search: str = None):
         try:
             users_count = 0
             next_page = int(page)
@@ -302,11 +303,12 @@ class ProviderKeycloak(Provider):
                     users_count = page_size * 2
                 else:
                     for user in users:
-                        if search:
-                            if user := next((self._cast_user(user) for value in user.values() if search in str(value)), None):
-                                users_data.append(user)
-                        else:
-                            users_data.append(self._cast_user(user))
+                        if user["enabled"] == user_status:
+                            if search:
+                                if user := next((self._cast_user(user) for value in user.values() if search in str(value)), None):
+                                    users_data.append(user)
+                            else:
+                                users_data.append(self._cast_user(user))
                     users_count = len(users_data)
                     next_page += page_size
 

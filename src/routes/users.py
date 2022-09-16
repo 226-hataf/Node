@@ -51,7 +51,8 @@ async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=
         user_list, next_page, page_size = auth_provider.list_users(
             page=commons.page,
             page_size=commons.size,
-            search=commons.search
+            search=commons.search,
+            user_status=commons.user_status
         )
         return {
             'next_page': next_page,
