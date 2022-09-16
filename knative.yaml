@@ -44,7 +44,7 @@ spec:
           - name: REDIS_PORT
             value: "6379"
           - name: REDIS_HOST
-            value: "redis-zeauth-master.zk-core.svc.cluster.local"
+            value: "34.68.146.199"
           - name: REDIS_PASSWORD
             value: "pyG91wKKQX"
           - name: MAIL_FROM
