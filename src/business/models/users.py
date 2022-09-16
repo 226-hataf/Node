@@ -2,16 +2,28 @@ import os
 import re
 from typing import Optional, Union, List
 from pydantic import BaseModel, validator, ValidationError
+from enum import Enum
 
 
 # from business.models.roles import Roles
 
 # from .permissions import Permission
 
+class RolesEnum(str, Enum):
+    VIEW_APPLICATIONS = 'view-applications'
+    UMA_PROTECTION = 'uma_protection'
+    MANAGE_ACCOUNT = 'manage-account'
+    MANAGE_ACCOUNT_LINKS = 'manage-account-links'
+    MANAGE_CONSENT = 'manage-consent'
+    VIEW_PROFILE = 'view-profile'
+    DELETE_ACCOUNT = 'delete-account'
+    VIEW_CONSENT = 'view-consent'
+
+
 class User(BaseModel):
     id: Optional[Union[str, int]]
     email: str
-    roles: Optional[List[str]]
+    roles: Optional[List[RolesEnum]]
     username: Optional[str]
     password: Optional[str]
     verified: Optional[bool]

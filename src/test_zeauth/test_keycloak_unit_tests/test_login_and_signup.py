@@ -10,7 +10,13 @@ async def test_signup_success(mocked_keycloak_open_id, mocked_keycloak_admin, mo
                               ):
     keycloak = ProviderKeycloak()
 
-    signup_schema = User(email="abdul@gmail.com", username="abdul@gmail.com", first_name="Abdul", last_name="Rehman")
+    signup_schema = User(
+        email="abdul@gmail.com",
+        username="abdul@gmail.com",
+        first_name="Abdul",
+        last_name="Rehman",
+        roles=["view-consent", "view-profile"]
+    )
     assert signup_schema.email == "abdul@gmail.com"
     assert signup_schema.username == "abdul@gmail.com"
     assert signup_schema.first_name == "Abdul"

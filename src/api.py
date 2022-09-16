@@ -52,6 +52,9 @@ async def user_login(user_info: UserLoginSchema):
     except InvalidCredentialsError as e:
         log.error(e)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records")
+    except CustomKeycloakPostError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Account not Verified!') from err
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err

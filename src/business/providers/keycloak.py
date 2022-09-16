@@ -94,15 +94,33 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             raise DuplicateEmailError('the user is already exists')
 
-    async def signup(self, user: User) -> User:
-        # check ifuser exists
-        # if exists raises DuplicateEmailError error
-        # if not, create the new user disabled
-        # TODO: send verification email with verfification link
-
+    def _create_user_signup(self, email: str, username: str, secret, firstname: str, lastname: str,
+                            enabled: bool = True) -> str:
         try:
-            created_user = self._create_user(email=user.email, username=user.email, firstname=user.first_name,
-                                             lastname=user.last_name)
+            return self.keycloak_admin.create_user(
+                {"email": email,
+                 "username": username,
+                 "enabled": enabled,
+                 "firstName": firstname,
+                 "lastName": lastname,
+                 "credentials": [{"value": secret, "type": "password", }]
+                 },
+                exist_ok=False
+            )
+        except Exception as e:
+            raise DuplicateEmailError('the user is already exists')
+
+    async def signup(self, user: User) -> User:
+        try:
+            created_user = self._create_user_signup(email=user.email, username=user.email, firstname=user.first_name,
+                                                    lastname=user.last_name, secret=user.password)
+
+            clients = self.keycloak_admin.get_clients()
+            client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')), None)
+
+            client_roles = self.keycloak_admin.get_client_roles(client_id=client_id)
+            user_roles = [rol for rol in client_roles if rol["name"] in user.roles]
+            self.keycloak_admin.assign_client_role(client_id=client_id, user_id=created_user, roles=user_roles)
 
             self.keycloak_admin.update_user(user_id=created_user,
                                             payload={
@@ -118,8 +136,8 @@ class ProviderKeycloak(Provider):
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
-                    .replace("{{first_name}}", user.first_name) \
-                    .replace("{{verification_link}}", confirm_email_url)
+                            .replace("{{first_name}}", user.first_name) \
+                            .replace("{{verification_link}}", confirm_email_url)
 
                 await send_email(
                     recipients=[user.username],
@@ -127,13 +145,14 @@ class ProviderKeycloak(Provider):
                     body=email_template
                 )
 
-            # Send Verify Email
-            # response = self.keycloak_admin.send_verify_email(user_id='user_id_keycloak')
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
-        except Exception as e:
-            print(e, "="*45)
+        except DuplicateEmailError as err:
+            log.error(err)
             raise DuplicateEmailError(f"<{user.email}> already exists")
+        except Exception as err:
+            log.error(err)
+            raise err
 
     def login(self, user_info):
         try:
@@ -175,8 +194,8 @@ class ProviderKeycloak(Provider):
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
-                email_template = index_file.read()\
-                    .replace("{{first_name}}", users[0]["firstName"])\
+                email_template = index_file.read() \
+                    .replace("{{first_name}}", users[0]["firstName"]) \
                     .replace("{{verification_link}}", confirm_email_url)
 
                 await send_email(
