@@ -272,7 +272,7 @@ class ProviderKeycloak(Provider):
         full_name = data['firstName']
         if data['lastName']:
             full_name = f"{full_name} {data['lastName']}"
-        # createdAt = datetime.datetime.fromtimestamp(data['createdTimestamp'])
+        created_at = datetime.datetime.fromtimestamp(data['createdTimestamp'] / 1000)
         clients = self.keycloak_admin.get_clients()
         client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
                          None)
@@ -285,7 +285,7 @@ class ProviderKeycloak(Provider):
             email=data['username'],
             verified=data['emailVerified'],
             user_status=data['enabled'],
-            createdAt=data['createdTimestamp'],
+            createdAt=str(created_at).split(".")[0],
             permissions=ast.literal_eval(data["access"])[
                 'zk-zeauth-permissions'] if "customAttributes" in data else [],
             roles=roles_list,
