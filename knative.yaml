@@ -2,12 +2,20 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: SERVICE
+  annotations:
+    run.googleapis.com/launch-stage: BETA
 
 spec:
   template:
     spec:
       containers:
       - image: IMAGE
+        startupProbe:
+                httpGet:
+                  path: /
+                initialDelaySeconds: 30
+                periodSeconds: 60
+                failureThreshold: 3
         env:
           - name: AUTH_PROVIDER
             value: "keycloak"
@@ -19,6 +27,8 @@ spec:
             value: "zeauth-dev"
           - name: SECRET
             value: "Ms1DG2RhOGjTgW9a0MwIABMZRqGMIymg"
+          - name: PYTHONUNBUFFERED
+            value: "1"
           - name: UPPERCASE
             value: "1"
           - name: DIGITS
@@ -34,7 +44,7 @@ spec:
           - name: REDIS_PORT
             value: "6379"
           - name: REDIS_HOST
-            value: "redis-zeauth-headless.zk-core.svc.cluster.local"
+            value: "redis-zeauth-master.zk-core.svc.cluster.local"
           - name: REDIS_PASSWORD
             value: "pyG91wKKQX"
           - name: MAIL_FROM
