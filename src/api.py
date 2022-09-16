@@ -86,7 +86,7 @@ async def reset_password(user_info: ResetPasswordSchema):
         log.error(err)
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
     except Exception as err:
-        log.error(err)
+        log.error(f'Error reset password: {type(err)} - {str(err)}')
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
 
 
