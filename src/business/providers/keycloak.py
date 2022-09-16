@@ -303,8 +303,7 @@ class ProviderKeycloak(Provider):
                 else:
                     for user in users:
                         if search:
-                            user = next((self._cast_user(user) for value in user.values() if search in str(value)), None)
-                            if user:
+                            if user := next((self._cast_user(user) for value in user.values() if search in str(value)), None):
                                 users_data.append(user)
                         else:
                             users_data.append(self._cast_user(user))
