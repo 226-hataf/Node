@@ -266,7 +266,7 @@ class ProviderKeycloak(Provider):
             try:
                 email = get_redis(reset_password.reset_key)
             except Exception as err:
-                log.error(err)
+                log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!")
             users = self.keycloak_admin.get_users(query={"email": email})
             if users and len(users) == 1:
@@ -284,11 +284,11 @@ class ProviderKeycloak(Provider):
             log.error(f"Un-able to connect with Keycloak. Error: {err}")
             raise CustomKeycloakConnectionError(err) from err
         except KeycloakPutError as err:
-            log.error(err)
+            log.error(f"KeycloakPutError: {err}")
             message = json.loads(err.error_message)
             raise CustomKeycloakPutError(message["error_description"]) from err
         except Exception as err:
-            log.error(err)
+            log.error(f"Exception: {err}")
             raise err
 
     def verify(self, token: str):
