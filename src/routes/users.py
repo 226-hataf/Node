@@ -48,7 +48,12 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
 async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
     token.auth(model.permissions.list)
     try:
-        user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size)
+        user_list, next_page, page_size = auth_provider.list_users(
+            page=commons.page,
+            page_size=commons.size,
+            search=commons.search,
+            user_status=commons.user_status
+        )
         return {
             'next_page': next_page,
             'page_size': page_size,
@@ -57,7 +62,7 @@ async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=
 
     except Exception as e:
         log.error(e)
-        raise e
+        raise HTTPException(status_code=500, detail="unknown error")
 
 
 list.__doc__ = f" List all {model.plural}".expandtabs()

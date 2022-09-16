@@ -30,7 +30,7 @@ class Provider:
     def delete_user(self, user_id: str):
         log.error(f"method delete_user not implement for firebase provider")
 
-    def list_users(self, page: str, page_size: int):
+    def list_users(self, page: str, page_size: int, search: str, user_status: bool):
         log.error(f"method list_users not implement for firebase provider")
 
     def get_user(self, user_id: str):

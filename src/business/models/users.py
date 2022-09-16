@@ -27,6 +27,7 @@ class User(BaseModel):
     username: Optional[str]
     password: Optional[str]
     verified: Optional[bool]
+    user_status: Optional[bool]
     avatar_url: Optional[str]
     first_name: Optional[str]
     last_name: Optional[str]

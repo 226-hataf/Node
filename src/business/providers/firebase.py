@@ -142,7 +142,7 @@ class ProviderFirebase(Provider):
             full_name=data['displayName'] if "displayName" in data else None
         )
 
-    def list_users(self, page: str, page_size: int):
+    def list_users(self, page: str, page_size: int, search: str, user_status: bool):
         try:
             result = auth.list_users(max_results=page_size, page_token=page)
             users = [self._cast_user(user._data) for user in result.users]

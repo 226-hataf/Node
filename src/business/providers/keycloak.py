@@ -1,3 +1,5 @@
+import ast
+import datetime
 import requests
 from core import log
 import os
@@ -147,6 +149,7 @@ class ProviderKeycloak(Provider):
 
             log.info(f'sucessfully created new user: {created_user}')
             return Provider._enrich_user(user)
+
         except DuplicateEmailError as err:
             log.error(err)
             raise DuplicateEmailError(f"<{user.email}> already exists")
@@ -284,3 +287,54 @@ class ProviderKeycloak(Provider):
         except Exception as e:
             log.debug(e)
             raise InvalidTokenError('failed token verification') from e
+
+    def _cast_user(self, data: dict):
+        full_name = data['firstName']
+        if data['lastName']:
+            full_name = f"{full_name} {data['lastName']}"
+        created_at = datetime.datetime.fromtimestamp(data['createdTimestamp'] / 1000)
+        clients = self.keycloak_admin.get_clients()
+        client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
+                         None)
+        roles = self.keycloak_admin.get_client_roles_of_user(user_id=data['id'], client_id=client_id)
+        roles_list = []
+        for rol in roles:
+            roles_list.append(rol["name"])
+        return User(
+            id=data['id'],
+            email=data['username'],
+            verified=data['emailVerified'],
+            user_status=data['enabled'],
+            createdAt=str(created_at).split(".")[0],
+            permissions=ast.literal_eval(data["access"])[
+                'zk-zeauth-permissions'] if "customAttributes" in data else [],
+            roles=roles_list,
+            full_name=full_name
+        )
+
+    def list_users(self, page: str, user_status: bool, page_size: int, search: str = None):
+        try:
+            users_count = 0
+            next_page = int(page)
+            users_data = []
+            while users_count < page_size:
+                users = self.keycloak_admin.get_users(query={"first": next_page, "max": page_size})
+                if users is None or len(users) == 0:
+                    users_count = page_size * 2
+                else:
+                    for user in users:
+                        if user["enabled"] == user_status:
+                            if search:
+                                if user := next((self._cast_user(user) for value in user.values() if search in str(value)), None):
+                                    users_data.append(user)
+                            else:
+                                users_data.append(self._cast_user(user))
+                    users_count = len(users_data)
+                    next_page += page_size
+
+            return users_data, next_page, page_size
+
+        except Exception as err:
+            log.error(err)
+            raise err
+
