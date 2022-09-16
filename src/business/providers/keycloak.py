@@ -33,6 +33,7 @@ class ProviderKeycloak(Provider):
     admin_user_created = None
 
     def __init__(self) -> None:
+        self.setup_keycloak()
         super().__init__()
 
     def setup_keycloak(self):
