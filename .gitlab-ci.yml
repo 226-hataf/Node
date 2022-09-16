@@ -28,7 +28,7 @@ build dev:
     - dev
   environment:
     name: dev
-    url: https://zekoder.com/dev
+    url: https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app
 
   before_script:
   - echo $ZEKODER_SA > google-sa.json
@@ -51,6 +51,9 @@ build dev:
 
 sast:
   stage: test
+  only:
+    - test
+
 include:
 - template: Security/SAST.gitlab-ci.yml
 - template: Security/Dependency-Scanning.gitlab-ci.yml
