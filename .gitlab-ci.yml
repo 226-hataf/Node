@@ -52,7 +52,8 @@ build dev:
 sast:
   stage: test
   rules:
-    - if: $CI_COMMIT_BRANCH == "test"
+    - if: $CI_COMMIT_BRANCH != "test"
+      when: never
   variables:
     SAST_EXCLUDED_ANALYZERS: brakeman, eslint, flawfinder, gosec, kubesec, nodejs-scan,
       phpcs-security-audit, pmd-apex, security-code-scan, semgrep, sobelow, spotbugs
