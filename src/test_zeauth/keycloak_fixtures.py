@@ -12,6 +12,12 @@ def mocked_keycloak_admin(mocker):
         'scope': 'email profile'
     }
     user = {"id": "2334423423", "email": "abdul@gmail.com", "firstName": "Abdul"}
+    client = {"id": "2334423423", "clientId": "account"}
+    client_role1 = {"name": "view-profile"}
+    client_role2 = {"name": "view-consent"}
+
+    client_roles = [client_role1, client_role2]
+    clients = [client]
     users_list = [user]
 
     mocker.patch('src.business.providers.keycloak.KeycloakAdmin', return_value=mocker.Mock(**{
@@ -25,7 +31,10 @@ def mocked_keycloak_admin(mocker):
         "set_user_password.return_value": {},
         "update_user.return_value": {},
         "userinfo.return_value": user,
-        "create_user.return_value": "2334423423"
+        "create_user.return_value": "2334423423",
+        "get_clients.return_value": clients,
+        "get_client_roles.return_value": client_roles,
+        "assign_client_role.return_value": {}
     }))
 
 
