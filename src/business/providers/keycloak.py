@@ -110,6 +110,7 @@ class ProviderKeycloak(Provider):
                 exist_ok=False
             )
         except Exception as e:
+            log.error(f'Error create user signup: {type(e)} - {str(e)}')
             raise DuplicateEmailError('the user is already exists')
 
     async def signup(self, user: User) -> User:
