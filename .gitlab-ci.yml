@@ -51,8 +51,11 @@ build dev:
 
 sast:
   stage: test
-  only:
-    - test
+  rules:
+    - if: $CI_COMMIT_BRANCH = "test"
+  variables:
+    SAST_EXCLUDED_ANALYZERS: brakeman, eslint, flawfinder, gosec, kubesec, nodejs-scan,
+      phpcs-security-audit, pmd-apex, security-code-scan, semgrep, sobelow, spotbugs
 
 include:
 - template: Security/SAST.gitlab-ci.yml
