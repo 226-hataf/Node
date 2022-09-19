@@ -244,7 +244,7 @@ class ProviderKeycloak(Provider):
             reset_key = hash(uuid.uuid4().hex)
             set_redis(reset_key, user_info.username)
 
-            reset_password_url = f"dev.zekoder.com/resetpassword/{reset_key}"
+            reset_password_url = f"dev.zekoder.com/resetpassword?token={reset_key}"
             await send_email(
                 recipients=[user_info.username],
                 subject="Reset Password",
