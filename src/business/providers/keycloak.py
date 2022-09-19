@@ -347,7 +347,7 @@ class ProviderKeycloak(Provider):
             return users_data, next_page, page_size
 
         except Exception as err:
-            error_template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-            log.error(error_template.format(type(err).__name__, err.args))
+            error_template = "An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
             raise err
 
