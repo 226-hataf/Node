@@ -45,7 +45,8 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
 
 # list users
 @router.get('/', tags=[model.plural], status_code=200, response_model=UserResponseModel, response_model_exclude_none=True)
-async def list(token: str=Depends(ProtectedMethod), commons: CommonDependencies=Depends(CommonDependencies)):
+async def list(commons: CommonDependencies=Depends(CommonDependencies)):
+    # token: str=Depends(ProtectedMethod),  Todo add permissions
     # token.auth(model.permissions.list)
     try:
         user_list, next_page, page_size = auth_provider.list_users(
