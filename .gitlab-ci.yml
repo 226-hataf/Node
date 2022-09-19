@@ -51,8 +51,8 @@ build dev:
 
 sast:
   stage: test
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  # rules:
+  #   - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   variables:
     SAST_EXCLUDED_ANALYZERS: brakeman, eslint, flawfinder, gosec, kubesec, nodejs-scan,
       phpcs-security-audit, pmd-apex, security-code-scan, semgrep, sobelow, spotbugs
