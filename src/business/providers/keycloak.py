@@ -29,6 +29,10 @@ def cast_login_model(response: dict, username):
     )
 
 
+DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gmail.com')
+DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', '12345ezgi123')
+
+
 class ProviderKeycloak(Provider):
     admin_user_created = None
 
@@ -54,22 +58,24 @@ class ProviderKeycloak(Provider):
     def zeauth_bootstrap(self):
         if ProviderKeycloak.admin_user_created:
             return
-        else:
-            default_admin = {
-                "email": os.environ.get('DEFAULT_ADMIN_EMAIL'),
-                "username": os.environ.get('DEFAULT_ADMIN_EMAIL'),
-                "firstname": "Master",
-                "lastname": "Account"
-            }
+        default_admin = {
+            "email": DEFAULT_ADMIN_EMAIL,
+            "username": DEFAULT_ADMIN_EMAIL,
+            "secret": DEFAULT_ADMIN_PASSWORD,
+            "firstname": "Master",
+            "lastname": "Account"
+        }
 
-            self.update_password_policy()
+        self.update_password_policy()
 
-            try:
-                self._create_user(**default_admin)
-            except:
-                log.error(f"user <{os.environ.get('DEFAULT_ADMIN_EMAIL')}> already exists")
+        try:
+            self._create_user_signup(**default_admin)
+        except Exception as err:
+            error_template = "An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            log.error(f"user <{DEFAULT_ADMIN_EMAIL}> already exists")
 
-            ProviderKeycloak.admin_user_created = True
+        ProviderKeycloak.admin_user_created = True
 
     def update_password_policy(self) -> str:
         try:
@@ -86,29 +92,15 @@ class ProviderKeycloak(Provider):
             log.error(e)
             raise e
 
-    def _create_user(self, email: str, username: str, firstname: str, lastname: str, enabled: bool = True) -> str:
-        try:
-            return self.keycloak_admin.create_user(
-                {"email": email,
-                 "username": username,
-                 "enabled": enabled,
-                 "firstName": firstname,
-                 "lastName": lastname,
-                 },
-                exist_ok=False
-            )
-        except Exception as e:
-            raise DuplicateEmailError('the user is already exists')
-
     def _create_user_signup(self, email: str, username: str, secret, firstname: str, lastname: str,
                             enabled: bool = True) -> str:
         user = {"email": email,
-                 "username": username,
-                 "enabled": enabled,
-                 "firstName": firstname,
-                 "lastName": lastname,
-                 "credentials": [{"value": secret, "type": "password", }]
-                 }
+                "username": username,
+                "enabled": enabled,
+                "firstName": firstname,
+                "lastName": lastname,
+                "credentials": [{"value": secret, "type": "password", }]
+                }
         try:
             return self.keycloak_admin.create_user(user, exist_ok=False)
         except keycloak.exceptions.KeycloakAuthenticationError as ex:
@@ -130,7 +122,8 @@ class ProviderKeycloak(Provider):
                                                     lastname=user.last_name, secret=user.password)
 
             clients = self.keycloak_admin.get_clients()
-            client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')), None)
+            client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
+                             None)
 
             client_roles = self.keycloak_admin.get_client_roles(client_id=client_id)
             user_roles = [rol for rol in client_roles if rol["name"] in user.roles]
@@ -150,8 +143,8 @@ class ProviderKeycloak(Provider):
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
-                            .replace("{{first_name}}", user.first_name) \
-                            .replace("{{verification_link}}", confirm_email_url)
+                    .replace("{{first_name}}", user.first_name) \
+                    .replace("{{verification_link}}", confirm_email_url)
 
                 await send_email(
                     recipients=[user.username],
@@ -337,7 +330,9 @@ class ProviderKeycloak(Provider):
                     for user in users:
                         if user["enabled"] == user_status:
                             if search:
-                                if user := next((self._cast_user(user) for value in user.values() if search in str(value)), None):
+                                if user := next(
+                                        (self._cast_user(user) for value in user.values() if search in str(value)),
+                                        None):
                                     users_data.append(user)
                             else:
                                 users_data.append(self._cast_user(user))
@@ -350,4 +345,3 @@ class ProviderKeycloak(Provider):
             error_template = "An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
             raise err
-
