@@ -354,33 +354,38 @@ class ProviderKeycloak(Provider):
         )
 
     def list_users(self, page: str, user_status: bool, page_size: int, search: str = None):
-        try:
-            users_count = 0
-            next_page = int(page)
-            users_data = []
-            while users_count < page_size:
-                users = self.keycloak_admin.get_users(query={"first": next_page, "max": page_size})
-                if users is None or len(users) == 0:
-                    users_count = page_size * 2
-                else:
-                    for user in users:
-                        if user["enabled"] == user_status:
-                            if search:
-                                if user := next(
-                                        (self._cast_user(user) for value in user.values() if search in str(value)),
-                                        None):
-                                    users_data.append(user)
-                            else:
-                                users_data.append(self._cast_user(user))
-                    users_count = len(users_data)
-                    next_page += page_size
+        retry_count = 0
+        while True:
+            retry_count += 1
+            try:
+                self.setup_keycloak()
+                users_count = 0
+                next_page = int(page)
+                users_data = []
+                while users_count < page_size:
+                    users = self.keycloak_admin.get_users(query={"first": next_page, "max": page_size})
+                    if users is None or len(users) == 0:
+                        users_count = page_size * 2
+                    else:
+                        for user in users:
+                            if user["enabled"] == user_status:
+                                if search:
+                                    if user := next(
+                                            (self._cast_user(user) for value in user.values() if search in str(value)),
+                                            None):
+                                        users_data.append(user)
+                                else:
+                                    users_data.append(self._cast_user(user))
+                        users_count = len(users_data)
+                        next_page += page_size
 
-            return users_data, next_page, page_size
-        except KeycloakAuthenticationError as err:
-            error_template = "An exception of type {0} occurred. error: {1}"
-            log.error(error_template.format(type(err).__name__, str(err)))
-            raise err
-        except Exception as err:
-            error_template = "An exception of type {0} occurred. error: {1}"
-            log.error(error_template.format(type(err).__name__, str(err)))
-            raise err
+                return users_data, next_page, page_size
+            except KeycloakAuthenticationError as err:
+                error_template = "list_users KeycloakAuthenticationError: An exception of type {0} occurred. error: {1}"
+                log.error(error_template.format(type(err).__name__, str(err)))
+                if retry_count == 2:
+                    raise err
+            except Exception as err:
+                error_template = "list_users Exception: An exception of type {0} occurred. error: {1}"
+                log.error(error_template.format(type(err).__name__, str(err)))
+                raise err
