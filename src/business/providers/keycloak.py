@@ -355,6 +355,7 @@ class ProviderKeycloak(Provider):
 
     def list_users(self, page: str, user_status: bool, page_size: int, search: str = None):
         try:
+            self.setup_keycloak()
             users_count = 0
             next_page = int(page)
             users_data = []
@@ -377,10 +378,10 @@ class ProviderKeycloak(Provider):
 
             return users_data, next_page, page_size
         except KeycloakAuthenticationError as err:
-            error_template = "An exception of type {0} occurred. error: {1}"
+            error_template = "list_users KeycloakAuthenticationError: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
             raise err
         except Exception as err:
-            error_template = "An exception of type {0} occurred. error: {1}"
+            error_template = "list_users Exception: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
             raise err
