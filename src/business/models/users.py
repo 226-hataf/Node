@@ -18,6 +18,11 @@ class RolesEnum(str, Enum):
     VIEW_PROFILE = 'view-profile'
     DELETE_ACCOUNT = 'delete-account'
     VIEW_CONSENT = 'view-consent'
+    LIST = "zk-zeauth-list"
+    CREATE = "zk-zeauth-create"
+    READ = "zk-zeauth-read"
+    DELETE = "zk-zeauth-delete"
+    UPDATE = "zk-zeauth-update"
 
 
 class User(BaseModel):
