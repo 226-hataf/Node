@@ -302,22 +302,31 @@ class ProviderKeycloak(Provider):
             raise err
 
     def verify(self, token: str):
-        try:
-            userinfo = self.keycloak_openid.userinfo(token)
-            available_roles = self.keycloak_admin.get_composite_client_roles_of_user(
-                client_id=self._get_client_id(),
-                user_id=userinfo["sub"]
-            )
-            roles_names = [role["name"] for role in available_roles]
-            verify = {"zk-zeauth-permissions": roles_names, "user": userinfo}
+        retry_count = 0
+        while True:
+            retry_count += 1
+            try:
+                userinfo = self.keycloak_openid.userinfo(token)
+                available_roles = self.keycloak_admin.get_composite_client_roles_of_user(
+                    client_id=self._get_client_id(),
+                    user_id=userinfo["sub"]
+                )
+                roles_names = [role["name"] for role in available_roles]
+                verify = {"zk-zeauth-permissions": roles_names, "user": userinfo}
 
-            log.info(verify)
-            return verify
-        except Exception as err:
-            error_template = "keycloak verify:  An exception of type {0} occurred. error: {1}"
-            log.error(error_template.format(type(err).__name__, str(err)))
-            log.debug(err)
-            raise InvalidTokenError('failed token verification') from err
+                log.info(verify)
+                return verify
+            except KeycloakAuthenticationError as err:
+                error_template = "KeycloakAuthenticationError: retry: {}  An exception of type {0} occurred. error: {1}"
+                log.error(error_template.format(retry_count, type(err).__name__, str(err)))
+                log.debug(err)
+                if retry_count == 3:
+                    raise InvalidTokenError('failed token verification') from err
+            except Exception as err:
+                error_template = "keycloak verify:  An exception of type {0} occurred. error: {1}"
+                log.error(error_template.format(type(err).__name__, str(err)))
+                log.debug(err)
+                raise InvalidTokenError('failed token verification') from err
 
     def _cast_user(self, data: dict):
         full_name = data['firstName']
