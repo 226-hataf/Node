@@ -137,6 +137,7 @@ class ProviderKeycloak(Provider):
         return next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')), None)
 
     async def signup(self, user: User) -> User:
+        self.setup_keycloak()
         try:
             created_user = self._create_user_signup(email=user.email, username=user.email, firstname=user.first_name,
                                                     lastname=user.last_name, secret=user.password)
@@ -180,6 +181,7 @@ class ProviderKeycloak(Provider):
             raise err
 
     def login(self, user_info):
+        self.setup_keycloak()
         try:
             response = self.keycloak_openid.token(user_info.email, user_info.password, grant_type='password')
             self.keycloak_openid.userinfo(response['access_token'])
@@ -200,6 +202,7 @@ class ProviderKeycloak(Provider):
             raise e
 
     async def resend_confirmation_email(self, user_info):
+        self.setup_keycloak()
         try:
             users = self.keycloak_admin.get_users(query={
                 "email": user_info.username
@@ -244,6 +247,7 @@ class ProviderKeycloak(Provider):
             raise err
 
     async def reset_password(self, user_info):
+        self.setup_keycloak()
         try:
             users = self.keycloak_admin.get_users(query={
                 "email": user_info.username
@@ -272,12 +276,14 @@ class ProviderKeycloak(Provider):
             raise err
 
     def reset_password_verify(self, reset_password: ResetPasswordVerifySchema):
+        self.setup_keycloak()
         try:
             try:
                 email = get_redis(reset_password.reset_key)
             except Exception as err:
                 log.error(f"redis err: {err}")
-                raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!")
+                raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!") from err
+
             users = self.keycloak_admin.get_users(query={"email": email})
             if users and len(users) == 1:
                 self.keycloak_admin.set_user_password(
