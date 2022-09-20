@@ -29,8 +29,11 @@ def cast_login_model(response: dict, username):
     )
 
 
+ROLES = 'zk-zeauth-create,zk-zeauth-read,zk-zeauth-delete,zk-zeauth-update,zk-zeauth-list'
 DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gmail.com')
-DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', '12345ezgi123')
+DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
+DEFAULT_ADMIN_ROLES = os.environ.get('DEFAULT_ADMIN_ROLES', ROLES).split(',')
+DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).split(',')
 
 
 class ProviderKeycloak(Provider):
@@ -65,15 +68,28 @@ class ProviderKeycloak(Provider):
             "firstname": "Master",
             "lastname": "Account"
         }
-
-        self.update_password_policy()
+        try:
+            self.update_password_policy()
+        except Exception as err:
+            error_template = "update_password_policy: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
 
         try:
-            self._create_user_signup(**default_admin)
+            user = self._create_user_signup(**default_admin)
+            for admin_role in DEFAULT_ADMIN_ROLES:
+                self.keycloak_admin.create_client_role(
+                    client_role_id=self._get_client_id(),
+                    payload={'name': admin_role, 'clientRole': True},
+                    skip_exists=True
+                )
+
+            client_roles = self.keycloak_admin.get_client_roles(client_id=self._get_client_id())
+            user_roles = [rol for rol in client_roles if rol["name"] in DEFAULT_ADMIN_PERMISSIONS]
+            self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=user, roles=user_roles)
         except Exception as err:
             error_template = "An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
-            log.error(f"user <{DEFAULT_ADMIN_EMAIL}> already exists")
+            # log.error(f"user <{DEFAULT_ADMIN_EMAIL}> already exists")
 
         ProviderKeycloak.admin_user_created = True
 
@@ -116,18 +132,19 @@ class ProviderKeycloak(Provider):
             log.error(f'Error create user signup: {type(e)} - {str(e)}')
             raise DuplicateEmailError('the user is already exists')
 
+    def _get_client_id(self):
+        clients = self.keycloak_admin.get_clients()
+        return next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')), None)
+
     async def signup(self, user: User) -> User:
         try:
             created_user = self._create_user_signup(email=user.email, username=user.email, firstname=user.first_name,
                                                     lastname=user.last_name, secret=user.password)
 
-            clients = self.keycloak_admin.get_clients()
-            client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
-                             None)
-
-            client_roles = self.keycloak_admin.get_client_roles(client_id=client_id)
+            client_roles = self.keycloak_admin.get_client_roles(client_id=self._get_client_id())
             user_roles = [rol for rol in client_roles if rol["name"] in user.roles]
-            self.keycloak_admin.assign_client_role(client_id=client_id, user_id=created_user, roles=user_roles)
+            self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=created_user,
+                                                   roles=user_roles)
 
             self.keycloak_admin.update_user(user_id=created_user,
                                             payload={
@@ -287,11 +304,20 @@ class ProviderKeycloak(Provider):
     def verify(self, token: str):
         try:
             userinfo = self.keycloak_openid.userinfo(token)
-            log.info(userinfo)
-            return userinfo
-        except Exception as e:
-            log.debug(e)
-            raise InvalidTokenError('failed token verification') from e
+            available_roles = self.keycloak_admin.get_composite_client_roles_of_user(
+                client_id=self._get_client_id(),
+                user_id=userinfo["sub"]
+            )
+            roles_names = [role["name"] for role in available_roles]
+            verify = {"zk-zeauth-permissions": roles_names, "user": userinfo}
+
+            log.info(verify)
+            return verify
+        except Exception as err:
+            error_template = "keycloak verify:  An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            log.debug(err)
+            raise InvalidTokenError('failed token verification') from err
 
     def _cast_user(self, data: dict):
         full_name = data['firstName']
@@ -340,7 +366,10 @@ class ProviderKeycloak(Provider):
                     next_page += page_size
 
             return users_data, next_page, page_size
-
+        except KeycloakAuthenticationError as err:
+            error_template = "An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            raise err
         except Exception as err:
             error_template = "An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
