@@ -306,6 +306,7 @@ class ProviderKeycloak(Provider):
         while True:
             retry_count += 1
             try:
+                self.setup_keycloak()
                 userinfo = self.keycloak_openid.userinfo(token)
                 available_roles = self.keycloak_admin.get_composite_client_roles_of_user(
                     client_id=self._get_client_id(),
