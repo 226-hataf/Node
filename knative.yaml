@@ -26,7 +26,7 @@ spec:
           - name: REALM_NAME
             value: "zeauth-dev"
           - name: SECRET
-            value: "Ms1DG2RhOGjTgW9a0MwIABMZRqGMIymg"
+            value: "IFZ0A3tbaPupK78KCX3sXe5Ykx59MpKX"
           - name: PYTHONUNBUFFERED
             value: "1"
           - name: UPPERCASE
