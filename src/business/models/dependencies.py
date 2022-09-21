@@ -1,5 +1,5 @@
 from typing import Optional
-
+from datetime import date as date_type
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 
@@ -10,13 +10,20 @@ from core import log
 auth_schema = HTTPBearer()
 auth_provider: Provider = get_provider()
 
-class CommonDependencies():
-    def __init__(self, page: Optional[str] = 1, size: Optional[int] = 20, search: Optional[str] = '',
-                 user_status: Optional[bool] = True):
+
+class CommonDependencies:
+    def __init__(self,
+                 page: Optional[str] = 1,
+                 size: Optional[int] = 20,
+                 search: Optional[str] = '',
+                 date_of_creation: Optional[date_type] = None,
+                 user_status: Optional[bool] = True
+                 ):
         self.page = page
         self.size = size
         self.search = search
         self.user_status = user_status
+        self.date_of_creation = date_of_creation
 
 
 class ProtectedMethod:
@@ -28,11 +35,8 @@ class ProtectedMethod:
         try:
             verified = auth_provider.verify(self.credentials)
         except:
-            raise HTTPException(401, "user not authenticated or using invalid token")           
+            raise HTTPException(401, "user not authenticated or using invalid token")
         for permission in model_required_permissions:
             if permission in verified['zk-zeauth-permissions']:
                 return
         raise HTTPException(403, "user not authorized to do this action")
-
-
-

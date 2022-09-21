@@ -1,7 +1,7 @@
 from typing import List
 from business.models.users import User
 from core import log
-
+from datetime import date as date_type
 
 class Provider:
     def __init__(self) -> None:
@@ -30,7 +30,7 @@ class Provider:
     def delete_user(self, user_id: str):
         log.error(f"method delete_user not implement for firebase provider")
 
-    def list_users(self, page: str, page_size: int, search: str, user_status: bool):
+    def list_users(self, page: str, page_size: int, date_of_creation: date_type, search: str, user_status: bool):
         log.error(f"method list_users not implement for firebase provider")
 
     def get_user(self, user_id: str):

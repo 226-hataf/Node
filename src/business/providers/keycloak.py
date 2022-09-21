@@ -1,6 +1,6 @@
 import ast
 import datetime
-
+from datetime import date as date_type
 import keycloak
 import requests
 from core import log
@@ -87,7 +87,7 @@ class ProviderKeycloak(Provider):
             user_roles = [rol for rol in client_roles if rol["name"] in DEFAULT_ADMIN_PERMISSIONS]
             self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=user, roles=user_roles)
         except Exception as err:
-            error_template = "An exception of type {0} occurred. error: {1}"
+            error_template = "zeauth_bootstrap: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
             # log.error(f"user <{DEFAULT_ADMIN_EMAIL}> already exists")
 
@@ -341,25 +341,14 @@ class ProviderKeycloak(Provider):
             full_name = f"{full_name} {data['lastName']}"
         created_at = datetime.datetime.fromtimestamp(data['createdTimestamp'] / 1000)
         clients = self.keycloak_admin.get_clients()
-        client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
-                         None)
-        roles = self.keycloak_admin.get_client_roles_of_user(user_id=data['id'], client_id=client_id)
-        roles_list = []
-        for rol in roles:
-            roles_list.append(rol["name"])
-        return User(
-            id=data['id'],
-            email=data['username'],
-            verified=data['emailVerified'],
-            user_status=data['enabled'],
-            createdAt=str(created_at).split(".")[0],
-            permissions=ast.literal_eval(data["access"])[
-                'zk-zeauth-permissions'] if "customAttributes" in data else [],
-            roles=roles_list,
-            full_name=full_name
-        )
+        client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')), None)
 
-    def list_users(self, page: str, user_status: bool, page_size: int, search: str = None):
+        roles = self.keycloak_admin.get_client_roles_of_user(user_id=data['id'], client_id=client_id)
+
+        roles_list = [rol["name"] for rol in roles]
+        return User(id=data['id'], email=data['username'], verified=data['emailVerified'], user_status=data['enabled'], createdAt=str(created_at).split(".")[0], permissions=ast.literal_eval(data["access"])['zk-zeauth-permissions'] if "customAttributes" in data else [], roles=roles_list, full_name=full_name)
+
+    def list_users(self, page: str, user_status: bool, date_of_creation: date_type, page_size: int, search: str = None):
         retry_count = 0
         while True:
             retry_count += 1
@@ -376,9 +365,7 @@ class ProviderKeycloak(Provider):
                         for user in users:
                             if user["enabled"] == user_status:
                                 if search:
-                                    if user := next(
-                                            (self._cast_user(user) for value in user.values() if search in str(value)),
-                                            None):
+                                    if user := next((self._cast_user(user) for value in user.values() if search in str(value)), None):
                                         users_data.append(user)
                                 else:
                                     users_data.append(self._cast_user(user))
