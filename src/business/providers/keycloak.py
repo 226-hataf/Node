@@ -9,7 +9,7 @@ import json
 from business.models.users import User
 from business.providers.base import DuplicateEmailError, Provider
 from keycloak import KeycloakAdmin, KeycloakOpenID, KeycloakPostError, KeycloakConnectionError, \
-    KeycloakAuthenticationError, KeycloakPutError
+    KeycloakAuthenticationError, KeycloakPutError, KeycloakGetError
 from business.models.users import *
 from .base import *
 from business.providers.base import *
@@ -395,3 +395,41 @@ class ProviderKeycloak(Provider):
                 error_template = "list_users Exception: An exception of type {0} occurred. error: {1}"
                 log.error(error_template.format(type(err).__name__, str(err)))
                 raise err
+
+    def user_active_on(self, user_id: str):
+        self.setup_keycloak()
+        try:
+            if user := self.keycloak_admin.get_user(user_id=user_id):
+                self.keycloak_admin.update_user(user_id=user_id, payload={"enabled": True})
+
+                log.info(f'sucessfully updated user {user["id"]}')
+                return UserActiveOnOff(uid=user["id"])
+            else:
+                raise NotExisitngResourceError('attempt to activate not existing user')
+        except KeycloakGetError as err:
+            error_template = "KeycloakGetError Exception: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            raise NotExisitngResourceError('attempt to activate not existing user') from err
+        except Exception as err:
+            error_template = "user_active_on Exception: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            raise err
+
+    def user_active_off(self, user_id: str):
+        self.setup_keycloak()
+        try:
+            if user := self.keycloak_admin.get_user(user_id=user_id):
+                self.keycloak_admin.update_user(user_id=user_id, payload={"enabled": False})
+
+                log.info(f'sucessfully updated user {user["id"]}')
+                return UserActiveOnOff(uid=user["id"])
+            else:
+                raise NotExisitngResourceError('attempt to deactivate not existing user')
+        except KeycloakGetError as err:
+            error_template = "KeycloakGetError Exception: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            raise NotExisitngResourceError('attempt to deactivate not existing user') from err
+        except Exception as err:
+            error_template = "user_active_off Exception: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            raise err
