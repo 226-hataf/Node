@@ -362,16 +362,20 @@ class ProviderKeycloak(Provider):
                     if users is None or len(users) == 0:
                         users_count = page_size * 2
                     else:
+                        if date_of_creation:
+                            users = [user for user in users if datetime.datetime.fromtimestamp(user['createdTimestamp'] / 1000).date() == date_of_creation]
+
                         for user in users:
                             if user["enabled"] == user_status:
                                 if search:
-                                    if user := next((self._cast_user(user) for value in user.values() if search in str(value)), None):
+                                    if user := next((user for value in user.values() if search in str(value)), None):
                                         users_data.append(user)
                                 else:
-                                    users_data.append(self._cast_user(user))
+                                    users_data.append(user)
                         users_count = len(users_data)
                         next_page += page_size
 
+                users_data = [self._cast_user(user) for user in users_data]
                 return users_data, next_page, page_size
             except KeycloakAuthenticationError as err:
                 error_template = "list_users KeycloakAuthenticationError: An exception of type {0} occurred. error: {1}"
