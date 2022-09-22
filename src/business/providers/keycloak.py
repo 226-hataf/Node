@@ -335,18 +335,30 @@ class ProviderKeycloak(Provider):
                 log.debug(err)
                 raise InvalidTokenError('failed token verification') from err
 
+    def get_client_roles_of_user(self, user_id):
+        clients = self.keycloak_admin.get_clients()
+        client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
+                         None)
+
+        roles = self.keycloak_admin.get_client_roles_of_user(user_id=user_id, client_id=client_id)
+        return [rol["name"] for rol in roles]
+
     def _cast_user(self, data: dict):
         full_name = data['firstName']
         if data['lastName']:
             full_name = f"{full_name} {data['lastName']}"
         created_at = datetime.datetime.fromtimestamp(data['createdTimestamp'] / 1000)
-        clients = self.keycloak_admin.get_clients()
-        client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')), None)
 
-        roles = self.keycloak_admin.get_client_roles_of_user(user_id=data['id'], client_id=client_id)
-
-        roles_list = [rol["name"] for rol in roles]
-        return User(id=data['id'], email=data['username'], verified=data['emailVerified'], user_status=data['enabled'], createdAt=str(created_at).split(".")[0], permissions=ast.literal_eval(data["access"])['zk-zeauth-permissions'] if "customAttributes" in data else [], roles=roles_list, full_name=full_name)
+        return User(
+            id=data['id'],
+            email=data['username'],
+            verified=data['emailVerified'],
+            user_status=data['enabled'],
+            createdAt=str(created_at).split(".")[0],
+            permissions=[],
+            roles=self.get_client_roles_of_user(user_id=data['id']),
+            full_name=full_name
+        )
 
     def list_users(self, page: str, user_status: bool, date_of_creation: date_type, page_size: int, search: str = None):
         retry_count = 0
@@ -363,7 +375,8 @@ class ProviderKeycloak(Provider):
                         users_count = page_size * 2
                     else:
                         if date_of_creation:
-                            users = [user for user in users if datetime.datetime.fromtimestamp(user['createdTimestamp'] / 1000).date() == date_of_creation]
+                            users = [user for user in users if datetime.datetime.fromtimestamp(
+                                user['createdTimestamp'] / 1000).date() == date_of_creation]
 
                         for user in users:
                             if user["enabled"] == user_status:
@@ -376,6 +389,7 @@ class ProviderKeycloak(Provider):
                         next_page += page_size
 
                 users_data = [self._cast_user(user) for user in users_data]
+                users_data = sorted(users_data, key=lambda d: (d.full_name, d.createdAt), reverse=False)
                 return users_data, next_page, page_size
             except KeycloakAuthenticationError as err:
                 error_template = "list_users KeycloakAuthenticationError: An exception of type {0} occurred. error: {1}"
