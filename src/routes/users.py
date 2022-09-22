@@ -145,7 +145,9 @@ async def active_on(user_id: str):
     except NotExisitngResourceError as e:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to activate not existing user")
-    except Exception as e:
+    except Exception as err:
+        error_template = "active_on Exception: An exception of type {0} occurred. error: {1}"
+        log.error(error_template.format(type(err).__name__, str(err)))
         raise HTTPException(status_code=500, detail="unknown error")
 
 
@@ -160,7 +162,9 @@ async def active_off(user_id: str):
     except NotExisitngResourceError as e:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to deactivate not existing user")
-    except Exception as e:
+    except Exception as err:
+        error_template = "active_off Exception: An exception of type {0} occurred. error: {1}"
+        log.error(error_template.format(type(err).__name__, str(err)))
         raise HTTPException(status_code=500, detail="unknown error")
 
 

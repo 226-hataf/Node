@@ -83,3 +83,7 @@ class ResetPasswordSchema(BaseModel):
 class ResetPasswordVerifySchema(BaseModel):
     reset_key: str
     new_password: str
+
+
+class UserActiveOnOff(BaseModel):
+    uid: str
