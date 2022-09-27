@@ -1,6 +1,5 @@
 import ast
 import datetime
-from datetime import date as date_type
 import keycloak
 import requests
 from core import log
@@ -34,6 +33,7 @@ DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gma
 DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
 DEFAULT_ADMIN_ROLES = os.environ.get('DEFAULT_ADMIN_ROLES', ROLES).split(',')
 DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).split(',')
+MAX_LIST_USERS = os.environ.get('MAX_LIST_USERS', 500)
 
 
 class ProviderKeycloak(Provider):
@@ -366,37 +366,16 @@ class ProviderKeycloak(Provider):
             full_name=full_name
         )
 
-    def list_users(self, page: str, user_status: bool, date_of_creation: date_type, page_size: int, search: str = None):
+    def list_users(self, page: str, page_size: int, search: str = None):
         retry_count = 0
         while True:
             retry_count += 1
             try:
                 self.setup_keycloak()
-                users_count = 0
-                next_page = int(page)
-                users_data = []
-                while users_count < page_size:
-                    users = self.keycloak_admin.get_users(query={"first": next_page, "max": page_size})
-                    if users is None or len(users) == 0:
-                        users_count = page_size * 2
-                    else:
-                        if date_of_creation:
-                            users = [user for user in users if datetime.datetime.fromtimestamp(
-                                user['createdTimestamp'] / 1000).date() == date_of_creation]
 
-                        for user in users:
-                            if user["enabled"] == user_status:
-                                if search:
-                                    if user := next((user for value in user.values() if search in str(value)), None):
-                                        users_data.append(user)
-                                else:
-                                    users_data.append(user)
-                        users_count = len(users_data)
-                        next_page += page_size
-
-                users_data = [self._cast_user(user) for user in users_data]
-                users_data = sorted(users_data, key=lambda d: (d.full_name, d.createdAt), reverse=False)
-                return users_data, next_page, page_size
+                users = self.keycloak_admin.get_users(query={"first": page, "max": MAX_LIST_USERS, "search": search})
+                users_data = [self._cast_user(user) for user in users]
+                return users_data, page, page_size
             except KeycloakAuthenticationError as err:
                 error_template = "list_users KeycloakAuthenticationError: An exception of type {0} occurred. error: {1}"
                 log.error(error_template.format(type(err).__name__, str(err)))

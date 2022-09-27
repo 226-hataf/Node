@@ -52,9 +52,7 @@ async def list(token: str = Depends(ProtectedMethod), commons: CommonDependencie
     token.auth(model.permissions.list)
     try:
         user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size,
-                                                                   search=commons.search,
-                                                                   user_status=commons.user_status,
-                                                                   date_of_creation=commons.date_of_creation)
+                                                                   search=commons.search)
 
         return {'next_page': next_page, 'page_size': page_size, 'user_list': user_list}
     except Exception as e:

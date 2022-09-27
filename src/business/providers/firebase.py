@@ -1,6 +1,5 @@
 import ast
 import os
-from datetime import date as date_type
 from typing import List
 import firebase_admin
 from firebase_admin import auth, firestore
@@ -143,7 +142,7 @@ class ProviderFirebase(Provider):
             full_name=data['displayName'] if "displayName" in data else None
         )
 
-    def list_users(self, page: str, page_size: int, search: str, date_of_creation: date_type, user_status: bool):
+    def list_users(self, page: str, page_size: int, search: str):
         try:
             result = auth.list_users(max_results=page_size, page_token=page)
             users = [self._cast_user(user._data) for user in result.users]

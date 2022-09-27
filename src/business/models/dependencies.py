@@ -15,15 +15,11 @@ class CommonDependencies:
     def __init__(self,
                  page: Optional[str] = 1,
                  size: Optional[int] = 20,
-                 search: Optional[str] = '',
-                 date_of_creation: Optional[date_type] = None,
-                 user_status: Optional[bool] = True
+                 search: Optional[str] = ''
                  ):
         self.page = page
         self.size = size
         self.search = search
-        self.user_status = user_status
-        self.date_of_creation = date_of_creation
 
 
 class ProtectedMethod:
