@@ -124,13 +124,15 @@ class ProviderKeycloak(Provider):
             return self.keycloak_admin.create_user(user, exist_ok=False)
         except keycloak.exceptions.KeycloakPostError as e:
             log.error(f'Error create user signup: {type(e)} - {str(e)}')
-            if e.error_message.index('Password'):
-                raise PasswordPolicyError('Password policy not met.')
-            else:
-                raise DuplicateEmailError('The user is already exists.')
+            err_json = json.loads(e.error_message)
+            if err_json["errorMessage"] == "User exists with same username":
+                raise DuplicateEmailError('The user is already exists.') from e
+            if err_json["errorMessage"] == "Password policy not met":
+                raise PasswordPolicyError('Password policy not met.') from e
+
         except Exception as e:
             log.error(f'Error create user signup: {type(e)} - {str(e)}')
-            raise DuplicateEmailError('the user is already exists')
+            raise DuplicateEmailError('the user is already exists') from e
 
     def _get_client_id(self):
         clients = self.keycloak_admin.get_clients()
