@@ -124,13 +124,15 @@ class ProviderKeycloak(Provider):
             return self.keycloak_admin.create_user(user, exist_ok=False)
         except keycloak.exceptions.KeycloakPostError as e:
             log.error(f'Error create user signup: {type(e)} - {str(e)}')
-            if e.error_message.index('Password'):
-                raise PasswordPolicyError('Password policy not met.')
-            else:
-                raise DuplicateEmailError('The user is already exists.')
+            err_json = json.loads(e.error_message)
+            if err_json["errorMessage"] == "User exists with same username":
+                raise DuplicateEmailError('The user is already exists.') from e
+            if err_json["errorMessage"] == "Password policy not met":
+                raise PasswordPolicyError('Password policy not met.') from e
+
         except Exception as e:
             log.error(f'Error create user signup: {type(e)} - {str(e)}')
-            raise DuplicateEmailError('the user is already exists')
+            raise DuplicateEmailError('the user is already exists') from e
 
     def _get_client_id(self):
         clients = self.keycloak_admin.get_clients()
@@ -143,9 +145,10 @@ class ProviderKeycloak(Provider):
                                                     lastname=user.last_name, secret=user.password)
 
             client_roles = self.keycloak_admin.get_client_roles(client_id=self._get_client_id())
-            user_roles = [rol for rol in client_roles if rol["name"] in user.roles]
-            self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=created_user,
-                                                   roles=user_roles)
+            if user.roles:
+                user_roles = [rol for rol in client_roles if rol["name"] in user.roles]
+                self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=created_user,
+                                                       roles=user_roles)
 
             self.keycloak_admin.update_user(user_id=created_user,
                                             payload={
@@ -154,6 +157,8 @@ class ProviderKeycloak(Provider):
                                             })
 
             confirm_email_key = hash(uuid.uuid4().hex)
+            if not user.username:
+                user.username = user.email
             set_redis(confirm_email_key, user.username)
 
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
@@ -177,7 +182,8 @@ class ProviderKeycloak(Provider):
             log.error(err)
             raise DuplicateEmailError(f"<{user.email}> already exists")
         except Exception as err:
-            log.error(err)
+            error_template = "signup Exception: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
             raise err
 
     def login(self, user_info):
