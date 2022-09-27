@@ -143,9 +143,10 @@ class ProviderKeycloak(Provider):
                                                     lastname=user.last_name, secret=user.password)
 
             client_roles = self.keycloak_admin.get_client_roles(client_id=self._get_client_id())
-            user_roles = [rol for rol in client_roles if rol["name"] in user.roles]
-            self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=created_user,
-                                                   roles=user_roles)
+            if user.roles:
+                user_roles = [rol for rol in client_roles if rol["name"] in user.roles]
+                self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=created_user,
+                                                       roles=user_roles)
 
             self.keycloak_admin.update_user(user_id=created_user,
                                             payload={
@@ -154,6 +155,8 @@ class ProviderKeycloak(Provider):
                                             })
 
             confirm_email_key = hash(uuid.uuid4().hex)
+            if not user.username:
+                user.username = user.email
             set_redis(confirm_email_key, user.username)
 
             confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
@@ -177,7 +180,8 @@ class ProviderKeycloak(Provider):
             log.error(err)
             raise DuplicateEmailError(f"<{user.email}> already exists")
         except Exception as err:
-            log.error(err)
+            error_template = "signup Exception: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
             raise err
 
     def login(self, user_info):
