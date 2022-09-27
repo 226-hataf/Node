@@ -1,6 +1,5 @@
 import ast
 import datetime
-
 import keycloak
 import requests
 from core import log
@@ -34,6 +33,7 @@ DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gma
 DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
 DEFAULT_ADMIN_ROLES = os.environ.get('DEFAULT_ADMIN_ROLES', ROLES).split(',')
 DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).split(',')
+MAX_LIST_USERS = os.environ.get('MAX_LIST_USERS', 500)
 
 
 class ProviderKeycloak(Provider):
@@ -87,7 +87,7 @@ class ProviderKeycloak(Provider):
             user_roles = [rol for rol in client_roles if rol["name"] in DEFAULT_ADMIN_PERMISSIONS]
             self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=user, roles=user_roles)
         except Exception as err:
-            error_template = "An exception of type {0} occurred. error: {1}"
+            error_template = "zeauth_bootstrap: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
             # log.error(f"user <{DEFAULT_ADMIN_EMAIL}> already exists")
 
@@ -341,57 +341,41 @@ class ProviderKeycloak(Provider):
                 log.debug(err)
                 raise InvalidTokenError('failed token verification') from err
 
+    def get_client_roles_of_user(self, user_id):
+        clients = self.keycloak_admin.get_clients()
+        client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
+                         None)
+
+        roles = self.keycloak_admin.get_client_roles_of_user(user_id=user_id, client_id=client_id)
+        return [rol["name"] for rol in roles]
+
     def _cast_user(self, data: dict):
         full_name = data['firstName']
         if data['lastName']:
             full_name = f"{full_name} {data['lastName']}"
         created_at = datetime.datetime.fromtimestamp(data['createdTimestamp'] / 1000)
-        clients = self.keycloak_admin.get_clients()
-        client_id = next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')),
-                         None)
-        roles = self.keycloak_admin.get_client_roles_of_user(user_id=data['id'], client_id=client_id)
-        roles_list = []
-        for rol in roles:
-            roles_list.append(rol["name"])
+
         return User(
             id=data['id'],
             email=data['username'],
             verified=data['emailVerified'],
             user_status=data['enabled'],
             createdAt=str(created_at).split(".")[0],
-            permissions=ast.literal_eval(data["access"])[
-                'zk-zeauth-permissions'] if "customAttributes" in data else [],
-            roles=roles_list,
+            permissions=[],
+            roles=self.get_client_roles_of_user(user_id=data['id']),
             full_name=full_name
         )
 
-    def list_users(self, page: str, user_status: bool, page_size: int, search: str = None):
+    def list_users(self, page: str, page_size: int, search: str = None):
         retry_count = 0
         while True:
             retry_count += 1
             try:
                 self.setup_keycloak()
-                users_count = 0
-                next_page = int(page)
-                users_data = []
-                while users_count < page_size:
-                    users = self.keycloak_admin.get_users(query={"first": next_page, "max": page_size})
-                    if users is None or len(users) == 0:
-                        users_count = page_size * 2
-                    else:
-                        for user in users:
-                            if user["enabled"] == user_status:
-                                if search:
-                                    if user := next(
-                                            (self._cast_user(user) for value in user.values() if search in str(value)),
-                                            None):
-                                        users_data.append(user)
-                                else:
-                                    users_data.append(self._cast_user(user))
-                        users_count = len(users_data)
-                        next_page += page_size
 
-                return users_data, next_page, page_size
+                users = self.keycloak_admin.get_users(query={"first": page, "max": MAX_LIST_USERS, "search": search})
+                users_data = [self._cast_user(user) for user in users]
+                return users_data, page, page_size
             except KeycloakAuthenticationError as err:
                 error_template = "list_users KeycloakAuthenticationError: An exception of type {0} occurred. error: {1}"
                 log.error(error_template.format(type(err).__name__, str(err)))

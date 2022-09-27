@@ -2,7 +2,6 @@ from typing import List
 from business.models.users import User
 from core import log
 
-
 class Provider:
     def __init__(self) -> None:
         # ZeAuth Bootstraping
@@ -30,7 +29,7 @@ class Provider:
     def delete_user(self, user_id: str):
         log.error(f"method delete_user not implement for firebase provider")
 
-    def list_users(self, page: str, page_size: int, search: str, user_status: bool):
+    def list_users(self, page: str, page_size: int, search: str):
         log.error(f"method list_users not implement for firebase provider")
 
     def get_user(self, user_id: str):
