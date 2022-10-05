@@ -49,7 +49,7 @@ def mocked_firebase_auth_get_user(mocker):
             "localId": "2343543543432",
             "email": "abdul@gmail.com",
             "emailVerified": True,
-            "createdAt": "10-10-2022"
+            "created_at": "10-10-2022"
         }}))
 
 
@@ -70,7 +70,7 @@ def mocked_firebase_auth_list_users(mocker):
         "localId": "2343543543432",
         "email": "abdul@gmail.com",
         "emailVerified": True,
-        "createdAt": "10-10-2022"
+        "created_at": "10-10-2022"
     }})
     list_users = [user]
 

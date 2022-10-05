@@ -360,7 +360,7 @@ class ProviderKeycloak(Provider):
             email=data['username'],
             verified=data['emailVerified'],
             user_status=data['enabled'],
-            createdAt=str(created_at).split(".")[0],
+            created_at=str(created_at).split(".")[0],
             permissions=[],
             roles=self.get_client_roles_of_user(user_id=data['id']),
             full_name=full_name

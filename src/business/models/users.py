@@ -38,7 +38,7 @@ class User(BaseModel):
     last_name: Optional[str]
     full_name: Optional[str]
     phone: Optional[str]
-    createdAt: Optional[str]
+    created_at: Optional[str]
     lastLoginAt: Optional[str]
     permissions: Optional[List[str]]
 

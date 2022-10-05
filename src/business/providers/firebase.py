@@ -135,7 +135,7 @@ class ProviderFirebase(Provider):
             id=data['localId'],
             email=data['email'],
             verified=data['emailVerified'],
-            createdAt=data['createdAt'],
+            created_at=data['createdAt'],
             permissions=ast.literal_eval(data["customAttributes"])[
                 'zk-zeauth-permissions'] if "customAttributes" in data else [],
             roles=ast.literal_eval(data["customAttributes"])["zk-zeauth-roles"] if "customAttributes" in data else [],
