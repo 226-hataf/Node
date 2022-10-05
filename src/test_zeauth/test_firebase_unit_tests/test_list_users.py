@@ -12,4 +12,4 @@ def test_list_users_success(mocked_firebase_init_app, mocked_firestore_client, m
     assert user.id == "2343543543432"
     assert user.email == "abdul@gmail.com"
     assert user.verified is True
-    assert user.createdAt == "10-10-2022"
+    assert user.created_at == "10-10-2022"

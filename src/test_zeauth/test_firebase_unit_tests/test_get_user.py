@@ -11,4 +11,4 @@ def test_get_user_success(mocked_firebase_init_app, mocked_firestore_client, moc
     assert get_user.id == "2343543543432"
     assert get_user.email == "abdul@gmail.com"
     assert get_user.verified is True
-    assert get_user.createdAt == "10-10-2022"
+    assert get_user.created_at == "10-10-2022"
