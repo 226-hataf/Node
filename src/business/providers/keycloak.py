@@ -34,8 +34,10 @@ DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@'
 DEFAULT_ADMIN_ROLES = os.environ.get('DEFAULT_ADMIN_ROLES', ROLES).split(',')
 DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).split(',')
 MAX_LIST_USERS = os.environ.get('MAX_LIST_USERS', 500)
-
-
+DEFAULT_ROLES = [{"name":"admin", "description":"admin role for users"},{"name":"user", "description":"user role for users"}]
+USERS_TABLE_ROLE_POLICIES = ['zekoder-zeauth-users-user-policy', 'zekoder-zeauth-users-admin-policy']
+DEFAULT_SCOPE = ["list1","get1","update2","del2"]
+USER_PERMISSIONS = ["zekoder-zeauth-user-list","zekoder-zeauth-user-get","zekoder-zeauth-user-del","zekoder-zeauth-user-update"]
 class ProviderKeycloak(Provider):
     admin_user_created = None
 
@@ -58,6 +60,28 @@ class ProviderKeycloak(Provider):
             client_secret_key=os.environ.get('SECRET')
         )
 
+
+    def _get_server_url(self):
+        return f"{self.keycloak_admin.server_url}/admin/realms/{os.environ.get('REALM_NAME')}/clients/{self._get_client_id()}"
+
+    def create_scope_user(self, payload, token ,):
+
+        scope_exist = self.keycloak_admin.get_client_scope_by_name(client_scope_name=payload["name"])
+        if scope_exist:
+            return None
+        else:
+            data = json.dumps(payload)
+            url = f"{self._get_server_url()}/authz/resource-server/scope"
+            resp = requests.post(url, data=data, headers={
+                "authorization": f"Bearer {token['access_token']}",
+                "content-type": "application/json",
+            })
+
+            respObj = resp.json()
+            return respObj
+
+
+
     def zeauth_bootstrap(self):
         if ProviderKeycloak.admin_user_created:
             return
@@ -75,17 +99,96 @@ class ProviderKeycloak(Provider):
             log.error(error_template.format(type(err).__name__, str(err)))
 
         try:
-            user = self._create_user_signup(**default_admin)
-            for admin_role in DEFAULT_ADMIN_ROLES:
-                self.keycloak_admin.create_client_role(
-                    client_role_id=self._get_client_id(),
-                    payload={'name': admin_role, 'clientRole': True},
-                    skip_exists=True
-                )
+            # user = self._create_user_signup(**default_admin)
+
+            # creating default roles
+            roles = {}
+            for role in DEFAULT_ROLES:
+                role = self.keycloak_admin.create_realm_role(payload=role, skip_exists=True)
+                roles[role] = self.keycloak_admin.get_realm_role(role)
+
+            token = self.keycloak_openid.token(DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD, grant_type="password")
+
+            # Creating Scope
+
+            scope_list = []
+            scope_id = []
+            for scope in DEFAULT_SCOPE:
+                try:
+                    payload = {
+                        "name": scope,
+                        "displayName": scope
+                    }
+                    scope_data = self.create_scope_user(payload=payload,token=token)
+                    if scope_data:
+                        scope_list.append(scope_data)
+                        scope_id.append(scope_data["id"])
+
+                    else:
+                        pass
+                except Exception as ex:
+                    log.error(f"Boot strap fail due to :{ex}")
+
+             #Creating Resource
+            users_resource = self.keycloak_admin.create_client_authz_resource(client_id=self._get_client_id(),
+                                                                              payload={"scopes":scope_list,"attributes":{},"uris":["email"],"name":"users","ownerManagedAccess":"", "displayName":"email","type":"table"},
+                                                                              skip_exists=True)
+            # Creating Role Policy
+            user_policy = self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(), payload={
+                "name": USERS_TABLE_ROLE_POLICIES[0],
+                "type": "role",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "roles": [{
+                    "id": roles['user']['id'],
+                    "required": True
+                }]
+            }, skip_exists=True)
+
+            admin_policy = self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(), payload={
+                "name": USERS_TABLE_ROLE_POLICIES[1],
+                "type": "role",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "roles": [{
+                    "id": roles['admin']['id'],
+                    "required": True
+                }]
+            }, skip_exists=True)
+
+            # Creating Permissions
+            user_policy_data = []
+
+            for user_permission in USER_PERMISSIONS:
+                if (user_permission == "zekoder-zeauth-user-list") or (user_permission == "zekoder-zeauth-user-del") or (user_permission == "zekoder-zeauth-user-update"):
+                    user_policy_data.append(admin_policy["id"])
+
+                elif (user_permission == "zekoder-zeauth-user-get") :
+                    user_policy_data.append(user_policy["id"])
+                    user_policy_data.append(admin_policy["id"])
+
+                data = json.dumps({
+                    "type":"scope",
+                    "logic":"POSITIVE",
+                    "decisionStrategy":"UNANIMOUS",
+                    "name":user_permission,
+                    "description":"permission",
+                    "resources":[users_resource["_id"]],
+                    "policies":user_policy_data,
+                    "scopes": scope_id
+                })
+                url = f"{self._get_server_url()}/authz/resource-server/permission/scope"
+                resp = requests.post(url, data=data, headers={
+                    "authorization": f"Bearer {token['access_token']}",
+                    "content-type": "application/json",
+                })
+
+                respObj = resp.json()
+
 
             client_roles = self.keycloak_admin.get_client_roles(client_id=self._get_client_id())
             user_roles = [rol for rol in client_roles if rol["name"] in DEFAULT_ADMIN_PERMISSIONS]
-            self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=user, roles=user_roles)
+            # self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=user, roles=user_roles)
         except Exception as err:
             error_template = "zeauth_bootstrap: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
