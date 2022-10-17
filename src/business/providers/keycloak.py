@@ -151,6 +151,11 @@ class ProviderKeycloak(Provider):
         try:
             user = self._create_user_signup(**default_admin)
 
+        except Exception as ex:
+            log.info("user already created")
+            log.error(ex)
+        try:
+
             # creating default roles
             roles = {}
             for role in DEFAULT_ROLES:
