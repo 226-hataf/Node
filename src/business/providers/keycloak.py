@@ -181,7 +181,7 @@ class ProviderKeycloak(Provider):
 
              #Creating Resource
             try:
-                payload = {"scopes":scope_list,"attributes":{},"uris":["email"],"name":"user11","ownerManagedAccess":"", "displayName":"email","type":"table"}
+                payload = {"scopes":scope_list,"attributes":{},"uris":["email"],"name":"users","ownerManagedAccess":"", "displayName":"email","type":"table"}
 
 
                 users_resource  = self.get_and_create_client_authz_resource(payload=payload)
