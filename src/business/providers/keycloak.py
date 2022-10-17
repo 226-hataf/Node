@@ -36,7 +36,7 @@ DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).s
 MAX_LIST_USERS = os.environ.get('MAX_LIST_USERS', 500)
 DEFAULT_ROLES = [{"name":"admin", "description":"admin role for users"},{"name":"user", "description":"user role for users"}]
 USERS_TABLE_ROLE_POLICIES = ['zekoder-zeauth-users-user-policy', 'zekoder-zeauth-users-admin-policy']
-DEFAULT_SCOPE = ["list1","get1","update2","del2"]
+DEFAULT_SCOPE = ["list","get","update","del"]
 USER_PERMISSIONS = ["zekoder-zeauth-user-list","zekoder-zeauth-user-get","zekoder-zeauth-user-del","zekoder-zeauth-user-update"]
 class ProviderKeycloak(Provider):
     admin_user_created = None
@@ -64,7 +64,7 @@ class ProviderKeycloak(Provider):
     def _get_server_url(self):
         return f"{self.keycloak_admin.server_url}/admin/realms/{os.environ.get('REALM_NAME')}/clients/{self._get_client_id()}"
 
-    def create_scope_user(self, payload, token ,):
+    def create_scope_user(self, payload, token):
 
         scope_exist = self.keycloak_admin.get_client_scope_by_name(client_scope_name=payload["name"])
         if scope_exist:
@@ -80,7 +80,57 @@ class ProviderKeycloak(Provider):
             respObj = resp.json()
             return respObj
 
+    def permission_user(self, payload, token):
 
+        permissions = self.keycloak_admin.get_client_authz_permissions(client_id=self._get_client_id())
+        if permissions:
+            for permission in permissions:
+                if permission["name"] == payload["name"]:
+                    return permission
+
+
+        data = json.dumps(payload)
+        url = f"{self._get_server_url()}/authz/resource-server/permission/scope"
+        resp = requests.post(url, data=data, headers={
+            "authorization": f"Bearer {token['access_token']}",
+            "content-type": "application/json",
+        })
+
+        respObj = resp.json()
+        return respObj
+
+    def get_and_create_client_authz_resource(self, payload):
+        resources = self.keycloak_admin.get_client_authz_resources(client_id=self._get_client_id())
+        if resources:
+
+            for resource in resources:
+                if resource["name"] == payload["name"]:
+                    return resource
+
+
+        users_res = self.keycloak_admin.create_client_authz_resource(client_id=self._get_client_id(),payload=payload,skip_exists=True)
+        return users_res
+
+    def get_and_create_client_authz_role_based_policy(self, payload):
+        policies = self.keycloak_admin.get_client_authz_policies(client_id=self._get_client_id())
+        if policies:
+            for policy in policies:
+                if policy["name"] == payload["name"]:
+                    return policy
+
+        if payload["name"] == USERS_TABLE_ROLE_POLICIES[0]:
+            user_policy = self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(),
+                                                                                    payload=payload)
+            if user_policy:
+                return user_policy
+
+        if payload["name"] == USERS_TABLE_ROLE_POLICIES[1]:
+
+            admin_policy = self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(),
+                                                                                 payload=payload)
+
+            if admin_policy:
+                return admin_policy
 
     def zeauth_bootstrap(self):
         if ProviderKeycloak.admin_user_created:
@@ -99,7 +149,7 @@ class ProviderKeycloak(Provider):
             log.error(error_template.format(type(err).__name__, str(err)))
 
         try:
-            # user = self._create_user_signup(**default_admin)
+            user = self._create_user_signup(**default_admin)
 
             # creating default roles
             roles = {}
@@ -130,11 +180,21 @@ class ProviderKeycloak(Provider):
                     log.error(f"Boot strap fail due to :{ex}")
 
              #Creating Resource
-            users_resource = self.keycloak_admin.create_client_authz_resource(client_id=self._get_client_id(),
-                                                                              payload={"scopes":scope_list,"attributes":{},"uris":["email"],"name":"users","ownerManagedAccess":"", "displayName":"email","type":"table"},
-                                                                              skip_exists=True)
+            try:
+                payload = {"scopes":scope_list,"attributes":{},"uris":["email"],"name":"user11","ownerManagedAccess":"", "displayName":"email","type":"table"}
+
+
+                users_resource  = self.get_and_create_client_authz_resource(payload=payload)
+                if users_resource:
+                    log.info("resource created")
+
+            except Exception as ex:
+                log.error(ex)
+                log.info("this resourse already created")
+
+
             # Creating Role Policy
-            user_policy = self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(), payload={
+            payload ={
                 "name": USERS_TABLE_ROLE_POLICIES[0],
                 "type": "role",
                 "logic": "POSITIVE",
@@ -143,9 +203,10 @@ class ProviderKeycloak(Provider):
                     "id": roles['user']['id'],
                     "required": True
                 }]
-            }, skip_exists=True)
+            }
+            user_policy = self.get_and_create_client_authz_role_based_policy(payload=payload)
 
-            admin_policy = self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(), payload={
+            payload = {
                 "name": USERS_TABLE_ROLE_POLICIES[1],
                 "type": "role",
                 "logic": "POSITIVE",
@@ -154,9 +215,11 @@ class ProviderKeycloak(Provider):
                     "id": roles['admin']['id'],
                     "required": True
                 }]
-            }, skip_exists=True)
+            }
+            admin_policy = self.get_and_create_client_authz_role_based_policy(payload= payload)
 
             # Creating Permissions
+
             user_policy_data = []
 
             for user_permission in USER_PERMISSIONS:
@@ -167,7 +230,7 @@ class ProviderKeycloak(Provider):
                     user_policy_data.append(user_policy["id"])
                     user_policy_data.append(admin_policy["id"])
 
-                data = json.dumps({
+                payload ={
                     "type":"scope",
                     "logic":"POSITIVE",
                     "decisionStrategy":"UNANIMOUS",
@@ -176,14 +239,18 @@ class ProviderKeycloak(Provider):
                     "resources":[users_resource["_id"]],
                     "policies":user_policy_data,
                     "scopes": scope_id
-                })
-                url = f"{self._get_server_url()}/authz/resource-server/permission/scope"
-                resp = requests.post(url, data=data, headers={
-                    "authorization": f"Bearer {token['access_token']}",
-                    "content-type": "application/json",
-                })
+                }
+                try:
+                    permission_obj  = self.permission_user(payload=payload, token=token)
+                    if permission_obj:
+                        log.info("object create")
+                    else:
+                        pass
+                except Exception as ex:
+                    log.error(ex)
 
-                respObj = resp.json()
+
+
 
 
             client_roles = self.keycloak_admin.get_client_roles(client_id=self._get_client_id())
