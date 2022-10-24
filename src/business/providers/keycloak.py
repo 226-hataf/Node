@@ -18,10 +18,25 @@ from ..models.users import ResetPasswordVerifySchema
 from email_service.mail_service import send_email
 
 
-def cast_login_model(response: dict, username):
+def cast_login_model(response: dict, user_info):
+    full_name = user_info['firstName']
+    if user_info['lastName']:
+        full_name = f"{full_name} {user_info['lastName']}"
+    created_at = datetime.datetime.fromtimestamp(user_info['createdTimestamp'] / 1000)
+
     return LoginResponseModel(
-        user=User(email=username, id=response['session_state']),
-        uid=response['session_state'],
+        user=User(
+            id=user_info['id'],
+            email=user_info['email'],
+            username=user_info['username'],
+            verified=user_info['emailVerified'],
+            user_status=user_info['enabled'],
+            created_at=str(created_at).split(".")[0],
+            first_name=user_info['firstName'],
+            last_name=user_info['lastName'],
+            full_name=full_name
+        ),
+        uid=user_info['id'],
         accessToken=response['access_token'],
         refreshToken=response['refresh_token'],
         expirationTime=response['expires_in'],
@@ -336,7 +351,7 @@ class ProviderKeycloak(Provider):
                 user.username = user.email
             set_redis(confirm_email_key, user.username)
 
-            confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
+            confirm_email_url = f"https://zekoder.netlify.app/auth/confirm-email?token={confirm_email_key}"
 
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
@@ -365,10 +380,11 @@ class ProviderKeycloak(Provider):
         self.setup_keycloak()
         try:
             response = self.keycloak_openid.token(user_info.email, user_info.password, grant_type='password')
-            self.keycloak_openid.userinfo(response['access_token'])
+            user_info_resp = self.keycloak_openid.userinfo(response['access_token'])
+            user = self.keycloak_admin.get_user(user_info_resp['sub'])
             log.info(response)
             if response:
-                return cast_login_model(response, user_info.email)
+                return cast_login_model(response, user)
         except KeycloakAuthenticationError as err:
             log.debug(f"Keycloak Authentication Error: {err}")
             raise InvalidCredentialsError('failed login') from err
@@ -399,8 +415,7 @@ class ProviderKeycloak(Provider):
 
             confirm_email_key = hash(uuid.uuid4().hex)
             set_redis(confirm_email_key, user_info.username)
-
-            confirm_email_url = f"dev.zekoder.com/confirm-email/{confirm_email_key}"
+            confirm_email_url = f"https://zekoder.netlify.app/auth/confirm-email?token={confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
