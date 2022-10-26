@@ -85,5 +85,9 @@ class ResetPasswordVerifySchema(BaseModel):
     new_password: str
 
 
+class ConfirmationEmailVerifySchema(BaseModel):
+    token: str
+
+
 class UserActiveOnOff(BaseModel):
     uid: str

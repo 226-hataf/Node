@@ -14,7 +14,7 @@ from .base import *
 from business.providers.base import *
 import uuid
 from redis_service.redis_service import set_redis, get_redis
-from ..models.users import ResetPasswordVerifySchema
+from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from email_service.mail_service import send_email
 
 
@@ -87,7 +87,8 @@ class ProviderKeycloak(Provider):
             return None
         data = json.dumps(payload)
         url = f"{self._get_server_url()}/authz/resource-server/scope"
-        resp = requests.post(url, data=data, headers={"authorization": f"Bearer {token['access_token']}", "content-type": "application/json"})
+        resp = requests.post(url, data=data, headers={"authorization": f"Bearer {token['access_token']}",
+                                                      "content-type": "application/json"})
 
         return resp.json()
 
@@ -98,7 +99,8 @@ class ProviderKeycloak(Provider):
                     return permission
         data = json.dumps(payload)
         url = f"{self._get_server_url()}/authz/resource-server/permission/scope"
-        resp = requests.post(url, data=data, headers={"authorization": f"Bearer {token['access_token']}", "content-type": "application/json"})
+        resp = requests.post(url, data=data, headers={"authorization": f"Bearer {token['access_token']}",
+                                                      "content-type": "application/json"})
 
         return resp.json()
 
@@ -107,7 +109,8 @@ class ProviderKeycloak(Provider):
             for resource in resources:
                 if resource["name"] == payload["name"]:
                     return resource
-        return self.keycloak_admin.create_client_authz_resource(client_id=self._get_client_id(), payload=payload, skip_exists=True)
+        return self.keycloak_admin.create_client_authz_resource(client_id=self._get_client_id(), payload=payload,
+                                                                skip_exists=True)
 
     def get_and_create_client_authz_role_based_policy(self, payload):
         if policies := self.keycloak_admin.get_client_authz_policies(client_id=self._get_client_id()):
@@ -115,10 +118,12 @@ class ProviderKeycloak(Provider):
                 if policy["name"] == payload["name"]:
                     return policy
         if payload["name"] == USERS_TABLE_ROLE_POLICIES[0]:
-            if user_policy := self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(), payload=payload):
+            if user_policy := self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(),
+                                                                                        payload=payload):
                 return user_policy
         if payload["name"] == USERS_TABLE_ROLE_POLICIES[1]:
-            if admin_policy := self.keycloak_admin.create_client_authz_role_based_policy(client_id=self._get_client_id(), payload=payload):
+            if admin_policy := self.keycloak_admin.create_client_authz_role_based_policy(
+                    client_id=self._get_client_id(), payload=payload):
                 return admin_policy
 
     def zeauth_bootstrap(self):
@@ -411,6 +416,35 @@ class ProviderKeycloak(Provider):
             raise CustomKeycloakPostError(err.error_message) from err
         except Exception as err:
             log.error(err)
+            raise err
+
+    def verify_email(self, email_verify: ConfirmationEmailVerifySchema):
+        self.setup_keycloak()
+        try:
+            try:
+                email = get_redis(email_verify.token)
+            except Exception as err:
+                log.error(f"redis err: {err}")
+                raise IncorrectResetKeyError(f"Token {email_verify.token} is incorrect!") from err
+
+            users = self.keycloak_admin.get_users(query={"email": email})
+            if users and len(users) == 1:
+                self.keycloak_admin.update_user(user_id=users[0]["id"],
+                                                payload={
+                                                    "requiredActions": [],
+                                                    "emailVerified": True
+                                                })
+
+            return "Email Verified!"
+        except KeycloakConnectionError as err:
+            log.error(f"Un-able to connect with Keycloak. Error: {err}")
+            raise CustomKeycloakConnectionError(err) from err
+        except KeycloakPutError as err:
+            log.error(f"KeycloakPutError: {err}")
+            message = json.loads(err.error_message)
+            raise CustomKeycloakPutError(message["error_description"]) from err
+        except Exception as err:
+            log.error(f"Exception: {err}")
             raise err
 
     async def reset_password(self, user_info):
