@@ -6,7 +6,7 @@ async def send_email(recipients: list, subject: str, body: str):
     message = MessageSchema(
         subject=subject,
         recipients=recipients,
-        body=body,
+        html=body,
         subtype="html"
     )
 
