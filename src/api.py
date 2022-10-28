@@ -112,8 +112,7 @@ async def reset_password(user_info: ResetPasswordSchema):
 @app.post("/reset-password/verify")
 def reset_password_verify(reset_pass: ResetPasswordVerifySchema):
     try:
-        response = auth_provider.reset_password_verify(reset_pass)
-        if response:
+        if _ := auth_provider.reset_password_verify(reset_pass):
             return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Password has been reset."})
 
     except CustomKeycloakPutError as err:
@@ -125,6 +124,9 @@ def reset_password_verify(reset_pass: ResetPasswordVerifySchema):
     except NotExisitngResourceError as err:
         log.error(err)
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
+    except CustomKeycloakInvalidGrantError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err

@@ -18,29 +18,6 @@ from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySch
 from email_service.mail_service import send_email
 
 
-def cast_login_model(response: dict, user_info):
-    full_name = user_info['firstName']
-    if user_info['lastName']:
-        full_name = f"{full_name} {user_info['lastName']}"
-    created_at = datetime.datetime.fromtimestamp(user_info['createdTimestamp'] / 1000)
-
-    return LoginResponseModel(
-        user=User(
-            id=user_info['id'],
-            email=user_info['email'],
-            username=user_info['username'],
-            verified=user_info['emailVerified'],
-            user_status=user_info['enabled'],
-            created_at=str(created_at).split(".")[0],
-            first_name=user_info['firstName'],
-            last_name=user_info['lastName'],
-            full_name=full_name
-        ),
-        uid=user_info['id'],
-        accessToken=response['access_token'],
-        refreshToken=response['refresh_token'],
-        expirationTime=response['expires_in'],
-    )
 
 
 ROLES = 'zk-zeauth-create,zk-zeauth-read,zk-zeauth-delete,zk-zeauth-update,zk-zeauth-list'
@@ -352,6 +329,31 @@ class ProviderKeycloak(Provider):
             log.error(error_template.format(type(err).__name__, str(err)))
             raise err
 
+    def _cast_login_model(self, response: dict, user_info):
+        full_name = user_info['firstName']
+        if user_info['lastName']:
+            full_name = f"{full_name} {user_info['lastName']}"
+        created_at = datetime.datetime.fromtimestamp(user_info['createdTimestamp'] / 1000)
+
+        return LoginResponseModel(
+            user=User(
+                id=user_info['id'],
+                email=user_info['email'],
+                username=user_info['username'],
+                verified=user_info['emailVerified'],
+                user_status=user_info['enabled'],
+                created_at=str(created_at).split(".")[0],
+                first_name=user_info['firstName'],
+                last_name=user_info['lastName'],
+                roles=self.get_client_roles_of_user(user_id=user_info['id']),
+                full_name=full_name
+            ),
+            uid=user_info['id'],
+            accessToken=response['access_token'],
+            refreshToken=response['refresh_token'],
+            expirationTime=response['expires_in'],
+        )
+
     def login(self, user_info):
         self.setup_keycloak()
         try:
@@ -360,7 +362,7 @@ class ProviderKeycloak(Provider):
             user = self.keycloak_admin.get_user(user_info_resp['sub'])
             log.info(response)
             if response:
-                return cast_login_model(response, user)
+                return self._cast_login_model(response, user)
         except KeycloakAuthenticationError as err:
             log.debug(f"Keycloak Authentication Error: {err}")
             raise InvalidCredentialsError('failed login') from err
@@ -506,6 +508,9 @@ class ProviderKeycloak(Provider):
             raise CustomKeycloakPutError(message["error_description"]) from err
         except Exception as err:
             log.error(f"Exception: {err}")
+            message = json.loads(err.error_message)
+            if message['error'] == "invalid_grant" and message['error_description'] == "Account is not fully set up":
+                raise CustomKeycloakInvalidGrantError(message["error_description"]) from err
             raise err
 
     def verify(self, token: str):
