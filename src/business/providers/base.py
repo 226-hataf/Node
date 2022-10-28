@@ -2,6 +2,7 @@ from typing import List
 from business.models.users import User
 from core import log
 
+
 class Provider:
     def __init__(self) -> None:
         # ZeAuth Bootstraping
@@ -72,12 +73,17 @@ class Provider:
     def user_active_off(self, user_id: str):
         log.error(f'method user_active_off not implemented for firebase provider')
 
+    def reset_password_verify(self, reset_pass):
+        pass
+
 
 class DuplicateEmailError(Exception):
     pass
 
+
 class PasswordPolicyError(Exception):
     pass
+
 
 class UnauthorizedError(Exception):
     pass
@@ -108,6 +114,10 @@ class UserNotFoundError(Exception):
 
 
 class CustomKeycloakPutError(Exception):
+    pass
+
+
+class CustomKeycloakInvalidGrantError(Exception):
     pass
 
 
