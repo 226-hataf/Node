@@ -1,5 +1,5 @@
 import os
-from business.providers.base import Provider
+from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
 from business.models.users import User
 from core import log
@@ -19,16 +19,14 @@ class ProviderFusionAuth(Provider):
             os.environ.get('FUSIONAUTH_URL')
         )
 
-    def login(self, user_info):
+    def login(self, user_info: str):
         self.setup_fusionauth()
-
         try:
-            request = {
+            response = self.fusionauth_client.login({
                 "applicationId": os.environ.get('applicationId'),
                 "loginId": f'{user_info.email}',
                 "password": f'{user_info.password}'
-            }
-            response = self.fusionauth_client.login(request)
+            })
             if response.was_successful():
                 ip_address = requests.get('https://api64.ipify.org?format=json').json()
                 return {"data": response.success_response, "ip": ip_address["ip"]}
@@ -38,22 +36,26 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    def signup(self, user: User):
+    async def signup(self, user: User) -> User:
         self.setup_fusionauth()
         try:
-            request = {
-                "applicationId": os.environ.get('applicationId'),
-                "user": {
-                    "email": f'{user.email}',
-                    "password": f'{user.password}'
+            if len(user.password) >= 8 and 'string' not in user.password:
+                user_create = {
+                    'user': {
+                        "email": user.email,
+                        "password": user.password,
+                        "firstName": user.first_name,
+                        "lastName": user.last_name,
+                    }
                 }
-            }
-            response = self.fusionauth_client.create_user(request)
-            if response.was_successful():
-                return response.success_response
+                response = self.fusionauth_client.create_user(user_create)
+                if response.success_response:
+                    log.info(f'successfully created new user: {user_create}')
+                    return Provider._enrich_user(user)
+                else:
+                    raise DuplicateEmailError()
             else:
-                #return {"data": response.error_response, "email": f'{user.email}'}
-                return response.error_response
+                raise PasswordPolicyError()
         except Exception as e:
-            log.error(e)
+            log.debug(e)
             raise e

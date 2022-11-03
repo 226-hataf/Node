@@ -64,11 +64,6 @@ class UserLoginSchema(BaseModel):
     password: str
 
 
-class UserLoginFusionAuthSchema(BaseModel):
-    loginId: str
-    password: str
-
-
 class ResendConfirmationEmailSchema(BaseModel):
     username: str
 

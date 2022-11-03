@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema, ResetPasswordSchema, \
-    ResetPasswordVerifySchema, ConfirmationEmailVerifySchema, UserLoginFusionAuthSchema
+    ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from dotenv import load_dotenv
 import uvicorn
 from business.providers.base import *
@@ -37,11 +37,8 @@ async def root():
 @app.post('/signup', status_code=201, response_model=User, response_model_exclude={"password"})
 async def signup(user: User):
     try:
-        if os.environ.get('AUTH_PROVIDER').upper() == 'FUSIONAUTH':
-            return auth_provider.signup(user=user)
-        else:
-            signed_up_user = await auth_provider.signup(user=user)
-            return signed_up_user.dict()
+        signed_up_user = await auth_provider.signup(user=user)
+        return signed_up_user.dict()
     except PasswordPolicyError as e:
         log.debug(e)
         raise HTTPException(status_code=403, detail=f"Password Policy not met.")
