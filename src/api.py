@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 import os
 import importlib
 from fastapi import HTTPException
@@ -5,15 +7,12 @@ from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema, ResetPasswordSchema, \
     ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
-from dotenv import load_dotenv
 import uvicorn
 from business.providers.base import *
 from business.providers import get_provider
 from business import User
 from core import log
 from fastapi.responses import JSONResponse
-
-load_dotenv()
 
 app = FastAPI(title="ZeAuth")
 

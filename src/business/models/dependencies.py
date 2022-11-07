@@ -32,7 +32,6 @@ class ProtectedMethod:
             verified = auth_provider.verify(self.credentials)
         except:
             raise HTTPException(401, "user not authenticated or using invalid token")
-        for permission in model_required_permissions:
-            if permission in verified['zk-zeauth-permissions']:
-                return
+
+        return True
         raise HTTPException(403, "user not authorized to do this action")
