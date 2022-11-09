@@ -18,7 +18,13 @@ spec:
                 failureThreshold: 3
         env:
           - name: AUTH_PROVIDER
-            value: "keycloak"
+            value: "FUSIONAUTH"
+          - name: applicationId
+            value: "ac5329b8-9cd7-49ce-b69c-74b697003c6b"
+          - name: FUSIONAUTH_APIKEY
+            value: "33678980-8dbf-4b5c-8f87-d7f258c6a5a1"
+          - name: FUSIONAUTH_URL
+            value: "https://accounts.dev.zekoder.net"
           - name: KEYCLOAK_URL
             value: "https://accounts.dev.zekoder.com"
           - name: CLIENT_ID
