@@ -10,6 +10,9 @@
 | FUSIONAUTH_APIKEY     |                                           ****                                            |
 | applicationId         |                                           ****                                            |
  FUSIONAUTH_URL        |                             https://accounts.dev.zekoder.net                              |
+GOOGLE_REDIRECT_URL    |                                           ****                                            |
+GOOGLE_APP_ID        |                                           ****                                            |
+identityProviderIdGoogle |                           82339786-3dff-42a6-aac6-1f1ceecb6c46                            |
 | CLIENT_ID             |                                          account                                          |
 | DIGITS                |                                             1                                             |
 | LENGTH                |                                             8                                             |

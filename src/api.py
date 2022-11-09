@@ -156,6 +156,8 @@ for module in os.listdir(f"{os.path.dirname(__file__)}/routes"):
         log.error(f"failed importing <{module_name}> endpoints")
         print(e)
 
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
