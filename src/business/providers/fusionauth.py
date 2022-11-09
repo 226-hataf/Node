@@ -2,7 +2,7 @@ import datetime
 import os
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
-from business.models.users import User
+from business.models.users import User, LoginResponseModel
 from core import log
 import requests
 
@@ -51,7 +51,37 @@ class ProviderFusionAuth(Provider):
             full_name=full_name
         )
 
-    def login(self, user_info: str):
+    def _cast_login_model(self, response: dict):
+        full_name = response['user'].get('firstName')
+        if response['user'].get('lastName'):
+            full_name = f"{full_name} {response['user'].get('lastName')}"
+        last_login_at = datetime.datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
+        last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
+        created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
+        expiration_time = datetime.datetime.fromtimestamp(response['tokenExpirationInstant'] / 1000)
+
+        return LoginResponseModel(
+            user=User(
+                id=response['user']['id'],
+                email=response['user']['email'],
+                username=response['user']['email'],
+                verified=response['user']['verified'],
+                user_status=response['user']['active'],
+                created_at=str(created_at).split(".")[0],
+                last_login_at=str(last_login_at).split(".")[0],
+                last_update_at=str(last_update_at).split(".")[0],
+                first_name=response['user'].get('firstName'),
+                last_name=response['user'].get('lastName'),
+                # roles=self.get_client_roles_of_user(user_id=user_info['id']),
+                full_name=full_name
+            ),
+            uid=response['user']['id'],
+            accessToken=response['token'],
+            refreshToken=response.get('refreshToken') if response.get('refreshToken') else '',
+            expirationTime=str(expiration_time).split(".")[0]
+        )
+
+    def login(self, user_info):
         self.setup_fusionauth()
         try:
             response = self.fusionauth_client.login({
@@ -61,9 +91,10 @@ class ProviderFusionAuth(Provider):
             })
             if response.was_successful():
                 ip_address = requests.get('https://api64.ipify.org?format=json').json()
-                return {"data": response.success_response, "ip": ip_address["ip"]}
+                return self._cast_login_model(response.success_response)
+                # return {"data": response.success_response, "ip": ip_address["ip"]}
             else:
-                return { "e": response.error_response, "s": response.success_response }
+                return {"e": response.error_response, "s": response.success_response}
                 # return "Criteria does not match !"
         except Exception as e:
             log.error(e)
