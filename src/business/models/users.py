@@ -39,7 +39,8 @@ class User(BaseModel):
     full_name: Optional[str]
     phone: Optional[str]
     created_at: Optional[str]
-    lastLoginAt: Optional[str]
+    last_login_at: Optional[str]
+    last_update_at: Optional[str]
     permissions: Optional[List[str]]
 
     @validator('email')
