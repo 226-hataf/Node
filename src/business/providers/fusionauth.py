@@ -1,10 +1,13 @@
 import datetime
 import os
+import uuid
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
 from business.models.users import User, LoginResponseModel
 from core import log
 import requests
+from redis_service.redis_service import set_redis, get_redis
+from email_service.mail_service import send_email
 
 
 class ProviderFusionAuth(Provider):
@@ -148,3 +151,24 @@ class ProviderFusionAuth(Provider):
         except Exception as e:
             log.debug(e)
             raise e
+
+    async def reset_password(self, user_info):
+        self.setup_fusionauth()
+        try:
+            client_response = self.fusionauth_client.retrieve_user_by_email(user_info.username)
+            if not client_response.was_successful():
+                raise UserNotFoundError(f"User '{user_info.username}' not in system")
+
+            reset_key = hash(uuid.uuid4().hex)
+            set_redis(reset_key, user_info.username)
+
+            reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
+            await send_email(
+                recipients=[user_info.username],
+                subject="Reset Password",
+                body=reset_password_url
+            )
+            return True
+        except Exception as err:
+            log.error(err)
+            raise err
