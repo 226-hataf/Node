@@ -51,6 +51,30 @@ class ProviderFusionAuth(Provider):
             full_name=full_name
         )
 
+    def _cast_signup_model(self, response: dict):
+        full_name = response['user'].get('firstName')
+        if response['user'].get('lastName'):
+            full_name = f"{full_name} {response['user'].get('lastName')}"
+
+        last_login_at = datetime.datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
+        last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
+        created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
+
+        return User(
+            id=response['user']['id'],
+            email=response['user']['email'],
+            username=response['user']['email'],
+            verified=response['user']['verified'],
+            user_status=response['user']['active'],
+            created_at=str(created_at).split(".")[0],
+            last_login_at=str(last_login_at).split(".")[0],
+            last_update_at=str(last_update_at).split(".")[0],
+            first_name=response['user'].get('firstName'),
+            last_name=response['user'].get('lastName'),
+            # roles=self.get_client_roles_of_user(user_id=user_info['id']),
+            full_name=full_name
+        )
+
     def _cast_login_model(self, response: dict):
         full_name = response['user'].get('firstName')
         if response['user'].get('lastName'):
@@ -107,6 +131,7 @@ class ProviderFusionAuth(Provider):
                 user_create = {
                     'user': {
                         "email": user.email,
+                        "userName": user.email,
                         "password": user.password,
                         "firstName": user.first_name,
                         "lastName": user.last_name,
@@ -114,8 +139,8 @@ class ProviderFusionAuth(Provider):
                 }
                 response = self.fusionauth_client.create_user(user_create)
                 if response.success_response:
-                    log.info(f'successfully created new user: {user_create}')
-                    return Provider._enrich_user(user)
+                    log.info(f'successfully created new user: {response.success_response}')
+                    return Provider._enrich_user(self._cast_signup_model(response.success_response))
                 else:
                     raise DuplicateEmailError()
             else:
