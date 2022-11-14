@@ -18,7 +18,7 @@ spec:
                 failureThreshold: 3
         env:
           - name: AUTH_PROVIDER
-            value: "keycloak"
+            value: "FUSIONAUTH"
           - name: applicationId
             value: "ac5329b8-9cd7-49ce-b69c-74b697003c6b"
           - name: FUSIONAUTH_APIKEY
