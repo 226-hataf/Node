@@ -1,5 +1,6 @@
 import datetime
 import os
+import json
 import uuid
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
@@ -8,6 +9,7 @@ from core import log
 import requests
 from redis_service.redis_service import set_redis, get_redis
 from email_service.mail_service import send_email
+from ..models.users import ResetPasswordVerifySchema
 
 
 class ProviderFusionAuth(Provider):
@@ -169,6 +171,77 @@ class ProviderFusionAuth(Provider):
                 body=reset_password_url
             )
             return True
+        except Exception as err:
+            log.error(err)
+            raise err
+
+    def reset_password_verify(self, reset_password: ResetPasswordVerifySchema):
+        self.setup_fusionauth()
+        try:
+            try:
+                email = get_redis(reset_password.reset_key)
+            except Exception as err:
+                log.error(f"redis err: {err}")
+                raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!") from err
+
+            user = self.fusionauth_client.retrieve_user_by_email(email)
+            if user.status == 200:
+                pass
+                # Todo reset password
+                # reset_pass = {
+                #     "applicationId": "ac5329b8-9cd7-49ce-b69c-74b697003c6b",
+                #     "changePasswordId": "abdul@gmail.com",
+                #     "sendForgotPasswordEmail": true,
+                #     "email": "abdul@gmail.com",
+                #     "username": "abdul@gmail.com",
+                #     "loginId": email,
+                #     "currentPassword": "Abdl@R34!",
+                #     "password": "AbE3dl@R34!"
+                # }
+                # self.fusionauth_client.change_password(
+                #     change_password_id=user.success_response['user']["id"],
+                #     request=reset_pass
+                # )
+            response = self.fusionauth_client.login({
+                "applicationId": os.environ.get('applicationId'),
+                "loginId": f'{email}',
+                "password": f'{reset_password.new_password}'
+            })
+            if response.was_successful():
+                return self._cast_login_model(response.success_response)
+        except Exception as err:
+            log.error(f"Exception: {err}")
+            raise err
+
+    async def resend_confirmation_email(self, user_info):
+        self.setup_keycloak()
+        try:
+            user = self.fusionauth_client.retrieve_user_by_email(user_info.username)
+            if user.status != 200:
+                raise UserNotFoundError(f"User '{user_info.username}' not in system")
+
+            # self.keycloak_admin.update_user(user_id=users[0]["id"],
+            #                                 payload={
+            #                                     "requiredActions": ["VERIFY_EMAIL"],
+            #                                     "emailVerified": False
+            #                                 })
+
+            confirm_email_key = hash(uuid.uuid4().hex)
+            set_redis(confirm_email_key, user_info.username)
+            confirm_email_url = f"https://zekoder.netlify.app/auth/confirm-email?token={confirm_email_key}"
+            directory = os.path.dirname(__file__)
+            with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
+                email_template = index_file.read() \
+                    .replace("{{first_name}}", user["firstName"]) \
+                    .replace("{{verification_link}}", confirm_email_url)
+
+                await send_email(
+                    recipients=[user_info.username],
+                    subject="Confirm email",
+                    body=email_template
+                )
+
+            return "Confirmation email sent!"
         except Exception as err:
             log.error(err)
             raise err
