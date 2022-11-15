@@ -56,30 +56,30 @@ class ProviderFusionAuth(Provider):
             full_name=full_name
         )
 
-    def _cast_signup_model(self, response: dict):
-        full_name = response['user'].get('firstName')
-        if response['user'].get('lastName'):
-            full_name = f"{full_name} {response['user'].get('lastName')}"
+    def _cast_user_model(self, response: dict):
+        full_name = response.get('firstName')
+        if response.get('lastName'):
+            full_name = f"{full_name} {response.get('lastName')}"
 
-        last_login_at = datetime.datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
-        last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
-        created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
+        last_login_at = datetime.datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
+        last_update_at = datetime.datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
+        created_at = datetime.datetime.fromtimestamp(response['insertInstant'] / 1000)
 
         roles = []
-        if len(response['user']['registrations']) != 0:
-            roles = response['user']['registrations'][0]['roles']
+        if len(response['registrations']) != 0:
+            roles = response['registrations'][0]['roles']
 
         return User(
-            id=response['user']['id'],
-            email=response['user']['email'],
-            username=response['user']['email'],
-            verified=response['user']['verified'],
-            user_status=response['user']['active'],
+            id=response['id'],
+            email=response['email'],
+            username=response['email'],
+            verified=response['verified'],
+            user_status=response['active'],
             created_at=str(created_at).split(".")[0],
             last_login_at=str(last_login_at).split(".")[0],
             last_update_at=str(last_update_at).split(".")[0],
-            first_name=response['user'].get('firstName'),
-            last_name=response['user'].get('lastName'),
+            first_name=response.get('firstName'),
+            last_name=response.get('lastName'),
             roles=roles,
             full_name=full_name
         )
@@ -153,7 +153,7 @@ class ProviderFusionAuth(Provider):
                 response = self.fusionauth_client.create_user(user_create)
                 if response.success_response:
                     log.info(f'successfully created new user: {response.success_response}')
-                    return Provider._enrich_user(self._cast_signup_model(response.success_response))
+                    return Provider._enrich_user(self._cast_user_model(response.success_response['user']))
                 else:
                     raise DuplicateEmailError()
             else:
@@ -273,4 +273,19 @@ class ProviderFusionAuth(Provider):
             return "Email Verified!"
         except Exception as err:
             log.error(f"Exception: {err}")
+            raise err
+
+    def get_user(self, user_ids: List[str]):
+        self.setup_fusionauth()
+        try:
+            user_info = self.fusionauth_client.search_users_by_ids(user_ids)
+            print(user_info.status)
+            if user_info.status == 200:
+                users_list = user_info.success_response['users']
+                return [self._cast_user_model(user) for user in users_list]
+            else:
+                raise NotExisitngResourceError()
+        except Exception as err:
+            error_template = "get_user Exception: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
             raise err

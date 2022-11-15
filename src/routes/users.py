@@ -10,6 +10,7 @@ from business.models.dependencies import CommonDependencies
 from core import log
 from core.types import ZKModel
 from business.models.dependencies import ProtectedMethod
+from fastapi import Query
 
 router = APIRouter()
 
@@ -80,21 +81,21 @@ async def update_roles(user_id: str, new_role: List[str], token: str = Depends(P
         raise HTTPException(status_code=500, detail="unknown error")
 
 
-@router.get('/{user_id}', tags=[model.plural], status_code=200, response_model=User,
+@router.get('/users_with_ids', tags=[model.plural], status_code=200, response_model=List[User],
             response_model_exclude={"password"})
-async def get(user_id: str, token: str = Depends(ProtectedMethod)):
+async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMethod)):
     token.auth(model.permissions.read)
 
     try:
-        user_info = auth_provider.get_user(user_id=user_id)
-        return user_info
+        return auth_provider.get_user(user_ids=user_ids)
 
     except NotExisitngResourceError as e:
         log.debug(e)
-        raise HTTPException(status_code=404, detail="attempt to get not existing user")
+        raise HTTPException(status_code=404, detail="attempt to get not existing user") from e
+
     except Exception as e:
         log.error(e)
-        raise HTTPException(status_code=500, detail="unknown error")
+        raise HTTPException(status_code=500, detail="unknown error") from e
 
 
 get.__doc__ = f" Get a specific {model.name} by it s id".expandtabs()
