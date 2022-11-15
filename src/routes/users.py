@@ -81,7 +81,7 @@ async def update_roles(user_id: str, new_role: List[str], token: str = Depends(P
         raise HTTPException(status_code=500, detail="unknown error")
 
 
-@router.get('/users_with_ids', tags=[model.plural], status_code=200, response_model=List[User],
+@router.get('/with_ids', tags=[model.plural], status_code=200, response_model=List[User],
             response_model_exclude={"password"})
 async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMethod)):
     token.auth(model.permissions.read)
