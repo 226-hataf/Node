@@ -1,5 +1,6 @@
 import datetime
 import os
+import json
 import uuid
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
@@ -8,6 +9,7 @@ from core import log
 import requests
 from redis_service.redis_service import set_redis, get_redis
 from email_service.mail_service import send_email
+from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 
 
 class ProviderFusionAuth(Provider):
@@ -63,6 +65,10 @@ class ProviderFusionAuth(Provider):
         last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
         created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
 
+        roles = []
+        if len(response['user']['registrations']) != 0:
+            roles = response['user']['registrations'][0]['roles']
+
         return User(
             id=response['user']['id'],
             email=response['user']['email'],
@@ -74,7 +80,7 @@ class ProviderFusionAuth(Provider):
             last_update_at=str(last_update_at).split(".")[0],
             first_name=response['user'].get('firstName'),
             last_name=response['user'].get('lastName'),
-            # roles=self.get_client_roles_of_user(user_id=user_info['id']),
+            roles=roles,
             full_name=full_name
         )
 
@@ -86,6 +92,10 @@ class ProviderFusionAuth(Provider):
         last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
         created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
         expiration_time = datetime.datetime.fromtimestamp(response['tokenExpirationInstant'] / 1000)
+
+        roles = []
+        if len(response['user']['registrations']) != 0:
+            roles = response['user']['registrations'][0]['roles']
 
         return LoginResponseModel(
             user=User(
@@ -99,7 +109,7 @@ class ProviderFusionAuth(Provider):
                 last_update_at=str(last_update_at).split(".")[0],
                 first_name=response['user'].get('firstName'),
                 last_name=response['user'].get('lastName'),
-                # roles=self.get_client_roles_of_user(user_id=user_info['id']),
+                roles=roles,
                 full_name=full_name
             ),
             uid=response['user']['id'],
@@ -171,4 +181,96 @@ class ProviderFusionAuth(Provider):
             return True
         except Exception as err:
             log.error(err)
+            raise err
+
+    def reset_password_verify(self, reset_password: ResetPasswordVerifySchema):
+        self.setup_fusionauth()
+        try:
+            try:
+                email = get_redis(reset_password.reset_key)
+            except Exception as err:
+                log.error(f"redis err: {err}")
+                raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!") from err
+
+            user = self.fusionauth_client.retrieve_user_by_email(email)
+            if user.status == 200:
+                pass
+                # Todo reset password
+                # reset_pass = {
+                #     "applicationId": "ac5329b8-9cd7-49ce-b69c-74b697003c6b",
+                #     "changePasswordId": "abdul@gmail.com",
+                #     "sendForgotPasswordEmail": true,
+                #     "email": "abdul@gmail.com",
+                #     "username": "abdul@gmail.com",
+                #     "loginId": email,
+                #     "currentPassword": "Abdl@R34!",
+                #     "password": "AbE3dl@R34!"
+                # }
+                # self.fusionauth_client.change_password(
+                #     change_password_id=user.success_response['user']["id"],
+                #     request=reset_pass
+                # )
+            response = self.fusionauth_client.login({
+                "applicationId": os.environ.get('applicationId'),
+                "loginId": f'{email}',
+                "password": f'{reset_password.new_password}'
+            })
+            if response.was_successful():
+                return self._cast_login_model(response.success_response)
+        except Exception as err:
+            log.error(f"Exception: {err}")
+            raise err
+
+    async def resend_confirmation_email(self, user_info):
+        self.setup_fusionauth()
+        try:
+            resp = self.fusionauth_client.retrieve_user_by_email(user_info.username)
+            if resp.status != 200:
+                raise UserNotFoundError(f"User '{user_info.username}' not in system")
+            user = resp.success_response['user']
+
+            self.fusionauth_client.resend_email_verification(user_info.username)
+            # Todo Resend the verification email
+            # self.keycloak_admin.update_user(user_id=users[0]["id"],
+            #                                 payload={
+            #                                     "requiredActions": ["VERIFY_EMAIL"],
+            #                                     "emailVerified": False
+            #                                 })
+
+            confirm_email_key = hash(uuid.uuid4().hex)
+            set_redis(confirm_email_key, user_info.username)
+            confirm_email_url = f"https://zekoder.netlify.app/auth/confirm-email?token={confirm_email_key}"
+            directory = os.path.dirname(__file__)
+            with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
+                email_template = index_file.read() \
+                    .replace("{{first_name}}", user["firstName"]) \
+                    .replace("{{verification_link}}", confirm_email_url)
+
+                await send_email(
+                    recipients=[user_info.username],
+                    subject="Confirm email",
+                    body=email_template
+                )
+
+            return "Confirmation email sent!"
+        except Exception as err:
+            log.error(err)
+            raise err
+
+    def verify_email(self, email_verify: ConfirmationEmailVerifySchema):
+        self.setup_fusionauth()
+        try:
+            try:
+                email = get_redis(email_verify.token)
+            except Exception as err:
+                log.error(f"redis err: {err}")
+                raise IncorrectResetKeyError(f"Token {email_verify.token} is incorrect!") from err
+
+            user = self.fusionauth_client.retrieve_user_by_email(email)
+            if user.status == 200:
+                self.fusionauth_client.verify_email(user.success_response['user']['id'])
+
+            return "Email Verified!"
+        except Exception as err:
+            log.error(f"Exception: {err}")
             raise err
