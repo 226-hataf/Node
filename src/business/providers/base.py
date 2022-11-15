@@ -33,7 +33,7 @@ class Provider:
     def list_users(self, page: str, page_size: int, search: str):
         log.error(f"method list_users not implement for firebase provider")
 
-    def get_user(self, user_id: str):
+    def get_user(self, user_ids: List[str]):
         log.error(f"method get_user not implement for firebase provider")
 
     def update_user_roles(self, new_role: List[str], user_id: str):
