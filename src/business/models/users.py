@@ -28,7 +28,7 @@ class RolesEnum(str, Enum):
 class User(BaseModel):
     id: Optional[Union[str, int]]
     email: str
-    roles: Optional[List[RolesEnum]]
+    roles: Optional[List[str]]
     username: Optional[str]
     password: Optional[str]
     verified: Optional[bool]

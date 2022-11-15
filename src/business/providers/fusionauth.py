@@ -9,7 +9,7 @@ from core import log
 import requests
 from redis_service.redis_service import set_redis, get_redis
 from email_service.mail_service import send_email
-from ..models.users import ResetPasswordVerifySchema
+from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 
 
 class ProviderFusionAuth(Provider):
@@ -65,6 +65,10 @@ class ProviderFusionAuth(Provider):
         last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
         created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
 
+        roles = []
+        if len(response['user']['registrations']) != 0:
+            roles = response['user']['registrations'][0]['roles']
+
         return User(
             id=response['user']['id'],
             email=response['user']['email'],
@@ -76,7 +80,7 @@ class ProviderFusionAuth(Provider):
             last_update_at=str(last_update_at).split(".")[0],
             first_name=response['user'].get('firstName'),
             last_name=response['user'].get('lastName'),
-            # roles=self.get_client_roles_of_user(user_id=user_info['id']),
+            roles=roles,
             full_name=full_name
         )
 
@@ -88,6 +92,10 @@ class ProviderFusionAuth(Provider):
         last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
         created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
         expiration_time = datetime.datetime.fromtimestamp(response['tokenExpirationInstant'] / 1000)
+
+        roles = []
+        if len(response['user']['registrations']) != 0:
+            roles = response['user']['registrations'][0]['roles']
 
         return LoginResponseModel(
             user=User(
@@ -101,7 +109,7 @@ class ProviderFusionAuth(Provider):
                 last_update_at=str(last_update_at).split(".")[0],
                 first_name=response['user'].get('firstName'),
                 last_name=response['user'].get('lastName'),
-                # roles=self.get_client_roles_of_user(user_id=user_info['id']),
+                roles=roles,
                 full_name=full_name
             ),
             uid=response['user']['id'],
@@ -214,12 +222,15 @@ class ProviderFusionAuth(Provider):
             raise err
 
     async def resend_confirmation_email(self, user_info):
-        self.setup_keycloak()
+        self.setup_fusionauth()
         try:
-            user = self.fusionauth_client.retrieve_user_by_email(user_info.username)
-            if user.status != 200:
+            resp = self.fusionauth_client.retrieve_user_by_email(user_info.username)
+            if resp.status != 200:
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
+            user = resp.success_response['user']
 
+            self.fusionauth_client.resend_email_verification(user_info.username)
+            # Todo Resend the verification email
             # self.keycloak_admin.update_user(user_id=users[0]["id"],
             #                                 payload={
             #                                     "requiredActions": ["VERIFY_EMAIL"],
@@ -244,4 +255,22 @@ class ProviderFusionAuth(Provider):
             return "Confirmation email sent!"
         except Exception as err:
             log.error(err)
+            raise err
+
+    def verify_email(self, email_verify: ConfirmationEmailVerifySchema):
+        self.setup_fusionauth()
+        try:
+            try:
+                email = get_redis(email_verify.token)
+            except Exception as err:
+                log.error(f"redis err: {err}")
+                raise IncorrectResetKeyError(f"Token {email_verify.token} is incorrect!") from err
+
+            user = self.fusionauth_client.retrieve_user_by_email(email)
+            if user.status == 200:
+                self.fusionauth_client.verify_email(user.success_response['user']['id'])
+
+            return "Email Verified!"
+        except Exception as err:
+            log.error(f"Exception: {err}")
             raise err
