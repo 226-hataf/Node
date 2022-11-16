@@ -92,3 +92,8 @@ class ConfirmationEmailVerifySchema(BaseModel):
 
 class UserActiveOnOff(BaseModel):
     uid: str
+
+
+class UsersWithIDsResponse(BaseModel):
+    total: int
+    users: List[User]

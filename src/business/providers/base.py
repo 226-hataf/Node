@@ -100,6 +100,8 @@ class InvalidCredentialsError(Exception):
 class NotExisitngResourceError(Exception):
     pass
 
+class LimitExceededError(Exception):
+    pass
 
 class CustomKeycloakConnectionError(Exception):
     pass

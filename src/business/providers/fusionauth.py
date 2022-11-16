@@ -279,10 +279,12 @@ class ProviderFusionAuth(Provider):
         self.setup_fusionauth()
         try:
             user_info = self.fusionauth_client.search_users_by_ids(user_ids)
-            print(user_info.status)
             if user_info.status == 200:
                 users_list = user_info.success_response['users']
-                return [self._cast_user_model(user) for user in users_list]
+                return {
+                    "total": user_info.success_response['total'],
+                    "users": [self._cast_user_model(user) for user in users_list]
+                }
             else:
                 raise NotExisitngResourceError()
         except Exception as err:
