@@ -11,6 +11,9 @@ from redis_service.redis_service import set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 
+FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
+APPLICATION_ID = os.environ.get('applicationId')
+
 
 class ProviderFusionAuth(Provider):
 
@@ -26,35 +29,14 @@ class ProviderFusionAuth(Provider):
         )
 
     def list_users(self, page: str, page_size: int, search: str):
-        print('aaaa')
-        headers = {
-            'Authorization': '33678980-8dbf-4b5c-8f87-d7f258c6a5a1',
-        }
+        headers = {'Authorization': FUSIONAUTH_APIKEY}
         response = requests.get('https://accounts.dev.zekoder.net/api/user/search?queryString=*', headers=headers)
-        if response.status_code == 200:
-            res = response.json()
-            users_data = [self._cast_user(user) for user in res['users']]
-            next_page = int(page) + 1
-            return users_data, next_page, res['total']
-        else:
+
+        if response.status_code != 200:
             return [], 0, 0
-
-    def _cast_user(self, data: dict):
-        full_name = data.get('firstName', '')
-        if data.get('lastName', ''):
-            full_name = f"{full_name} {data.get('lastName', '')}"
-        created_at = datetime.datetime.fromtimestamp(data['insertInstant'] / 1000)
-
-        return User(
-            id=data['id'],
-            email=data['email'],
-            verified=data['verified'],
-            user_status=data['active'],
-            created_at=str(created_at).split(".")[0],
-            permissions=[],
-            roles=[],
-            full_name=full_name
-        )
+        res = response.json()
+        users_data = [self._cast_user_model(user) for user in res['users']]
+        return users_data, int(page) + 1, res['total']
 
     def _cast_user_model(self, response: dict):
         full_name = response.get('firstName')
@@ -122,7 +104,7 @@ class ProviderFusionAuth(Provider):
         self.setup_fusionauth()
         try:
             response = self.fusionauth_client.login({
-                "applicationId": os.environ.get('applicationId'),
+                "applicationId": APPLICATION_ID,
                 "loginId": f'{user_info.email}',
                 "password": f'{user_info.password}'
             })
@@ -171,7 +153,7 @@ class ProviderFusionAuth(Provider):
 
             reset_key = hash(uuid.uuid4().hex)
             set_redis(reset_key, user_info.username)
-
+        
             reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
             await send_email(
                 recipients=[user_info.username],
@@ -192,31 +174,20 @@ class ProviderFusionAuth(Provider):
                 log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!") from err
 
-            user = self.fusionauth_client.retrieve_user_by_email(email)
-            if user.status == 200:
-                pass
-                # Todo reset password
-                # reset_pass = {
-                #     "applicationId": "ac5329b8-9cd7-49ce-b69c-74b697003c6b",
-                #     "changePasswordId": "abdul@gmail.com",
-                #     "sendForgotPasswordEmail": true,
-                #     "email": "abdul@gmail.com",
-                #     "username": "abdul@gmail.com",
-                #     "loginId": email,
-                #     "currentPassword": "Abdl@R34!",
-                #     "password": "AbE3dl@R34!"
-                # }
-                # self.fusionauth_client.change_password(
-                #     change_password_id=user.success_response['user']["id"],
-                #     request=reset_pass
-                # )
-            response = self.fusionauth_client.login({
-                "applicationId": os.environ.get('applicationId'),
-                "loginId": f'{email}',
-                "password": f'{reset_password.new_password}'
+            res = self.fusionauth_client.forgot_password({
+                "applicationId": APPLICATION_ID,
+                "loginId": email
             })
-            if response.was_successful():
-                return self._cast_login_model(response.success_response)
+            change_password_id = res.success_response["changePasswordId"]
+            res2 = self.fusionauth_client.change_password(change_password_id, {'password': f'{reset_password.new_password}'})
+            if res2.was_successful():
+                response = self.fusionauth_client.login({
+                    "applicationId": APPLICATION_ID,
+                    "loginId": f'{email}',
+                    "password": f'{reset_password.new_password}'
+                })
+                if response.was_successful():
+                    return self._cast_login_model(response.success_response)
         except Exception as err:
             log.error(f"Exception: {err}")
             raise err
