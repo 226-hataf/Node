@@ -1,9 +1,9 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from business import User
-from business.models.users import UserResponseModel
+from business.models.users import UserResponseModel, UsersWithIDsResponse
 from business.providers.base import *
 from business.providers import get_provider
 from business.models.dependencies import CommonDependencies
@@ -81,18 +81,22 @@ async def update_roles(user_id: str, new_role: List[str], token: str = Depends(P
         raise HTTPException(status_code=500, detail="unknown error")
 
 
-@router.get('/with_ids', tags=[model.plural], status_code=200, response_model=List[User],
+@router.get('/with_ids', tags=[model.plural], status_code=200, response_model=UsersWithIDsResponse,
             response_model_exclude={"password"})
 async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMethod)):
     token.auth(model.permissions.read)
 
     try:
+        if len(user_ids) >= 51:
+            raise LimitExceededError("limit exceeded!")
         return auth_provider.get_user(user_ids=user_ids)
 
     except NotExisitngResourceError as e:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to get not existing user") from e
-
+    except LimitExceededError as err:
+        log.error(err)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit exceeded!") from err
     except Exception as e:
         log.error(e)
         raise HTTPException(status_code=500, detail="unknown error") from e
