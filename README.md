@@ -13,6 +13,9 @@
 GOOGLE_REDIRECT_URL    |                                           ****                                            |
 GOOGLE_APP_ID        |                                           ****                                            |
 identityProviderIdGoogle |                           82339786-3dff-42a6-aac6-1f1ceecb6c46                            |
+FACEBOOK_REDIRECT_URL    |                                           ****                                            |
+FACEBOOK_APP_ID        |                                           ****                                            |
+identityProviderIdFacebook |                           56abdcc7-8bd9-4321-9621-4e9bbebae494                            |
 | CLIENT_ID             |                                          account                                          |
 | DIGITS                |                                             1                                             |
 | LENGTH                |                                             8                                             |
