@@ -124,6 +124,7 @@ class ProviderFusionAuth(Provider):
         try:
             if len(user.password) >= 8 and 'string' not in user.password:
                 user_create = {
+                    'skipVerification': False,
                     'user': {
                         "email": user.email,
                         "userName": user.email,
@@ -134,6 +135,12 @@ class ProviderFusionAuth(Provider):
                 }
                 response = self.fusionauth_client.create_user(user_create)
                 if response.success_response:
+                    user_registration = self.fusionauth_client.register({
+                        "skipRegistrationVerification": False,
+                        "registration": {"applicationId": APPLICATION_ID}
+                    },
+                        user_id=response.success_response['user']['id']
+                    )
                     log.info(f'successfully created new user: {response.success_response}')
                     return Provider._enrich_user(self._cast_user_model(response.success_response['user']))
                 else:
@@ -179,7 +186,8 @@ class ProviderFusionAuth(Provider):
                 "loginId": email
             })
             change_password_id = res.success_response["changePasswordId"]
-            res2 = self.fusionauth_client.change_password(change_password_id, {'password': f'{reset_password.new_password}'})
+            res2 = self.fusionauth_client.change_password(change_password_id,
+                                                          {'password': f'{reset_password.new_password}'})
             if res2.was_successful():
                 response = self.fusionauth_client.login({
                     "applicationId": APPLICATION_ID,
@@ -201,12 +209,6 @@ class ProviderFusionAuth(Provider):
             user = resp.success_response['user']
 
             self.fusionauth_client.resend_email_verification(user_info.username)
-            # Todo Resend the verification email
-            # self.keycloak_admin.update_user(user_id=users[0]["id"],
-            #                                 payload={
-            #                                     "requiredActions": ["VERIFY_EMAIL"],
-            #                                     "emailVerified": False
-            #                                 })
 
             confirm_email_key = hash(uuid.uuid4().hex)
             set_redis(confirm_email_key, user_info.username)
