@@ -25,6 +25,8 @@ spec:
             value: "33678980-8dbf-4b5c-8f87-d7f258c6a5a1"
           - name: FUSIONAUTH_URL
             value: "https://accounts.dev.zekoder.net"
+          - name: FRONTEND_REDIRECT_URL
+            value: "https://zekoder.netlify.app/auth/verifysociallogin"
           - name: GOOGLE_REDIRECT_URL
             value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/google/callback"
           - name: GOOGLE_APP_ID

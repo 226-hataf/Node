@@ -84,7 +84,7 @@ class ProviderFusionAuth(Provider):
             full_name=full_name
         )
 
-    def _cast_login_model(self, response: dict):
+    def _cast_login_model(self, response: dict) -> object:
         full_name = response['user'].get('firstName')
         if response['user'].get('lastName'):
             full_name = f"{full_name} {response['user'].get('lastName')}"
