@@ -25,6 +25,20 @@ spec:
             value: "33678980-8dbf-4b5c-8f87-d7f258c6a5a1"
           - name: FUSIONAUTH_URL
             value: "https://accounts.dev.zekoder.net"
+          - name: FRONTEND_REDIRECT_URL
+            value: "https://zekoder.netlify.app/auth/verifysociallogin"
+          - name: GOOGLE_REDIRECT_URL
+            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/google/callback"
+          - name: GOOGLE_APP_ID
+            value: "912565291875-mbrtsbtuvr9ve145br6lfj17gh0t6cv4.apps.googleusercontent.com"
+          - name: FACEBOOK_REDIRECT_URL
+            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/facebook/callback"
+          - name: FACEBOOK_APP_ID
+            value: "1272065640312998"
+          - name: identityProviderIdGoogle
+            value: "82339786-3dff-42a6-aac6-1f1ceecb6c46"
+          - name: identityProviderIdFaceBook
+            value: "56abdcc7-8bd9-4321-9621-4e9bbebae494"
           - name: KEYCLOAK_URL
             value: "https://accounts.dev.zekoder.com"
           - name: CLIENT_ID
