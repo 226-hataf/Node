@@ -74,7 +74,7 @@ async def update_roles(user_id: str, new_role: List[str], token: str = Depends(P
     try:
         user = (auth_provider.update_user_roles(new_role=new_role, user_id=user_id))
         return user  # list of permissins
-    except NotExisitngResourceError:
+    except NotExistingResourceError:
         raise HTTPException(status_code=404, detail="attempt to update not existing user")
     except Exception as e:
         log.error(e)
@@ -91,7 +91,7 @@ async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMe
             raise LimitExceededError("limit exceeded!")
         return auth_provider.get_user(user_ids=user_ids)
 
-    except NotExisitngResourceError as e:
+    except NotExistingResourceError as e:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to get not existing user") from e
     except LimitExceededError as err:
@@ -112,7 +112,7 @@ async def update(user_id: str, user: User, token: str = Depends(ProtectedMethod)
     try:
         updated_user = auth_provider.update_user(user_id=user_id, user=user)
         return {'updated user': updated_user.uid}
-    except NotExisitngResourceError:
+    except NotExistingResourceError:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to update not existing user")
     except Exception as e:
@@ -129,7 +129,7 @@ async def delete(user_id: str, token: str = Depends(ProtectedMethod)):
     try:
         deleted_user = auth_provider.delete_user(user_id=user_id)
         return {"deleted": deleted_user.email}
-    except NotExisitngResourceError as e:
+    except NotExistingResourceError as e:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to delete not existing user")
     except Exception as e:
@@ -145,7 +145,7 @@ async def active_on(user_id: str):
     try:
         updated_user = auth_provider.user_active_on(user_id=user_id)
         return {'updated user': updated_user.uid}
-    except NotExisitngResourceError as e:
+    except NotExistingResourceError as e:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to activate not existing user")
     except Exception as err:
@@ -162,7 +162,7 @@ async def active_off(user_id: str):
     try:
         updated_user = auth_provider.user_active_off(user_id=user_id)
         return {'updated user': updated_user.uid}
-    except NotExisitngResourceError as e:
+    except NotExistingResourceError as e:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to deactivate not existing user")
     except Exception as err:

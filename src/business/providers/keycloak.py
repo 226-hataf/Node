@@ -595,11 +595,11 @@ class ProviderKeycloak(Provider):
                 log.info(f'sucessfully updated user {user["id"]}')
                 return UserActiveOnOff(uid=user["id"])
             else:
-                raise NotExisitngResourceError('attempt to activate not existing user')
+                raise NotExistingResourceError('attempt to activate not existing user')
         except KeycloakGetError as err:
             error_template = "KeycloakGetError Exception: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
-            raise NotExisitngResourceError('attempt to activate not existing user') from err
+            raise NotExistingResourceError('attempt to activate not existing user') from err
         except Exception as err:
             error_template = "user_active_on Exception: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
@@ -614,11 +614,11 @@ class ProviderKeycloak(Provider):
                 log.info(f'sucessfully updated user {user["id"]}')
                 return UserActiveOnOff(uid=user["id"])
             else:
-                raise NotExisitngResourceError('attempt to deactivate not existing user')
+                raise NotExistingResourceError('attempt to deactivate not existing user')
         except KeycloakGetError as err:
             error_template = "KeycloakGetError Exception: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
-            raise NotExisitngResourceError('attempt to deactivate not existing user') from err
+            raise NotExistingResourceError('attempt to deactivate not existing user') from err
         except Exception as err:
             error_template = "user_active_off Exception: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))

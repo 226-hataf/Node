@@ -70,7 +70,7 @@ async def roles(name: str,token: str=Depends(ProtectedMethod),  commons: CommonD
     token.auth(model.permissions.read)
     try:
         return auth_provider.get_role(name)
-    except NotExisitngResourceError:
+    except NotExistingResourceError:
         raise HTTPException(status_code=404, detail="attempt to get not existing role") 
     except Exception as e:
         log.error(e)
@@ -87,7 +87,7 @@ async def update_roles(role_id: str, permissions: List[str], description: Option
         auth_provider.update_role(name=role_id, new_permissions=permissions, description=description)
 
         return {"updated role": role_id, "new permissions": permissions, "description": description}
-    except NotExisitngResourceError:
+    except NotExistingResourceError:
         raise HTTPException(status_code=404, detail="attempt to update not existing role") 
     except Exception as e:
         log.error(e)
@@ -103,7 +103,7 @@ async def delete(role_id: str, token: str=Depends(ProtectedMethod)):
     try:
         role_name = auth_provider.delete_role(name=role_id)
         return {"deleted role": role_name}
-    except NotExisitngResourceError:
+    except NotExistingResourceError:
         raise HTTPException(status_code=404, detail="attempt to delete not existing role") 
     except Exception as e:
         log.error(e)

@@ -259,7 +259,7 @@ class ProviderFusionAuth(Provider):
                     "users": [self._cast_user_model(user) for user in users_list]
                 }
             else:
-                raise NotExisitngResourceError()
+                raise NotExistingResourceError()
         except Exception as err:
             error_template = "get_user Exception: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
