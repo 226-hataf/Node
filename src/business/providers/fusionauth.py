@@ -13,6 +13,7 @@ from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySch
 
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
+FUSIONAUTH_URL = os.environ.get('FUSIONAUTH_URL')
 
 
 class ProviderFusionAuth(Provider):
@@ -23,14 +24,11 @@ class ProviderFusionAuth(Provider):
         super().__init__()
 
     def setup_fusionauth(self):
-        self.fusionauth_client = FusionAuthClient(
-            os.environ.get('FUSIONAUTH_APIKEY'),
-            os.environ.get('FUSIONAUTH_URL')
-        )
+        self.fusionauth_client = FusionAuthClient(FUSIONAUTH_APIKEY, FUSIONAUTH_URL)
 
     def list_users(self, page: str, page_size: int, search: str):
         headers = {'Authorization': FUSIONAUTH_APIKEY}
-        response = requests.get('https://accounts.dev.zekoder.net/api/user/search?queryString=*', headers=headers)
+        response = requests.get(f'{FUSIONAUTH_URL}/api/user/search?queryString=*', headers=headers)
 
         if response.status_code != 200:
             return [], 0, 0
@@ -264,3 +262,24 @@ class ProviderFusionAuth(Provider):
             error_template = "get_user Exception: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
             raise err
+
+    def verify(self, token: str):
+        try:
+            self.setup_fusionauth()
+            headers = {
+                'Cookie': f'access_token={token}',
+                'Accept': 'application/json'
+            }
+            response = requests.get(f'{FUSIONAUTH_URL}/api/jwt/validate',
+                                    headers=headers)
+
+            res = response.json()
+            log.info(res['jwt'])
+            resp = self.fusionauth_client.retrieve_user_by_email(res['jwt']['email'])
+            log.info(resp.success_response)
+            return self._cast_user_model(resp.success_response['user'])
+        except Exception as err:
+            error_template = "fusionauth verify:  An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            log.debug(err)
+            raise InvalidTokenError('failed token verification') from err
