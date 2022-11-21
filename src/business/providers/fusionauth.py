@@ -111,8 +111,8 @@ class ProviderFusionAuth(Provider):
                 return self._cast_login_model(response.success_response)
                 # return {"data": response.success_response, "ip": ip_address["ip"]}
             else:
-                return {"e": response.error_response, "s": response.success_response}
-                # return "Criteria does not match !"
+                # return {"e": response.error_response, "s": response.success_response}
+                raise InvalidCredentialsError('failed login')
         except Exception as e:
             log.error(e)
             raise e
@@ -158,7 +158,7 @@ class ProviderFusionAuth(Provider):
 
             reset_key = hash(uuid.uuid4().hex)
             set_redis(reset_key, user_info.username)
-        
+
             reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
             await send_email(
                 recipients=[user_info.username],
