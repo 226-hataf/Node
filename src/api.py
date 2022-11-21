@@ -100,7 +100,7 @@ async def reset_password(user_info: ResetPasswordSchema):
     except UserNotFoundError as err:
         log.error(err)
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
-    except NotExisitngResourceError as err:
+    except NotExistingResourceError as err:
         log.error(err)
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
     except Exception as err:
@@ -120,7 +120,7 @@ def reset_password_verify(reset_pass: ResetPasswordVerifySchema):
     except IncorrectResetKeyError as err:
         log.error(err)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
-    except NotExisitngResourceError as err:
+    except NotExistingResourceError as err:
         log.error(err)
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
     except CustomKeycloakInvalidGrantError as err:

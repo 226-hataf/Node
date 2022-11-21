@@ -125,7 +125,7 @@ class ProviderFirebase(Provider):
                 log.debug(f'sucessfully updated user {user.uid}')
                 return user
             else:
-                raise NotExisitngResourceError('attempt to update not existing user')
+                raise NotExistingResourceError('attempt to update not existing user')
         except Exception as e:
             log.error(e)
             raise e
@@ -158,7 +158,7 @@ class ProviderFirebase(Provider):
             if user_info:
                 return self._cast_user(user_info._data)
             else:
-                raise NotExisitngResourceError()
+                raise NotExistingResourceError()
 
         except Exception as e:
             raise e
@@ -191,7 +191,7 @@ class ProviderFirebase(Provider):
                 log.info(f'sucessfully updated user {user.uid}')
                 return user
             else:
-                raise NotExisitngResourceError('attempt to activate not existing user')
+                raise NotExistingResourceError('attempt to activate not existing user')
         except Exception as e:
             raise e
 
@@ -206,7 +206,7 @@ class ProviderFirebase(Provider):
                 log.debug(f'sucessfully updated user {user.uid}')
                 return user
             else:
-                raise NotExisitngResourceError('attempt to deactivate not existing user')
+                raise NotExistingResourceError('attempt to deactivate not existing user')
         except Exception as e:
             raise e
 
@@ -228,7 +228,7 @@ class ProviderFirebase(Provider):
             if doc:
                 return doc.to_dict()
             else:
-                raise NotExisitngResourceError(f"'{name}' role not found")
+                raise NotExistingResourceError(f"'{name}' role not found")
         except Exception as e:
             log.error(e)
             log.error("no such document")
@@ -248,7 +248,7 @@ class ProviderFirebase(Provider):
             if doc.get()._exists:
                 doc.update({'role_name': name, 'permissions': new_permissions, 'description': description})
             else:
-                raise NotExisitngResourceError('attemtp to update not exisitng role')
+                raise NotExistingResourceError('attemtp to update not exisitng role')
         except Exception as e:
             raise e
 
@@ -259,15 +259,15 @@ class ProviderFirebase(Provider):
                 doc.delete()
                 return name
             else:
-                raise NotExisitngResourceError('attempt to delete not existing role')
+                raise NotExistingResourceError('attempt to delete not existing role')
         except Exception as e:
             raise e
 
     def resend_confirmation_email(self):
-        raise NotExisitngResourceError('Not implemented yet.')
+        raise NotExistingResourceError('Not implemented yet.')
 
     def reset_password(self, user_info):
-        raise NotExisitngResourceError('Not implemented yet.')
+        raise NotExistingResourceError('Not implemented yet.')
 
     def reset_password_verify(self, reset_password):
-        raise NotExisitngResourceError('Not implemented yet.')
+        raise NotExistingResourceError('Not implemented yet.')
