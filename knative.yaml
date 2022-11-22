@@ -29,16 +29,24 @@ spec:
             value: "https://zekoder.netlify.app/auth/verifysociallogin"
           - name: GOOGLE_REDIRECT_URL
             value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/google/callback"
-          - name: GOOGLE_APP_ID
-            value: "912565291875-mbrtsbtuvr9ve145br6lfj17gh0t6cv4.apps.googleusercontent.com"
+          - name: TWITTER_REDIRECT_URL
+            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/twitter/callback"
           - name: FACEBOOK_REDIRECT_URL
             value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/facebook/callback"
+          - name: TWITTER_CONSUMER_KEY
+            value: "zKi87gEmUiSMvWjqel2v3JXfK"
+          - name: TWITTER_CONSUMER_SECRET
+            value: "qD6QJgeOmN3Rzoecwc1qJxPjjBmsbHlj3RAtGtZqdDTZClU8kY"
+          - name: GOOGLE_APP_ID
+            value: "912565291875-mbrtsbtuvr9ve145br6lfj17gh0t6cv4.apps.googleusercontent.com"
           - name: FACEBOOK_APP_ID
             value: "1272065640312998"
           - name: identityProviderIdGoogle
             value: "82339786-3dff-42a6-aac6-1f1ceecb6c46"
           - name: identityProviderIdFaceBook
             value: "56abdcc7-8bd9-4321-9621-4e9bbebae494"
+          - name: identityProviderIdTwitter
+            value: "45bb233c-0901-4236-b5ca-ac46e2e0a5a5"
           - name: KEYCLOAK_URL
             value: "https://accounts.dev.zekoder.com"
           - name: CLIENT_ID
