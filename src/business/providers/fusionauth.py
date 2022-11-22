@@ -266,16 +266,14 @@ class ProviderFusionAuth(Provider):
     def verify(self, token: str):
         try:
             self.setup_fusionauth()
-            headers = {
-                'Cookie': f'access_token={token}',
-                'Accept': 'application/json'
-            }
-            response = requests.get(f'{FUSIONAUTH_URL}/api/jwt/validate',
-                                    headers=headers)
 
-            res = response.json()
-            log.info(res['jwt'])
-            resp = self.fusionauth_client.retrieve_user_by_email(res['jwt']['email'])
+            validate_jwt = self.fusionauth_client.validate_jwt(token)
+            if validate_jwt.status != 200:
+                error_template = "fusionauth verify:  An exception of type {0} occurred. error: {1}"
+                log.error(error_template.format(type(validate_jwt).__name__, str(validate_jwt)))
+                raise InvalidTokenError('failed token verification')
+
+            resp = self.fusionauth_client.retrieve_user_by_email(validate_jwt.success_response['jwt']['email'])
             log.info(resp.success_response)
             return self._cast_user_model(resp.success_response['user'])
         except Exception as err:
