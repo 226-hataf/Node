@@ -9,8 +9,11 @@ from core.types import ZKModel
 from dotenv import load_dotenv
 import json
 from requests_oauthlib import OAuth1Session
+
+
 load_dotenv()
 router = APIRouter()
+
 
 
 model = ZKModel(**{
@@ -132,6 +135,51 @@ def twitter_get_oauth_request_token():
         raise e
 
 
+def get_access_token(oauth_token, oauth_token_secret, verifier):
+    request_token = OAuth1Session(client_key=os.environ.get('TWITTER_CONSUMER_KEY'),
+                                  client_secret=os.environ.get('TWITTER_CONSUMER_SECRET'),
+                                  resource_owner_key=oauth_token,
+                                  resource_owner_secret=oauth_token_secret,
+                                  verifier=verifier
+                                  )
+    url = 'https://api.twitter.com/oauth/access_token'
+    access_token_data = request_token.post(url)
+    access_token_list = str.split(access_token_data.text, '&')
+    access_token_key = str.split(access_token_list[0], '=')[1]
+    access_token_secret = str.split(access_token_list[1], '=')[1]
+    return access_token_key, access_token_secret
+
+
+def get_twitter_json(access_token_key, access_token_secret):
+    oauth_user = OAuth1Session(client_key=os.environ.get('TWITTER_CONSUMER_KEY'),
+                               client_secret=os.environ.get('TWITTER_CONSUMER_SECRET'),
+                               resource_owner_key=access_token_key,
+                               resource_owner_secret=access_token_secret)
+    url_user = 'https://api.twitter.com/1.1/account/verify_credentials.json'
+    params = {"include_email": 'true'}
+    user_data = oauth_user.get(url_user, params=params)
+    return user_data.json()
+
+
+def user_name_from_twitter(name, screen_name):
+    if name is not '' or screen_name is not '':
+        name_data = name.split(' ')
+        if len(name_data) > 1:
+            first_name, last_name = name_data
+        else:
+            if name:
+                first_name = name
+                last_name = ""
+            else:
+                first_name = screen_name
+                last_name = ""
+    else:
+        first_name = "Anonymous"
+        last_name = ""
+
+    return first_name, last_name
+
+
 @router.get('/twitter', tags=[model.name], status_code=307, response_class=RedirectResponse)
 async def twitter():
     try:
@@ -154,6 +202,9 @@ async def call_back_twitter(request: Request):
     verifier = request.query_params['oauth_verifier']
     oauth_token = request.query_params['oauth_token']
     oauth_token_secret = twitter_get_oauth_request_token()[1]
+    access_token_key, access_token_secret = get_access_token(oauth_token, oauth_token_secret, verifier)
+    twitter_data_person = get_twitter_json(access_token_key, access_token_secret)
+    first_name, last_name = user_name_from_twitter(twitter_data_person['name'], twitter_data_person['screen_name'])
     frontend_redirect_url = os.environ.get('FRONTEND_REDIRECT_URL')
     fusionauth_client = FusionAuthClient(
         os.environ.get('FUSIONAUTH_APIKEY'),
@@ -164,18 +215,24 @@ async def call_back_twitter(request: Request):
         response = fusionauth_client.identity_provider_login({
             "applicationId": os.environ.get('applicationId'),
             "data": {
-                "oauth_token": f"{oauth_token}",
-                "oauth_token_secret": f"{oauth_token_secret}",
-                "oauth_verifier": f"{verifier}"
+                "oauth_token": f"{access_token_key}",
+                "oauth_token_secret": f"{access_token_secret}"
             },
             "identityProviderId": os.environ.get('identityProviderIdTwitter'),
             "ipAddress": f"{ip_address}"
         })
         if response.was_successful():
-            resp_provider = ProviderFusionAuth._cast_login_model(response, response.success_response)
-            result = resp_provider.json()
-            url = f"{frontend_redirect_url}?result={result}"
-            return url
+            user_id = response.success_response['user']['id']
+            data = {"user": {"firstName": f"{first_name}", "lastName": f"{last_name}"}}
+            update_user_name_info = fusionauth_client.patch_user(user_id, request=data)
+            if update_user_name_info.was_successful():
+                if response.success_response['user']:
+                    response.success_response['user']['firstName'] = first_name
+                    response.success_response['user']['lastName'] = last_name
+                resp_provider = ProviderFusionAuth._cast_login_model(response, response.success_response)
+                result = resp_provider.json()
+                url = f"{frontend_redirect_url}?result={result}"
+                return url
         else:
             return {"e": response.error_response, "s": response.success_response}
     except Exception as e:

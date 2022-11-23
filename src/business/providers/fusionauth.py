@@ -66,8 +66,10 @@ class ProviderFusionAuth(Provider):
 
     def _cast_login_model(self, response: dict) -> object:
         full_name = response['user'].get('firstName')
+
         if response['user'].get('lastName'):
             full_name = f"{full_name} {response['user'].get('lastName')}"
+
         last_login_at = datetime.datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
         last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
         created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
@@ -87,7 +89,7 @@ class ProviderFusionAuth(Provider):
                 created_at=str(created_at).split(".")[0],
                 last_login_at=str(last_login_at).split(".")[0],
                 last_update_at=str(last_update_at).split(".")[0],
-                first_name=response['user'].get('firstName'),
+                first_name=response['user'].get('firstName') if response['user'].get('firstName') is not '' else "",
                 last_name=response['user'].get('lastName'),
                 roles=roles,
                 full_name=full_name
