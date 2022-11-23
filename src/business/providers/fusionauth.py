@@ -10,55 +10,10 @@ import requests
 from redis_service.redis_service import set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
-from requests_oauthlib import OAuth1Session
+
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
 FUSIONAUTH_URL = os.environ.get('FUSIONAUTH_URL')
-
-
-def get_access_token(oauth_token, oauth_token_secret, verifier):
-    request_token = OAuth1Session(client_key=os.environ.get('TWITTER_CONSUMER_KEY'),
-                                  client_secret=os.environ.get('TWITTER_CONSUMER_SECRET'),
-                                  resource_owner_key=oauth_token,
-                                  resource_owner_secret=oauth_token_secret,
-                                  verifier=verifier
-                                  )
-    url = 'https://api.twitter.com/oauth/access_token'
-    access_token_data = request_token.post(url)
-    access_token_list = str.split(access_token_data.text, '&')
-    access_token_key = str.split(access_token_list[0], '=')[1]
-    access_token_secret = str.split(access_token_list[1], '=')[1]
-    return access_token_key, access_token_secret
-
-
-def get_twitter_json(access_token_key, access_token_secret):
-    oauth_user = OAuth1Session(client_key=os.environ.get('TWITTER_CONSUMER_KEY'),
-                               client_secret=os.environ.get('TWITTER_CONSUMER_SECRET'),
-                               resource_owner_key=access_token_key,
-                               resource_owner_secret=access_token_secret)
-    url_user = 'https://api.twitter.com/1.1/account/verify_credentials.json'
-    params = {"include_email": 'true'}
-    user_data = oauth_user.get(url_user, params=params)
-    return user_data.json()
-
-
-def user_name_from_twitter(name, screen_name):
-    if name is not '' or screen_name is not '':
-        name_data = name.split(' ')
-        if len(name_data) > 1:
-            first_name, last_name = name_data
-        else:
-            if name:
-                first_name = name
-                last_name = ""
-            else:
-                first_name = screen_name
-                last_name = ""
-    else:
-        first_name = "Anonymous"
-        last_name = ""
-
-    return first_name, last_name
 
 
 class ProviderFusionAuth(Provider):
