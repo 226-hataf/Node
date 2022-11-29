@@ -1,8 +1,8 @@
 import os
 from .keycloak import ProviderKeycloak
 from .firebase import ProviderFirebase
-#from .fusionauth import ProviderFusionAuth
-from .fusionauth2 import ProviderFusionAuth
+from .fusionauth import ProviderFusionAuth
+
 
 
 def get_provider():
