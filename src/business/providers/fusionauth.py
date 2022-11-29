@@ -10,6 +10,7 @@ import requests
 from redis_service.redis_service import set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
+import jwt
 
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
@@ -25,6 +26,19 @@ class ProviderFusionAuth(Provider):
 
     def setup_fusionauth(self):
         self.fusionauth_client = FusionAuthClient(FUSIONAUTH_APIKEY, FUSIONAUTH_URL)
+
+    def get_group_name(self, id: str):
+        self.setup_fusionauth()
+        try:
+            response = self.fusionauth_client.retrieve_group(id)
+            if response.was_successful():
+                group_name = response.success_response['group']['name']
+                return group_name
+            else:
+                return response.error_response
+        except Exception as e:
+            log.error(e)
+            raise e
 
     def list_users(self, page: str, page_size: int, search: str):
         headers = {'Authorization': FUSIONAUTH_APIKEY}
@@ -46,8 +60,13 @@ class ProviderFusionAuth(Provider):
         created_at = datetime.datetime.fromtimestamp(response['insertInstant'] / 1000)
 
         roles = []
+        groups = []
         if len(response['registrations']) != 0:
             roles = response['registrations'][0]['roles']
+        if len(response['user']['memberships']) != 0:
+            for x in response['user']['memberships']:
+                group_name = self.get_group_name(x['groupId'])
+                groups.append(group_name)
 
         return User(
             id=response['id'],
@@ -61,10 +80,57 @@ class ProviderFusionAuth(Provider):
             first_name=response.get('firstName'),
             last_name=response.get('lastName'),
             roles=roles,
+            groups=groups,
             full_name=full_name
         )
 
+    def _jwt_generate(self, response: dict):
+        jwt_secret_key = os.environ['JWT_SECRET_KEY']
+        roles = []
+        groups = []
+        aud = ''
+
+        if len(response['registrations']) != 0:
+            roles = response['registrations'][0]['roles']
+            aud = response['registrations'][0]['applicationId']
+        if len(response['memberships']) != 0:
+            for x in response['memberships']:
+                group_name = self.get_group_name(x['groupId'])
+                groups.append(group_name)
+
+        full_name = response.get('firstName')
+        if response.get('lastName'):
+            full_name = f"{full_name} {response.get('lastName')}"
+
+        last_login_at = datetime.datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
+        last_update_at = datetime.datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
+        created_at = datetime.datetime.fromtimestamp(response['insertInstant'] / 1000)
+        exp = datetime.datetime.now() + datetime.timedelta(hours=1)
+
+        payload = dict(
+            aud=aud,
+            exp=exp,
+            iss=os.environ.get('FUSIONAUTH_URL'),
+            sub=response['id'],
+            email=response['email'],
+            username=response['email'],
+            verified=response['verified'],
+            user_status=response['active'],
+            first_name=response.get('firstName') if response.get('firstName') is not '' else "",
+            last_name=response.get('lastName'),
+            full_name=full_name,
+            roles=roles,
+            groups=groups,
+            created_at=str(created_at).split(".")[0],
+            last_login_at=str(last_login_at).split(".")[0],
+            last_update_at=str(last_update_at).split(".")[0],
+
+        )
+        access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+        return access_token, exp
+
     def _cast_login_model(self, response: dict) -> object:
+        access_token, expiration_time = self._jwt_generate(response['user'])
         full_name = response['user'].get('firstName')
 
         if response['user'].get('lastName'):
@@ -76,8 +142,13 @@ class ProviderFusionAuth(Provider):
         expiration_time = datetime.datetime.fromtimestamp(response['tokenExpirationInstant'] / 1000)
 
         roles = []
+        groups = []
         if len(response['user']['registrations']) != 0:
             roles = response['user']['registrations'][0]['roles']
+        if len(response['user']['memberships']) != 0:
+            for x in response['user']['memberships']:
+                group_name = self.get_group_name(x['groupId'])
+                groups.append(group_name)
 
         return LoginResponseModel(
             user=User(
@@ -92,12 +163,13 @@ class ProviderFusionAuth(Provider):
                 first_name=response['user'].get('firstName') if response['user'].get('firstName') is not '' else "",
                 last_name=response['user'].get('lastName'),
                 roles=roles,
+                groups=groups,
                 full_name=full_name
             ),
             uid=response['user']['id'],
-            accessToken=response['token'],
-            refreshToken=response.get('refreshToken') if response.get('refreshToken') else '',
-            expirationTime=str(expiration_time).split(".")[0]
+            accessToken=access_token,
+            refreshToken='',
+            expirationTime=str(expiration_time)
         )
 
     def login(self, user_info):

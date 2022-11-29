@@ -4,6 +4,7 @@ from .firebase import ProviderFirebase
 from .fusionauth import ProviderFusionAuth
 
 
+
 def get_provider():
     provider = os.environ.get('AUTH_PROVIDER')
 
