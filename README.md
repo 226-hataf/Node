@@ -9,19 +9,19 @@
 | AUTH_PROVIDER         |                                                                FUSIONAUTH                                                                 |
 | FUSIONAUTH_APIKEY     |                                                                   ****                                                                    |
 | applicationId         |                                                                   ****                                                                    |
- FUSIONAUTH_URL        |                                                     https://accounts.dev.zekoder.net                                                      |
-FRONTEND_REDIRECT_URL    |                                            https://zekoder.netlify.app/auth/verifysociallogin                                             |
-GOOGLE_REDIRECT_URL    |                                                                   ****                                                                    |
-TWITTER_REDIRECT_URL    |                                                                   ****                                                                    |
-FACEBOOK_REDIRECT_URL    |                                                                   ****                                                                    |
-GOOGLE_APP_ID        |                                                                   ****                                                                    |
-TWITTER_CONSUMER_KEY        |                                                                   ****                                                                    |
-TWITTER_CONSUMER_SECRET        |                                                                   ****                                                                    |
-FACEBOOK_APP_ID        |                                                                   ****                                                                    |
-identityProviderIdGoogle |                                                   82339786-3dff-42a6-aac6-1f1ceecb6c46                                                    |
-identityProviderIdFacebook |                                                   56abdcc7-8bd9-4321-9621-4e9bbebae494                                                    |
-identityProviderIdTwitter |                                                   45bb233c-0901-4236-b5ca-ac46e2e0a5a5                                                    |
-| CLIENT_ID             |                                                                  account                                                                  |
+| FUSIONAUTH_URL        |                                                     https://accounts.dev.zekoder.net                                                      |
+|FRONTEND_REDIRECT_URL    |                                            https://zekoder.netlify.app/auth/verifysociallogin                                             |
+|GOOGLE_REDIRECT_URL    |                                                                   ****                                                                    |
+|TWITTER_REDIRECT_URL    |                                                                   ****                                                                    |
+|FACEBOOK_REDIRECT_URL    |                                                                   ****                                                                    |
+|GOOGLE_APP_ID        |                                                                   ****                                                                    |
+|TWITTER_CONSUMER_KEY        |                                                                   ****                                                                    |
+|TWITTER_CONSUMER_SECRET        |                                                                   ****                                                                    |
+|FACEBOOK_APP_ID        |                                                                   ****                                                                    |
+|identityProviderIdGoogle |                                                   82339786-3dff-42a6-aac6-1f1ceecb6c46                                                    |
+|identityProviderIdFacebook |                                                   56abdcc7-8bd9-4321-9621-4e9bbebae494                                                    |
+|identityProviderIdTwitter |                                                   45bb233c-0901-4236-b5ca-ac46e2e0a5a5                                                    |
+| JWT_SECRET_KEY             |                                                                  account                                                                  |
 | DIGITS                |                                                                     1                                                                     |
 | LENGTH                |                                                                     8                                                                     |
 | REALM_NAME            |                                                                zeauth-dev                                                                 |
