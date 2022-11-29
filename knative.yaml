@@ -88,4 +88,4 @@ spec:
           - name: MAX_LIST_USERS
             value: "500"
           - name: JWT_SECRET_KEY
-            value: "Secret"
+            value: "You didn’t come this far to stop"
