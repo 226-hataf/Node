@@ -89,3 +89,9 @@ spec:
             value: "500"
           - name: JWT_SECRET_KEY
             value: "/B?D(G+KbPeShVmYq3t6w9z$C&F)H@Mc"
+          - name: REDIS_KEY_PREFIX
+            value: "zekoder"
+          - name: ACCESS_TOKEN_EXPIRY_MINUTES
+            value: "60"
+          - name: REFRESH_TOKEN_EXPIRY_MINUTES
+            value: "60"
