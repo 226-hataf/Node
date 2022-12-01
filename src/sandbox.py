@@ -1,83 +1,40 @@
-# import pytest
-# import pydantic
-from business.models.users import User
-from fastapi_jwt_auth import AuthJWT
-from firebase_admin import auth
+import redis
+from datetime import datetime, timedelta
+from redis_service.redis_service import hset_redis, hget_redis
 
-# pm = User(id="test_id", email="test@example.com", first_name="ezgisu", last_name="tuncel")
-# assert pm.id == "test_id"
-# assert pm.email == "test@example.com"
-# assert pm.first_name == "ezgisu"
-# assert pm.last_name == "tuncel"
-# assert pm.full_name =="ezgisu tuncel"
-
-# def test_user_model_improper():
-#     with pytest.raises(pydantic.ValidationError):
-#         user = User(email="useless")
-import firebase_admin
-firebase_admin.initialize_app()
-
-additional_claims = {
-    'ZK_auth_user_create': True,
-    'ZK_auth_user_del': True,
-    'ZK_chat_session_list': True
-}
+try:
+    r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+    r.ping()
+except Exception as e:
+    print(e)
 
 
-import jwt
-key='super-secret'
-payload={
-  "name": "ezgisu tuncel",
-  "iss": "https://securetoken.google.com/jsc-chatbot",
-  "aud": "jsc-chatbot",
-  "auth_time": 1652431690,
-  "user_id": "eN0oMR5nTcW27v9Au61kJhWsKzt2",
-  "sub": "eN0oMR5nTcW27v9Au61kJhWsKzt2",
-  "iat": 1652431690,
-  "exp": 1652435290,
-  "email": "test@example.com",
-  "email_verified": False,
-  "firebase": {
-    "identities": {
-      "email": [
-        "test@example.com"
-      ]
-    },
-    "sign_in_provider": "password"
-  }
-}
+#exp = datetime.now() + timedelta(minutes=1)
 
-custom_token = auth.create_custom_token('eN0oMR5nTcW27v9Au61kJhWsKzt2', additional_claims)
+#r.hset("12345", mapping={"firstname": "alper", "ip": "123.123.4.5",  "exp": f"{exp}"})
 
-auth.set_custom_user_claims('eN0oMR5nTcW27v9Au61kJhWsKzt2', additional_claims)
-print(custom_token)
 
-# Request body
-# user_id = eN0oMR5nTcW27v9Au61kJhWsKzt2
-#     {
-#   "id": "user_test_id",
-#   "email": "test@example.com",
-#   "password": "test123",
-#   "full_name": "Ezgisu Tuncel",
-#   "permissions": [
-#     "ZK_auth_user_create",
-#     "ZK_chat_session_list"
-#   ]
-# }
-# from google.oauth2 import service_account
-# from google.auth.transport.requests import AuthorizedSession
-# import google.auth.transport.requests
-# scopes = [
-#   "https://www.googleapis.com/auth/userinfo.email",
-#   "https://www.googleapis.com/auth/firebase.database"
-# ]
-# credentials = service_account.Credentials.from_service_account_file("C:\Users\ezgis\Desktop\zeauth\zeauth\jsc-chatbot-sa.json")
-# request = google.auth.transport.requests.Request()
-# credentials.refresh(request)
-# access_token = credentials.token
-# print(access_token)
-# # token = jwt.encode(payload, key)
-# # print (token)
-# # decoded = jwt.decode(token, options={"verify_signature": False})
-# # print (decoded)
-# # print (decoded["email"])
+prefix_access = "zekoder-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhYzUzMjliOC05Y2Q3LTQ5Y2UtYjY5Yy03NGI2OTcwMDNjNmIiLCJleHAiOjE2Njk4NjcyMzMsImlzcyI6Imh0dHBzOi8vYWNjb3VudHMuZGV2Lnpla29kZXIubmV0Iiwic3ViIjoiZTUxN2U4NjMtMDZiMC00NzlmLWJmMzAtMTk5NmEyZmRlYTIwIiwiZW1haWwiOiJ1c2VyQHRlc3QuY29tIiwidXNlcm5hbWUiOiJ1c2VyQHRlc3QuY29tIiwidmVyaWZpZWQiOnRydWUsInVzZXJfc3RhdHVzIjp0cnVlLCJmaXJzdF9uYW1lIjoiVXNlciIsImxhc3RfbmFtZSI6IlRlc3QiLCJmdWxsX25hbWUiOiJVc2VyIFRlc3QiLCJyb2xlcyI6WyJ6ZWtvZGVyLXplc3R1ZGlvLWFwcC1nZXQiLCJ6ZWtvZGVyLXplc3R1ZGlvLWFwcF92ZXJzaW9uLWNyZWF0ZSIsInpla29kZXItemVzdHVkaW8tYXBwX3ZlcnNpb24tbGlzdCIsInpla29kZXItemVzdHVkaW8tZW52aXJvbm1lbnQtY3JlYXRlIiwiemVrb2Rlci16ZXN0dWRpby1wcm92aWRlci1jcmVhdGUiLCJ6ZWtvZGVyLXplc3R1ZGlvLXByb3ZpZGVyLWdldCIsInpla29kZXItemVzdHVkaW8tcHJvdmlkZXItbGlzdCIsInpla29kZXItemVzdHVkaW8tc29sdXRpb24tY3JlYXRlIl0sImdyb3VwcyI6WyJ1c2VyIl0sImNyZWF0ZWRfYXQiOiIyMDIyLTExLTI1IDE0OjU5OjUyIiwibGFzdF9sb2dpbl9hdCI6IjIwMjItMTItMDEgMDM6NTk6MzIiLCJsYXN0X3VwZGF0ZV9hdCI6IjIwMjItMTEtMjUgMTQ6NTk6NTIifQ.nfbBFeeWYIIAswEzZzu6u3oeE-vcPa50CCRGkEenOO4"
+def redis_call(user_id):
+    try:
+        if hget_redis(prefix_access, "map_exp"):
+            current_time = datetime.now()
+            expire_time = hget_redis(prefix_access, "map_exp")
+            expire_time = expire_time.split('.')
+            expire_time = datetime.strptime(expire_time[0], "%Y-%m-%d %H:%M:%S")
+
+            if current_time > expire_time:
+                redi.delete(prefix_access)
+                print(hget_redis(prefix_access, "map_exp"))
+
+                print('You are not allowed to get refresh token')
+            else:
+                print('Generate Refresh token')
+        else:
+            return 'No Data !'
+
+    except Exception as e:
+        print(e)
+
+
+redis_call(12345)

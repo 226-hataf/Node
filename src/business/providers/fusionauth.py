@@ -1,4 +1,5 @@
-import datetime
+from datetime import datetime, timedelta
+import redis
 import os
 import json
 import uuid
@@ -7,7 +8,7 @@ from fusionauth.fusionauth_client import FusionAuthClient
 from business.models.users import User, LoginResponseModel
 from core import log
 import requests
-from redis_service.redis_service import set_redis, get_redis
+from redis_service.redis_service import set_redis, get_redis, hset_redis, check_permission_refresh_token
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 import jwt
@@ -55,9 +56,9 @@ class ProviderFusionAuth(Provider):
         if response.get('lastName'):
             full_name = f"{full_name} {response.get('lastName')}"
 
-        last_login_at = datetime.datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
-        last_update_at = datetime.datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
-        created_at = datetime.datetime.fromtimestamp(response['insertInstant'] / 1000)
+        last_login_at = datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
+        last_update_at = datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
+        created_at = datetime.fromtimestamp(response['insertInstant'] / 1000)
 
         roles = []
         groups = []
@@ -102,10 +103,10 @@ class ProviderFusionAuth(Provider):
         if response.get('lastName'):
             full_name = f"{full_name} {response.get('lastName')}"
 
-        last_login_at = datetime.datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
-        last_update_at = datetime.datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
-        created_at = datetime.datetime.fromtimestamp(response['insertInstant'] / 1000)
-        exp = datetime.datetime.now() + datetime.timedelta(hours=1)
+        last_login_at = datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
+        last_update_at = datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
+        created_at = datetime.fromtimestamp(response['insertInstant'] / 1000)
+        exp = datetime.now() + timedelta(minutes=1)
 
         payload = dict(
             aud=aud,
@@ -126,20 +127,28 @@ class ProviderFusionAuth(Provider):
             last_update_at=str(last_update_at).split(".")[0],
 
         )
-        access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
-        return access_token, exp
+        try:
+            access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+            ip_address = requests.get('https://api64.ipify.org?format=json').json()
+            hset_redis(f"{access_token.decode()}", f"{access_token.decode()}", f"{ip_address['ip']}", f"{exp}")
+            return access_token, exp
+        except Exception as e:
+            log.error(e)
+            raise e
 
     def _cast_login_model(self, response: dict) -> object:
         access_token, expiration_time = self._jwt_generate(response['user'])
+        test_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhYzUzMjliOC05Y2Q3LTQ5Y2UtYjY5Yy03NGI2OTcwMDNjNmIiLCJleHAiOjE2Njk4Njg0MTQsImlzcyI6Imh0dHBzOi8vYWNjb3VudHMuZGV2Lnpla29kZXIubmV0Iiwic3ViIjoiZTUxN2U4NjMtMDZiMC00NzlmLWJmMzAtMTk5NmEyZmRlYTIwIiwiZW1haWwiOiJ1c2VyQHRlc3QuY29tIiwidXNlcm5hbWUiOiJ1c2VyQHRlc3QuY29tIiwidmVyaWZpZWQiOnRydWUsInVzZXJfc3RhdHVzIjp0cnVlLCJmaXJzdF9uYW1lIjoiVXNlciIsImxhc3RfbmFtZSI6IlRlc3QiLCJmdWxsX25hbWUiOiJVc2VyIFRlc3QiLCJyb2xlcyI6WyJ6ZWtvZGVyLXplc3R1ZGlvLWFwcC1nZXQiLCJ6ZWtvZGVyLXplc3R1ZGlvLWFwcF92ZXJzaW9uLWNyZWF0ZSIsInpla29kZXItemVzdHVkaW8tYXBwX3ZlcnNpb24tbGlzdCIsInpla29kZXItemVzdHVkaW8tZW52aXJvbm1lbnQtY3JlYXRlIiwiemVrb2Rlci16ZXN0dWRpby1wcm92aWRlci1jcmVhdGUiLCJ6ZWtvZGVyLXplc3R1ZGlvLXByb3ZpZGVyLWdldCIsInpla29kZXItemVzdHVkaW8tcHJvdmlkZXItbGlzdCIsInpla29kZXItemVzdHVkaW8tc29sdXRpb24tY3JlYXRlIl0sImdyb3VwcyI6WyJ1c2VyIl0sImNyZWF0ZWRfYXQiOiIyMDIyLTExLTI1IDE0OjU5OjUyIiwibGFzdF9sb2dpbl9hdCI6IjIwMjItMTItMDEgMDQ6MTk6MTMiLCJsYXN0X3VwZGF0ZV9hdCI6IjIwMjItMTEtMjUgMTQ6NTk6NTIifQ.P5F3GncFeSTMFhLQUAfowcaQxxII7-5e4Zrh1P4Q5Eg"
+        check_permission_refresh_token(test_token)
+
         full_name = response['user'].get('firstName')
 
         if response['user'].get('lastName'):
             full_name = f"{full_name} {response['user'].get('lastName')}"
 
-        last_login_at = datetime.datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
-        last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
-        created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
-        expiration_time = datetime.datetime.fromtimestamp(response['tokenExpirationInstant'] / 1000)
+        last_login_at = datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
+        last_update_at = datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
+        created_at = datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
 
         roles = []
         groups = []
