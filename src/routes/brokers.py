@@ -15,7 +15,6 @@ load_dotenv()
 router = APIRouter()
 
 
-
 model = ZKModel(**{
         "name": 'broker',
         "plural": 'brokers',
@@ -34,7 +33,7 @@ async def google():
     redirect_url = os.environ.get('GOOGLE_REDIRECT_URL')
     app_id = os.environ.get('GOOGLE_APP_ID')
     response_type = 'code'
-    scope = 'email+profile'
+    scope = 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
     url = f'https://accounts.google.com/o/oauth2/v2/auth?' \
           f'client_id={app_id}&redirect_uri={redirect_url}&response_type={response_type}&scope={scope}'
     return url

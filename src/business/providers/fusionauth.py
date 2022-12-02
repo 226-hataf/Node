@@ -86,7 +86,7 @@ class ProviderFusionAuth(Provider):
 
     def _jwt_generate(self, response: dict):
         jwt_secret_key = os.environ['JWT_SECRET_KEY']
-        ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('TOKEN_EXPIRY_MINUTES')
+        ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
 
         roles = []
         groups = []
