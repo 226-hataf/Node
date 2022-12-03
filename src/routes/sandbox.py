@@ -1,21 +1,16 @@
-@router.get('/google/callback', tags=[model.name])
-async def call_back_google(request: Request):
-    code = request.query_params['code']
-    google_client_id = os.environ.get('GOOGLE_APP_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    google_redirect_uri = os.environ.get('GOOGLE_REDIRECT_URL')
-    aud = os.environ.get('GOOGLE_APP_ID')
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-    }
-    data = f'code={code}' \
-           f'&client_id={google_client_id}' \
-           f'&client_secret={client_secret}' \
-           f'&redirect_uri={google_redirect_uri}' \
-           f'&grant_type=authorization_code'
+user = {
+    "id": "107479655505797",
+    "first_name": "Alper",
+    "last_name": "Uygur",
+    "name": "Alper Uygur",
+    "picture": {
+        "data": {
+            "height": 50,
+            "is_silhouette": True,
+            "url": "https://scontent.fsaw2-1.fna.fbcdn.net/v/t1.30497-1/84628273_176159830277856_972693363922829312_n.jpg?stp=c15.0.50.50a_cp0_dst-jpg_p50x50&_nc_cat=1&ccb=1-7&_nc_sid=12b3be&_nc_ohc=pMQYAPoAokEAX98ljrW&_nc_ht=scontent.fsaw2-1.fna&edm=AP4hL3IEAAAA&oh=00_AfDciXYtDKywne2IpqUNW0bNFRmCqo6yV9GWWqfBp7MMrg&oe=63B31199",
+            "width": 50
+        }
+    },
+    "email": "a.uygur@cyberneticlabs.io"
+}
 
-    response = requests.post('https://oauth2.googleapis.com/token', headers=headers, data=data)
-    data = response.json()
-    access_token = data['id_token']
-    data_jwt = jwt.decode(access_token, audience=aud, options={"verify_signature": False})
-    return data_jwt
