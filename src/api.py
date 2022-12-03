@@ -142,6 +142,21 @@ async def verify(token: str):
         raise HTTPException(401, "failed token verification")
 
 
+@app.post('/refresh_token')
+async def refresh_token(token: str):
+    """
+    Generates refresh tokens
+    :param token(access_token):
+    :return: refresh_token
+    """
+    try:
+        result = auth_provider.refreshtoken(token)
+        return result
+    except InvalidTokenError as e:
+        log.error(e)
+        raise HTTPException(status_code=403, detail=f"Your refresh_token cannot be created !")
+
+
 # load all routes dynamically
 for module in os.listdir(f"{os.path.dirname(__file__)}/routes"):
     if module == '__init__.py' or module[-3:] != '.py':

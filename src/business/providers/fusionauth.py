@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 import os
 import json
 import uuid
@@ -7,7 +7,7 @@ from fusionauth.fusionauth_client import FusionAuthClient
 from business.models.users import User, LoginResponseModel
 from core import log
 import requests
-from redis_service.redis_service import set_redis, get_redis
+from redis_service.redis_service import set_redis, get_redis, hset_redis, check_permission_refresh_token, hget_redis
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 import jwt
@@ -55,9 +55,9 @@ class ProviderFusionAuth(Provider):
         if response.get('lastName'):
             full_name = f"{full_name} {response.get('lastName')}"
 
-        last_login_at = datetime.datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
-        last_update_at = datetime.datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
-        created_at = datetime.datetime.fromtimestamp(response['insertInstant'] / 1000)
+        last_login_at = datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
+        last_update_at = datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
+        created_at = datetime.fromtimestamp(response['insertInstant'] / 1000)
 
         roles = []
         groups = []
@@ -86,6 +86,8 @@ class ProviderFusionAuth(Provider):
 
     def _jwt_generate(self, response: dict):
         jwt_secret_key = os.environ['JWT_SECRET_KEY']
+        ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
+
         roles = []
         groups = []
         aud = ''
@@ -102,10 +104,10 @@ class ProviderFusionAuth(Provider):
         if response.get('lastName'):
             full_name = f"{full_name} {response.get('lastName')}"
 
-        last_login_at = datetime.datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
-        last_update_at = datetime.datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
-        created_at = datetime.datetime.fromtimestamp(response['insertInstant'] / 1000)
-        exp = datetime.datetime.now() + datetime.timedelta(hours=1)
+        last_login_at = datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
+        last_update_at = datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
+        created_at = datetime.fromtimestamp(response['insertInstant'] / 1000)
+        exp = datetime.now() + timedelta(minutes=float(ACCESS_TOKEN_EXPIRY_MINUTES))
 
         payload = dict(
             aud=aud,
@@ -126,8 +128,122 @@ class ProviderFusionAuth(Provider):
             last_update_at=str(last_update_at).split(".")[0],
 
         )
-        access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
-        return access_token, exp
+        try:
+            access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+            ip_address = "85.65.125.458"  # for just now
+            hset_redis(f"{access_token.decode()}", f"{access_token.decode()}", f"{aud}", f"{ip_address}", f"{exp}")
+            return access_token, exp
+        except Exception as e:
+            log.error(e)
+            raise e
+
+    def _cast_login_model_new(self, response: dict) -> object:
+        """
+
+        NOTE: For every social provider, use flag like(Google, twitter, facebook) to know where is response coming from.
+                Because responses are not same for all social providers
+        TWITTER NOTE: Twitter response doesn't have first_name and last_name options. For that reason we assign screen_name
+                fields to first_name and last_name
+        :param response:
+        :return:
+        """
+        jwt_secret_key = os.environ['JWT_SECRET_KEY']
+        ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
+
+        if 'google' in response.keys():  # Flag google
+            googleResponse = response['google']
+            email = googleResponse['email'] if 'email' in googleResponse.keys() else ""
+            avatar_url = googleResponse['picture'] if 'picture' in googleResponse.keys() else ""
+            first_name = googleResponse['given_name'] if 'given_name' in googleResponse.keys() else ""
+            last_name = googleResponse['family_name'] if 'family_name' in googleResponse.keys() else ""
+            full_name = googleResponse[
+                'name'] if 'name' in googleResponse.keys() else f"{googleResponse['given_name']} {googleResponse['family_name']}"
+        elif 'facebook' in response.keys():
+            facebookResponse = response['facebook']
+            email = facebookResponse['email'] if 'email' in facebookResponse.keys() else ""
+            avatar_url = facebookResponse['picture']['data']['url'] if 'picture' in facebookResponse.keys() else ""
+            first_name = facebookResponse['first_name'] if 'first_name' in facebookResponse.keys() else ""
+            last_name = facebookResponse['last_name'] if 'last_name' in facebookResponse.keys() else ""
+            full_name = facebookResponse[
+                'name'] if 'name' in facebookResponse.keys() else f"{facebookResponse['first_name']} {facebookResponse['last_name']}"
+        elif 'twitter' in response.keys():
+            twitterResponse = response['twitter']
+            email = twitterResponse['email'] if 'email' in twitterResponse.keys() else ""
+            avatar_url = twitterResponse['profile_image_url_https'] if 'profile_image_url_https' in twitterResponse.keys() else ""
+            first_name = twitterResponse['screen_name'] if 'screen_name' in twitterResponse.keys() else ""
+            last_name = twitterResponse['screen_name'] if 'screen_name' in twitterResponse.keys() else ""
+            full_name = twitterResponse[
+                'name'] if 'name' in twitterResponse.keys() else f"{twitterResponse['screen_name']} {twitterResponse['screen_name']}"
+
+        else:
+            email = ''
+            avatar_url = ''
+            first_name = ''
+            last_name = ''
+            full_name = ''
+
+        user_id = int(uuid.uuid4())
+        uid = user_id
+        verified = True
+        last_login_at = "Not Created"
+        last_update_at = "Not Created"
+        created_at = "Not Created"
+        roles = ['Not Created']
+        groups = ['Not Created']
+
+        payload = dict(
+            aud='ZeAuth',
+            exp=datetime.now() + timedelta(minutes=float(ACCESS_TOKEN_EXPIRY_MINUTES)),
+            iss=os.environ.get('FUSIONAUTH_URL'),
+            sub=user_id,
+            email=email,
+            username=email,
+            verified=verified,
+            user_status=True,
+            avatar_url=avatar_url,
+            first_name=first_name,
+            last_name=last_name,
+            full_name=full_name,
+            roles=roles,
+            groups=groups,
+            created_at=created_at,
+            last_login_at=last_login_at,
+            last_update_at=last_update_at,
+        )
+        try:
+            access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+            ip_address = "85.65.125.458"  # for just now
+            hset_redis(f"{access_token.decode()}",
+                       f"{access_token.decode()}",
+                       f"{payload['aud']}",
+                       f"{ip_address}",
+                       f"{payload['exp']}")
+
+            return LoginResponseModel(
+                user=User(
+                    id=user_id,
+                    email=payload['email'],
+                    first_name=payload['first_name'],
+                    last_name=payload['last_name'],
+                    full_name=payload['full_name'],
+                    username=payload['username'],
+                    verified=payload['verified'],
+                    user_status=payload['user_status'],
+                    avatar_url=payload['avatar_url'],
+                    created_at=payload['created_at'],
+                    last_login_at=payload['last_login_at'],
+                    last_update_at=payload['last_update_at'],
+                    roles=payload['roles'],
+                    groups=payload['groups']
+                ),
+                uid=uid,
+                accessToken=access_token,
+                refreshToken='',
+                expirationTime=payload['exp']
+            )
+        except Exception as e:
+            log.error(e)
+            raise e
 
     def _cast_login_model(self, response: dict) -> object:
         access_token, expiration_time = self._jwt_generate(response['user'])
@@ -136,10 +252,9 @@ class ProviderFusionAuth(Provider):
         if response['user'].get('lastName'):
             full_name = f"{full_name} {response['user'].get('lastName')}"
 
-        last_login_at = datetime.datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
-        last_update_at = datetime.datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
-        created_at = datetime.datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
-        expiration_time = datetime.datetime.fromtimestamp(response['tokenExpirationInstant'] / 1000)
+        last_login_at = datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
+        last_update_at = datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
+        created_at = datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
 
         roles = []
         groups = []
@@ -355,3 +470,30 @@ class ProviderFusionAuth(Provider):
             log.error(error_template.format(type(err).__name__, str(err)))
             log.debug(err)
             raise InvalidTokenError('failed token verification') from err
+
+    def refreshtoken(self, token: str):
+        """
+        If check_permission_refresh_token() returns true, refresh_token is allowed to be created.
+        After the data returned from access_token is jwt.decode,
+        the exp date in the data is extended for the desired time and the data is jwt.encode again
+        and the refresh_token creation process is completed.
+        :param token:
+        :return: generated refresh token
+        """
+        try:
+            self.setup_fusionauth()
+            jwt_secret_key = os.environ['JWT_SECRET_KEY']
+            refresh_token_exp = datetime.now() + timedelta(
+                minutes=float(os.environ.get('REFRESH_TOKEN_EXPIRY_MINUTES')))
+            verify_token_request = check_permission_refresh_token(token)
+            if verify_token_request:
+                aud = hget_redis(f"zekoder-{token}", "map_aud")
+                data = jwt.decode(token, key=jwt_secret_key, audience=aud, options={"verify_signature": False})
+                data['exp'] = refresh_token_exp
+                refresh_token = jwt.encode(data, key=jwt_secret_key, algorithm="HS256")
+                return {"refresh_token": refresh_token}
+            else:
+                raise InvalidTokenError('failed refresh token request')
+        except Exception as err:
+            log.error(err)
+            raise err
