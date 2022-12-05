@@ -1,4 +1,7 @@
 from dotenv import load_dotenv
+
+from config.db import get_db
+
 load_dotenv()
 import os
 import importlib
@@ -13,6 +16,8 @@ from business.providers import get_provider
 from business import User
 from core import log
 from fastapi.responses import JSONResponse
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 app = FastAPI(title="ZeAuth")
 
@@ -33,9 +38,9 @@ async def root():
 
 
 @app.post('/signup', status_code=201, response_model=User, response_model_exclude={"password"})
-async def signup(user: User):
+async def signup(user: User, db: Session = Depends(get_db)):
     try:
-        signed_up_user = await auth_provider.signup(user=user)
+        signed_up_user = await auth_provider.signup(user=user, db=db)
         return signed_up_user.dict()
     except PasswordPolicyError as e:
         log.debug(e)

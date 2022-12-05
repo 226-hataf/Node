@@ -22,7 +22,7 @@ class Provider:
             user.first_name, user.last_name = user.full_name.split(' ')
         return user
 
-    def signup(self, user: User):
+    def signup(self, user: User, db):
         log.error(f"method signup not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
     def login(self, email: str, password: str):
