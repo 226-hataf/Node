@@ -1,7 +1,7 @@
 import redis
 import os
 from core import log
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 
 redi = redis.Redis(
     host=os.environ.get('REDIS_HOST', 'localhost'),
@@ -36,10 +36,10 @@ def hset_redis(key, access_token, aud, ip, expiry_time):
     try:
         key = f"{REDIS_KEY_PREFIX}-{key}"
         res = redi.hset(key, mapping={"map_access_token": access_token, "map_aud": aud, "map_ip": ip, "map_exp": expiry_time})
-
         if type(res) is not int:
             log.debug(f"cannot write access token <{key}>to redis")
-
+        else:
+            log.debug(f"token successfully created <{key}>to redis")
     except Exception as e:
         log.error(e)
         raise e
@@ -78,7 +78,7 @@ def check_permission_refresh_token(prefix_access):
     key = f"{REDIS_KEY_PREFIX}-{prefix_access}"  # this key format will be changed
     try:
         if hget_redis(key, "map_exp"):
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc)
             expire_duration = hget_redis(key, "map_exp")
             expire_duration = expire_duration.split('.')
             expire_duration = datetime.strptime(expire_duration[0], "%Y-%m-%d %H:%M:%S")
