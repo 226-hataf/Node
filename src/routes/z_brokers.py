@@ -77,7 +77,7 @@ async def facebook():
     try:
         redirect_url = os.environ.get('FACEBOOK_REDIRECT_URL')
         app_id = os.environ.get('FACEBOOK_APP_ID')
-        scope = 'email'  # IMPORTANT: IEven if you have given the permissions(public_profile, email) from within the app,
+        scope = 'public_profile,email'  # IMPORTANT: IEven if you have given the permissions(public_profile, email) from within the app,
         # the e-mail address will not be returned to you. Scope must be used in the link to get this.
         url = f'https://www.facebook.com/v15.0/dialog/oauth?' \
               f'client_id={app_id}&redirect_uri={redirect_url}&scope={scope}'
@@ -110,7 +110,7 @@ async def call_back(request: Request):
         access_token = access['access_token']
         data_user = f'access_token={access_token}' \
                     f'&fields={fields}'
-        user_data = requests.post('https://graph.facebook.com/v15.0/oauth/access_token',
+        user_data = requests.post('https://graph.facebook.com/me',
                                   headers=headers,
                                   data=data_user)
         user = user_data.json()

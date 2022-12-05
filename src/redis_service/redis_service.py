@@ -34,8 +34,12 @@ def hset_redis(key, access_token, aud, ip, expiry_time):
     :return:
     """
     try:
-        redi.hset(f"{REDIS_KEY_PREFIX}-{key}",
-                  mapping={"map_access_token": access_token, "map_aud": aud, "map_ip": ip, "map_exp": expiry_time})
+        key = f"{REDIS_KEY_PREFIX}-{key}"
+        res = redi.hset(key, mapping={"map_access_token": access_token, "map_aud": aud, "map_ip": ip, "map_exp": expiry_time})
+
+        if type(res) is not int:
+            log.debug(f"cannot write access token <{key}>to redis")
+
     except Exception as e:
         log.error(e)
         raise e
