@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import json
 import uuid
@@ -139,7 +139,6 @@ class ProviderFusionAuth(Provider):
 
     def _cast_login_model_new(self, response: dict) -> object:
         """
-
         NOTE: For every social provider, use flag like(Google, twitter, facebook) to know where is response coming from.
                 Because responses are not same for all social providers
         TWITTER NOTE: Twitter response doesn't have first_name and last_name options. For that reason we assign screen_name
@@ -193,7 +192,7 @@ class ProviderFusionAuth(Provider):
 
         payload = dict(
             aud='ZeAuth',
-            exp=datetime.now() + timedelta(minutes=float(ACCESS_TOKEN_EXPIRY_MINUTES)),
+            exp=datetime.now(timezone.utc) + timedelta(minutes=float(ACCESS_TOKEN_EXPIRY_MINUTES)),
             iss=os.environ.get('FUSIONAUTH_URL'),
             sub=user_id,
             email=email,
@@ -483,7 +482,7 @@ class ProviderFusionAuth(Provider):
         try:
             self.setup_fusionauth()
             jwt_secret_key = os.environ['JWT_SECRET_KEY']
-            refresh_token_exp = datetime.now() + timedelta(
+            refresh_token_exp = datetime.now(timezone.utc) + timedelta(
                 minutes=float(os.environ.get('REFRESH_TOKEN_EXPIRY_MINUTES')))
             verify_token_request = check_permission_refresh_token(token)
             if verify_token_request:
