@@ -28,11 +28,11 @@ spec:
           - name: FRONTEND_REDIRECT_URL
             value: "https://zekoder.netlify.app/auth/verifysociallogin"
           - name: GOOGLE_REDIRECT_URL
-            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/z_brokers/google/callback"
+            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/google/callback"
           - name: TWITTER_REDIRECT_URL
-            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/z_brokers/twitter/callback"
+            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/twitter/callback"
           - name: FACEBOOK_REDIRECT_URL
-            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/z_brokers/facebook/callback"
+            value: "https://zekoder-zeauth-dev-25ahf2meja-uc.a.run.app/brokers/facebook/callback"
           - name: FACEBOOK_APP_ID
             value: "1272065640312998"
           - name: FACEBOOK_CLIENT_SECRET

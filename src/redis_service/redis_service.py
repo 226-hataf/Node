@@ -24,45 +24,40 @@ def get_redis(key):
 
 
 def hset_redis(key,
-                refresh_token,
-                aud,
-                ip,
-                iss,
-                sub,
-                email,
-                username,
-                verified,
-                avatar_url,
-                first_name,
-                last_name,
-                full_name,
-                roles,
-                groups,
-                expiry_time):
-
+               refresh_token,
+               aud,
+               ip,
+               iss,
+               sub,
+               email,
+               username,
+               verified,
+               avatar_url,
+               first_name,
+               last_name,
+               full_name,
+               roles,
+               groups,
+               expiry_time):
     try:
         key = f"{REDIS_KEY_PREFIX}-{key}"
-        res = redi.hset(key, mapping=
-                {
-                    "map_refresh_token": refresh_token,
-                    "map_aud": aud,
-                    "map_ip": ip,
-                    "map_iss": iss,
-                    "map_sub": sub,
-                    "map_email": email,
-                    "map_username": username,
-                    "map_verified": verified,
-                    "map_avatar_url": avatar_url,
-                    "map_first_name": first_name,
-                    "map_last_name": last_name,
-                    "map_full_name": full_name,
-                    "map_roles": roles,
-                    "map_groups": groups
-
-
+        res = redi.hset(key, mapping={
+            "map_refresh_token": refresh_token,
+            "map_aud": aud,
+            "map_ip": ip,
+            "map_iss": iss,
+            "map_sub": sub,
+            "map_email": email,
+            "map_username": username,
+            "map_verified": verified,
+            "map_avatar_url": avatar_url,
+            "map_first_name": first_name,
+            "map_last_name": last_name,
+            "map_full_name": full_name,
+            "map_roles": roles,
+            "map_groups": groups
         })
-        redi.expire(key, expiry_time) #always seconds
-        log.debug(key)
+        redi.expire(key, expiry_time)
 
         if type(res) is not int:
             log.debug(f"cannot create access token <{key}> to redis")
@@ -96,6 +91,7 @@ def hgetall_redis(key):
         log.error(e)
         raise e
 
+
 def del_key(key):
     try:
         data = redi.delete(key)
@@ -106,4 +102,3 @@ def del_key(key):
     except Exception as e:
         log.error(e)
         raise e
-
