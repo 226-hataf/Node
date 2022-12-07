@@ -23,35 +23,57 @@ def get_redis(key):
     return redi.get(key).decode("utf-8")
 
 
-def hset_redis(key, access_token, aud, ip, expiry_time):
-    """
-    set for Redis parameters
-    :param key:
-    :param access_token:
-    :param aud:
-    :param ip:
-    :param expiry_time:
-    :return:
-    """
+def hset_redis(key,
+                refresh_token,
+                aud,
+                ip,
+                iss,
+                sub,
+                email,
+                username,
+                verified,
+                avatar_url,
+                first_name,
+                last_name,
+                full_name,
+                roles,
+                groups,
+                expiry_time):
+
     try:
         key = f"{REDIS_KEY_PREFIX}-{key}"
-        res = redi.hset(key, mapping={"map_access_token": access_token, "map_aud": aud, "map_ip": ip, "map_exp": expiry_time})
+        res = redi.hset(key, mapping=
+                {
+                    "map_refresh_token": refresh_token,
+                    "map_aud": aud,
+                    "map_ip": ip,
+                    "map_iss": iss,
+                    "map_sub": sub,
+                    "map_email": email,
+                    "map_username": username,
+                    "map_verified": verified,
+                    "map_avatar_url": avatar_url,
+                    "map_first_name": first_name,
+                    "map_last_name": last_name,
+                    "map_full_name": full_name,
+                    "map_roles": roles,
+                    "map_groups": groups
+
+
+        })
+        redi.expire(key, expiry_time) #always seconds
+        log.debug(key)
+
         if type(res) is not int:
-            log.debug(f"cannot write access token <{key}>to redis")
+            log.debug(f"cannot create access token <{key}> to redis")
         else:
-            log.debug(f"token successfully created <{key}>to redis")
+            log.debug(f"token successfully created <{key}> to redis")
     except Exception as e:
         log.error(e)
         raise e
 
 
 def hget_redis(key, field):
-    """
-    To get redis data by key and field name
-    :param key:
-    :param field:
-    :return: value
-    """
     try:
         data = redi.hget(key, field)
         if data:
@@ -63,32 +85,25 @@ def hget_redis(key, field):
         raise e
 
 
-def check_permission_refresh_token(prefix_access):
-    """
-    After the exp date is taken from the information from the access_token,
-    it is compared with the current time.
-    If the exp date is less than the current date then it is expired and the refresh_token is not allowed to be created.
-    And requested access_token will be deleted from Redis
-    This function provides control of this.
-    TODO: IP address will be added, REDIS_KEY_PREFIX (-) will be remove from text, ask Mr Ahmed again
-    :param prefix_access:
-    :param map_exp:
-    :return:
-    """
-    key = f"{REDIS_KEY_PREFIX}-{prefix_access}"  # this key format will be changed
+def hgetall_redis(key):
     try:
-        if hget_redis(key, "map_exp"):
-            current_time = datetime.now(timezone.utc)
-            expire_duration = hget_redis(key, "map_exp")
-            expire_duration = expire_duration.split('.')
-            expire_duration = datetime.strptime(expire_duration[0], "%Y-%m-%d %H:%M:%S")
-            if current_time > expire_duration:
-                redi.delete(key)
-                return False
-            else:
-                return True
+        data = redi.hgetall(key)
+        if data:
+            return data
         else:
-            log.debug('No Data !')
+            return {"No data"}
     except Exception as e:
         log.error(e)
         raise e
+
+def del_key(key):
+    try:
+        data = redi.delete(key)
+        if data:
+            return {f"deleted key <data> successfully"}
+        else:
+            return {f"Key could not deleted !!!"}
+    except Exception as e:
+        log.error(e)
+        raise e
+

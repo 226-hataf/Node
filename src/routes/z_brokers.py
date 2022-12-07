@@ -41,7 +41,7 @@ async def google():
         raise e
 
 
-@router.get('/google/callback', tags=[model.name], status_code=307, response_class=RedirectResponse)
+@router.get('/google/callback', tags=[model.name])
 async def call_back_google(request: Request):
     try:
         code = request.query_params['code']
@@ -64,9 +64,10 @@ async def call_back_google(request: Request):
         access_token = data['id_token']
         data_jwt = jwt.decode(access_token, audience=aud, options={"verify_signature": False})
         result = ProviderFusionAuth._cast_login_model_new(data_jwt, {'google': data_jwt})
-        result = result.json()
-        url = f"{frontend_redirect_url}?result={result}"
-        return url
+        #result = result.json()
+        #url = f"{frontend_redirect_url}?result={result}"
+        #return url
+        return result
     except Exception as e:
         log.error(e)
         raise e
