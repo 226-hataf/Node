@@ -54,9 +54,9 @@ async def signup(user: UserRequest, db: Session = Depends(get_db)):
 
 
 @app.post("/login")
-async def user_login(user_info: UserLoginSchema):
+async def user_login(user_info: UserLoginSchema, db: Session = Depends(get_db)):
     try:
-        return auth_provider.login(user_info)
+        return auth_provider.login(user_info, db=db)
     except InvalidCredentialsError as e:
         log.error(e)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records")

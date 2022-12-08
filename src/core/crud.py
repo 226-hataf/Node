@@ -11,6 +11,10 @@ def create_user(db: Session, user):
     return db_user
 
 
+def get_user_by_email(db: Session, email: str, password: str):
+    return db.query(models.User).filter(models.User.email == email, models.User.password == password).first()
+
+
 def create_role(db: Session, role):
     db_role = models.Role(**role)
     db.add(db_role)

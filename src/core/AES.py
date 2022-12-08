@@ -11,7 +11,8 @@ class AesStringCipher:
         self._key = hashlib.sha256(key.encode()).digest()
 
     def encrypt_str(self, raw: str) -> bytes:
-        iv = os.urandom(_BLOCK_SIZE)
+        # iv = os.urandom(_BLOCK_SIZE)
+        iv = b'Dz\x04e\x97p\x8a\xa3&\x1f|\x16m\xfdi\x9c'
         cipher = Cipher(algorithms.AES(self._key), modes.CBC(iv), default_backend())
         encryptor = cipher.encryptor()
         raw = _pad(raw)

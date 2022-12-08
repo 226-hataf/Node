@@ -25,7 +25,7 @@ class Provider:
     def signup(self, user: UserRequest, db):
         log.error(f"method signup not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
-    def login(self, email: str, password: str):
+    def login(self, email: str, password: str, db):
         log.error(f"method signin not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
     def delete_user(self, user_id: str):
