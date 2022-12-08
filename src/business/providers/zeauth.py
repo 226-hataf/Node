@@ -301,7 +301,7 @@ class ProviderFusionAuth(Provider):
             expirationTime=payload['expr']
         )
 
-    def login(self, user_info):
+    def login(self, user_info, db):
         self.setup_fusionauth()
         try:
             response = self.fusionauth_client.login({
@@ -320,7 +320,7 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    async def signup(self, user: User) -> User:
+    async def signup(self, user: User, db) -> User:
         self.setup_fusionauth()
         try:
             if len(user.password) >= 8 and 'string' not in user.password:

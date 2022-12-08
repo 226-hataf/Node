@@ -281,7 +281,7 @@ class ProviderKeycloak(Provider):
         clients = self.keycloak_admin.get_clients()
         return next((client["id"] for client in clients if client["clientId"] == os.environ.get('CLIENT_ID')), None)
 
-    async def signup(self, user: User) -> User:
+    async def signup(self, user: User, db) -> User:
         self.setup_keycloak()
         try:
             created_user = self._create_user_signup(email=user.email, username=user.email, firstname=user.first_name,
@@ -354,7 +354,7 @@ class ProviderKeycloak(Provider):
             expirationTime=response['expires_in'],
         )
 
-    def login(self, user_info):
+    def login(self, user_info, db):
         self.setup_keycloak()
         try:
             response = self.keycloak_openid.token(user_info.email, user_info.password, grant_type='password')
