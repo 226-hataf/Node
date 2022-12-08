@@ -2,7 +2,7 @@ import os
 from .keycloak import ProviderKeycloak
 from .firebase import ProviderFirebase
 from .fusionauth import ProviderFusionAuth
-
+from .zekoderauth import ProviderZekoderAuth
 
 
 def get_provider():
@@ -14,5 +14,7 @@ def get_provider():
         return ProviderFirebase()
     elif provider.upper() == 'KEYCLOAK':
         return ProviderKeycloak()
+    elif provider.upper() == 'ZEKODERAUTH':
+        return ProviderZekoderAuth()
     else:
         raise Exception(f"Unknwon provider <{provider}>")

@@ -4,6 +4,8 @@ from typing import Optional, Union, List
 from pydantic import BaseModel, validator, ValidationError
 from enum import Enum
 
+from pydantic.validators import datetime
+
 
 # from business.models.roles import Roles
 
@@ -39,9 +41,21 @@ class User(BaseModel):
     last_name: Optional[str]
     full_name: Optional[str]
     phone: Optional[str]
-    created_at: Optional[str]
-    last_login_at: Optional[str]
-    last_update_at: Optional[str]
+    created_at: Optional[datetime]
+    last_login_at: Optional[datetime]
+    update_at: Optional[datetime]
+    permissions: Optional[List[str]]
+
+
+class UserRequest(BaseModel):
+    email: str
+    roles: Optional[List[str]]
+    username: Optional[str]
+    password: Optional[str]
+    first_name: Optional[str]
+    last_name: Optional[str]
+    full_name: Optional[str]
+    phone: Optional[str]
     permissions: Optional[List[str]]
 
     @validator('email')
@@ -49,6 +63,12 @@ class User(BaseModel):
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             raise ValueError("invalid email format")
         return email
+
+    @validator('password')
+    def check_password(cls, password):
+        if not re.match(r"(?!^[0-9]*$)(?!^[a-z]*$)(?!^[A-Z]*$)^(.{8,15})$", password):
+            raise ValueError("invalid password format")
+        return password
 
 
 class Config:

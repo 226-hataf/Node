@@ -38,7 +38,7 @@ async def root():
 
 
 @app.post('/signup', status_code=201, response_model=User, response_model_exclude={"password"})
-async def signup(user: User, db: Session = Depends(get_db)):
+async def signup(user: UserRequest, db: Session = Depends(get_db)):
     try:
         signed_up_user = await auth_provider.signup(user=user, db=db)
         return signed_up_user.dict()
