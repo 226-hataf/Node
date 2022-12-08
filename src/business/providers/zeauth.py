@@ -213,6 +213,9 @@ class ProviderFusionAuth(Provider):
             raise e
 
     def _cast_login_model(self, response: dict) -> object:
+        ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
+        jwt_secret_key = os.environ['JWT_SECRET_KEY']
+
         full_name = response['user'].get('firstName')
 
         if response['user'].get('lastName'):
@@ -231,6 +234,51 @@ class ProviderFusionAuth(Provider):
                 group_name = self.get_group_name(x['groupId'])
                 groups.append(group_name)
 
+        generated_refresh_token = uuid.uuid4()
+        generated_refresh_token = str(generated_refresh_token).replace('-', '')
+
+        expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)  # Redis is reading from here, don't touch this and use this in Redis
+        expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
+        expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
+
+        payload = dict(
+            aud='ZeAuth',
+            expr=int(expr_in_payload),
+            iss=os.environ.get('FUSIONAUTH_URL'),
+            sub=response['user']['id'],
+            email=response['user']['email'],
+            username=response['user']['email'],
+            verified=response['user']['verified'],
+            user_status=True,
+            avatar_url='',
+            first_name=response['user'].get('firstName') if response['user'].get('firstName') is not '' else "",
+            last_name=response['user'].get('lastName'),
+            full_name=full_name,
+            roles=roles,
+            groups=groups,
+            created_at=int(created_at.timestamp()),
+            last_login_at=int(last_login_at.timestamp()),
+            last_update_at=int(last_update_at.timestamp()),
+        )
+        access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+        ip_address = "85.65.125.458"  # for just now
+        hset_redis(f"{generated_refresh_token}",
+                   f"{generated_refresh_token}",
+                   f"{payload['aud']}",
+                   f"{ip_address}",
+                   f"{payload['iss']}",
+                   f"{payload['sub']}",
+                   f"{payload['email']}",
+                   f"{payload['username']}",
+                   f"{payload['verified']}",
+                   f"{payload['avatar_url']}",
+                   f"{payload['first_name']}",
+                   f"{payload['last_name']}",
+                   f"{payload['full_name']}",
+                   f"{payload['roles']}",
+                   f"{payload['groups']}",
+                   f"{expr}")
+
         return LoginResponseModel(
             user=User(
                 id=response['user']['id'],
@@ -248,9 +296,9 @@ class ProviderFusionAuth(Provider):
                 full_name=full_name
             ),
             uid=response['user']['id'],
-            accessToken='',
-            refreshToken='',
-            expirationTime=''
+            accessToken=access_token,
+            refreshToken=generated_refresh_token,
+            expirationTime=payload['expr']
         )
 
     def login(self, user_info):

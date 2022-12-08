@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, Request, APIRouter
 from core import log
 from starlette.responses import RedirectResponse
-from business.providers.fusionauth import ProviderFusionAuth
+from business.providers.zeauth import ProviderFusionAuth
 import requests
 from core.types import ZKModel
 from dotenv import load_dotenv

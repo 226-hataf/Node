@@ -1,7 +1,7 @@
 import os
 from .keycloak import ProviderKeycloak
 from .firebase import ProviderFirebase
-from .fusionauth import ProviderFusionAuth
+from .zeauth import ProviderFusionAuth
 
 
 
