@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import os
 import json
 import uuid
@@ -7,7 +7,7 @@ from fusionauth.fusionauth_client import FusionAuthClient
 from business.models.users import User, LoginResponseModel
 from core import log
 import requests
-from redis_service.redis_service import set_redis, get_redis, hset_redis, check_permission_refresh_token, hget_redis
+from redis_service.redis_service import set_redis, get_redis, hset_redis, hget_redis, hgetall_redis, del_key
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 import jwt
@@ -84,60 +84,7 @@ class ProviderFusionAuth(Provider):
             full_name=full_name
         )
 
-    def _jwt_generate(self, response: dict):
-        jwt_secret_key = os.environ['JWT_SECRET_KEY']
-        ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
-
-        roles = []
-        groups = []
-        aud = ''
-
-        if len(response['registrations']) != 0:
-            roles = response['registrations'][0]['roles']
-            aud = response['registrations'][0]['applicationId']
-        if len(response['memberships']) != 0:
-            for x in response['memberships']:
-                group_name = self.get_group_name(x['groupId'])
-                groups.append(group_name)
-
-        full_name = response.get('firstName')
-        if response.get('lastName'):
-            full_name = f"{full_name} {response.get('lastName')}"
-
-        last_login_at = datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
-        last_update_at = datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
-        created_at = datetime.fromtimestamp(response['insertInstant'] / 1000)
-        exp = datetime.now() + timedelta(minutes=float(ACCESS_TOKEN_EXPIRY_MINUTES))
-
-        payload = dict(
-            aud=aud,
-            exp=exp,
-            iss=os.environ.get('FUSIONAUTH_URL'),
-            sub=response['id'],
-            email=response['email'],
-            username=response['email'],
-            verified=response['verified'],
-            user_status=response['active'],
-            first_name=response.get('firstName') if response.get('firstName') is not '' else "",
-            last_name=response.get('lastName'),
-            full_name=full_name,
-            roles=roles,
-            groups=groups,
-            created_at=str(created_at).split(".")[0],
-            last_login_at=str(last_login_at).split(".")[0],
-            last_update_at=str(last_update_at).split(".")[0],
-
-        )
-        try:
-            access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
-            ip_address = "85.65.125.458"  # for just now
-            hset_redis(f"{access_token.decode()}", f"{access_token.decode()}", f"{aud}", f"{ip_address}", f"{exp}")
-            return access_token, exp
-        except Exception as e:
-            log.error(e)
-            raise e
-
-    def _cast_login_model_new(self, response: dict) -> object:
+    def _social_login_model(self, response: dict) -> object:
         """
         NOTE: For every social provider, use flag like(Google, twitter, facebook) to know where is response coming from.
                 Because responses are not same for all social providers
@@ -168,12 +115,12 @@ class ProviderFusionAuth(Provider):
         elif 'twitter' in response.keys():
             twitterResponse = response['twitter']
             email = twitterResponse['email'] if 'email' in twitterResponse.keys() else ""
-            avatar_url = twitterResponse['profile_image_url_https'] if 'profile_image_url_https' in twitterResponse.keys() else ""
+            avatar_url = twitterResponse[
+                'profile_image_url_https'] if 'profile_image_url_https' in twitterResponse.keys() else ""
             first_name = twitterResponse['screen_name'] if 'screen_name' in twitterResponse.keys() else ""
             last_name = twitterResponse['screen_name'] if 'screen_name' in twitterResponse.keys() else ""
             full_name = twitterResponse[
                 'name'] if 'name' in twitterResponse.keys() else f"{twitterResponse['screen_name']} {twitterResponse['screen_name']}"
-
         else:
             email = ''
             avatar_url = ''
@@ -181,18 +128,29 @@ class ProviderFusionAuth(Provider):
             last_name = ''
             full_name = ''
 
-        user_id = int(uuid.uuid4())
+        generated_user_id = uuid.uuid4()  # Only generate one time then use this for the login user, we should put this DB later !!!!!
+        generated_user_id = str(generated_user_id).replace('-', '')
+        generated_refresh_token = uuid.uuid4()
+        generated_refresh_token = str(generated_refresh_token).replace('-', '')
+
+        expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)  # Redis is reading from here, don't touch this and use this in Redis
+        expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES))) # Don't add redis expr here, use like this.
+        expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
+
+        user_id = generated_user_id
         uid = user_id
         verified = True
+
         last_login_at = "Not Created"
         last_update_at = "Not Created"
-        created_at = "Not Created"
-        roles = ['Not Created']
-        groups = ['Not Created']
+        created_at = datetime.utcnow()
+
+        roles = []  # This will come from DB
+        groups = []  # This will come from DB
 
         payload = dict(
             aud='ZeAuth',
-            exp=datetime.now(timezone.utc) + timedelta(minutes=float(ACCESS_TOKEN_EXPIRY_MINUTES)),
+            expr=int(expr_in_payload),
             iss=os.environ.get('FUSIONAUTH_URL'),
             sub=user_id,
             email=email,
@@ -205,19 +163,29 @@ class ProviderFusionAuth(Provider):
             full_name=full_name,
             roles=roles,
             groups=groups,
-            created_at=created_at,
+            created_at=int(created_at.timestamp()),
             last_login_at=last_login_at,
             last_update_at=last_update_at,
         )
         try:
             access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
             ip_address = "85.65.125.458"  # for just now
-            hset_redis(f"{access_token.decode()}",
-                       f"{access_token.decode()}",
+            hset_redis(f"{generated_refresh_token}",
+                       f"{generated_refresh_token}",
                        f"{payload['aud']}",
                        f"{ip_address}",
-                       f"{payload['exp']}")
-
+                       f"{payload['iss']}",
+                       f"{payload['sub']}",
+                       f"{payload['email']}",
+                       f"{payload['username']}",
+                       f"{payload['verified']}",
+                       f"{payload['avatar_url']}",
+                       f"{payload['first_name']}",
+                       f"{payload['last_name']}",
+                       f"{payload['full_name']}",
+                       f"{payload['roles']}",
+                       f"{payload['groups']}",
+                       f"{expr}")
             return LoginResponseModel(
                 user=User(
                     id=user_id,
@@ -237,15 +205,17 @@ class ProviderFusionAuth(Provider):
                 ),
                 uid=uid,
                 accessToken=access_token,
-                refreshToken='',
-                expirationTime=payload['exp']
+                refreshToken=generated_refresh_token,
+                expirationTime=payload['expr']
             )
         except Exception as e:
             log.error(e)
             raise e
 
     def _cast_login_model(self, response: dict) -> object:
-        access_token, expiration_time = self._jwt_generate(response['user'])
+        ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
+        jwt_secret_key = os.environ['JWT_SECRET_KEY']
+
         full_name = response['user'].get('firstName')
 
         if response['user'].get('lastName'):
@@ -263,6 +233,51 @@ class ProviderFusionAuth(Provider):
             for x in response['user']['memberships']:
                 group_name = self.get_group_name(x['groupId'])
                 groups.append(group_name)
+
+        generated_refresh_token = uuid.uuid4()
+        generated_refresh_token = str(generated_refresh_token).replace('-', '')
+
+        expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)  # Redis is reading from here, don't touch this and use this in Redis
+        expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
+        expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
+
+        payload = dict(
+            aud='ZeAuth',
+            expr=int(expr_in_payload),
+            iss=os.environ.get('FUSIONAUTH_URL'),
+            sub=response['user']['id'],
+            email=response['user']['email'],
+            username=response['user']['email'],
+            verified=response['user']['verified'],
+            user_status=True,
+            avatar_url='',
+            first_name=response['user'].get('firstName') if response['user'].get('firstName') is not '' else "",
+            last_name=response['user'].get('lastName'),
+            full_name=full_name,
+            roles=roles,
+            groups=groups,
+            created_at=int(created_at.timestamp()),
+            last_login_at=int(last_login_at.timestamp()),
+            last_update_at=int(last_update_at.timestamp()),
+        )
+        access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+        ip_address = "85.65.125.458"  # for just now
+        hset_redis(f"{generated_refresh_token}",
+                   f"{generated_refresh_token}",
+                   f"{payload['aud']}",
+                   f"{ip_address}",
+                   f"{payload['iss']}",
+                   f"{payload['sub']}",
+                   f"{payload['email']}",
+                   f"{payload['username']}",
+                   f"{payload['verified']}",
+                   f"{payload['avatar_url']}",
+                   f"{payload['first_name']}",
+                   f"{payload['last_name']}",
+                   f"{payload['full_name']}",
+                   f"{payload['roles']}",
+                   f"{payload['groups']}",
+                   f"{expr}")
 
         return LoginResponseModel(
             user=User(
@@ -282,8 +297,8 @@ class ProviderFusionAuth(Provider):
             ),
             uid=response['user']['id'],
             accessToken=access_token,
-            refreshToken='',
-            expirationTime=str(expiration_time)
+            refreshToken=generated_refresh_token,
+            expirationTime=payload['expr']
         )
 
     def login(self, user_info):
@@ -471,26 +486,62 @@ class ProviderFusionAuth(Provider):
             raise InvalidTokenError('failed token verification') from err
 
     def refreshtoken(self, token: str):
-        """
-        If check_permission_refresh_token() returns true, refresh_token is allowed to be created.
-        After the data returned from access_token is jwt.decode,
-        the exp date in the data is extended for the desired time and the data is jwt.encode again
-        and the refresh_token creation process is completed.
-        :param token:
-        :return: generated refresh token
-        """
+        jwt_secret_key = os.environ.get('JWT_SECRET_KEY')
+        REDIS_KEY_PREFIX = os.environ.get('REDIS_KEY_PREFIX')
+
+        REFRESH_TOKEN_EXPIRY_MINUTES = os.environ.get("REFRESH_TOKEN_EXPIRY_MINUTES")
+        redis_expr = 60 * int(REFRESH_TOKEN_EXPIRY_MINUTES) # Redis is reading from here, don't touch this and use this in Redis
+        expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(REFRESH_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
+        expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
+
+        generated_refresh_token = uuid.uuid4()
+        generated_refresh_token = str(generated_refresh_token).replace('-', '')
+        ip_address = "85.65.125.458" # This will be change !!!!
+
         try:
-            self.setup_fusionauth()
-            jwt_secret_key = os.environ['JWT_SECRET_KEY']
-            refresh_token_exp = datetime.now(timezone.utc) + timedelta(
-                minutes=float(os.environ.get('REFRESH_TOKEN_EXPIRY_MINUTES')))
-            verify_token_request = check_permission_refresh_token(token)
-            if verify_token_request:
-                aud = hget_redis(f"zekoder-{token}", "map_aud")
-                data = jwt.decode(token, key=jwt_secret_key, audience=aud, options={"verify_signature": False})
-                data['exp'] = refresh_token_exp
-                refresh_token = jwt.encode(data, key=jwt_secret_key, algorithm="HS256")
-                return {"refresh_token": refresh_token}
+            # Search for the key if it is exists
+            if hget_redis(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):
+                # Get data from Redis with refresh token
+                data = hgetall_redis(f"{REDIS_KEY_PREFIX}-{token}")
+                if data:
+                    data_dict = {k.decode(): v.decode() for k, v in data.items()}
+                    payload = dict(
+                        aud="ZeAuth",
+                        expr=int(expr_in_payload),
+                        iss=os.environ.get("FUSIONAUTH_URL"),
+                        sub=data_dict["map_sub"],
+                        email=data_dict["map_email"],
+                        username=data_dict["map_username"],
+                        verified=data_dict["map_verified"],
+                        avatar_url=data_dict["map_avatar_url"],
+                        first_name=data_dict["map_first_name"],
+                        last_name=data_dict["map_last_name"],
+                        full_name=data_dict["map_full_name"],
+                        roles=data_dict["map_roles"],
+                        groups=data_dict["map_groups"]
+                    )
+                    # new access_token generated from valid refresh_token request
+                    new_access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+                    # new access_token data added to Redis
+                    hset_redis(f"{generated_refresh_token}",
+                               f"{generated_refresh_token}",
+                               f"ZeAuth",
+                               f"{ip_address}",
+                               f"{os.environ.get('FUSIONAUTH_URL')}",
+                               f"{data_dict['map_sub']}",
+                               f"{data_dict['map_email']}",
+                               f"{data_dict['map_username']}",
+                               f"{data_dict['map_verified']}",
+                               f"{data_dict['map_avatar_url']}",
+                               f"{data_dict['map_first_name']}",
+                               f"{data_dict['map_last_name']}",
+                               f"{data_dict['map_full_name']}",
+                               f"{data_dict['map_roles']}",
+                               f"{data_dict['map_groups']}",
+                               f"{redis_expr}")
+                    # delete old refresh_token key and the data
+                    del_key(f"{REDIS_KEY_PREFIX}-{token}")
+                    return {'accessToken': new_access_token, 'refreshToken': generated_refresh_token}
             else:
                 raise InvalidTokenError('failed refresh token request')
         except Exception as err:
