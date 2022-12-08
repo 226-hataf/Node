@@ -183,7 +183,7 @@ def get_twitter_json(access_token_key, access_token_secret):
 
 def user_name_from_twitter(name, screen_name):
     try:
-        if name is not '' or screen_name is not '':
+        if name != '' or screen_name != '':
             name_data = name.split(' ')
             if len(name_data) > 1:
                 first_name, last_name = name_data
