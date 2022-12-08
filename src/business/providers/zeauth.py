@@ -5,16 +5,21 @@ import uuid
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
 from business.models.users import User, LoginResponseModel
-from core import log
+from sqlalchemy.exc import IntegrityError
+from core import log, crud
 import requests
 from redis_service.redis_service import set_redis, get_redis, hset_redis, hget_redis, hgetall_redis, del_key
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
+from core.AES import AesStringCipher
+from core.AES import AesStringCipher
 import jwt
 
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
 FUSIONAUTH_URL = os.environ.get('FUSIONAUTH_URL')
+AES_KEY = os.environ.get('AES_KEY')
+
 
 
 class ProviderFusionAuth(Provider):
@@ -22,6 +27,7 @@ class ProviderFusionAuth(Provider):
     def __init__(self) -> None:
         self.fusionauth_client = None
         self.setup_fusionauth()
+        self.aes = AesStringCipher(AES_KEY)
         super().__init__()
 
     def setup_fusionauth(self):
@@ -82,6 +88,22 @@ class ProviderFusionAuth(Provider):
             roles=roles,
             groups=groups,
             full_name=full_name
+        )
+
+    def _cast_user(self, user):
+        return User(
+            id=str(user.id),
+            email=user.email,
+            user_name=user.user_name,
+            verified=user.verified,
+            user_status=user.user_status,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            full_name=user.first_name + ' ' + user.last_name if user.last_name else '',
+            phone=user.phone,
+            last_login_at=user.last_login_at,
+            created_at=user.created_on,
+            update_at=user.updated_on
         )
 
     def _social_login_model(self, response: dict) -> object:
@@ -212,27 +234,27 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    def _cast_login_model(self, response: dict) -> object:
+    def _cast_login_model(self, user) -> object:
         ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
         jwt_secret_key = os.environ['JWT_SECRET_KEY']
 
-        full_name = response['user'].get('firstName')
+        full_name = user.first_name
 
-        if response['user'].get('lastName'):
-            full_name = f"{full_name} {response['user'].get('lastName')}"
+        if user.last_name:
+            full_name = f"{full_name} {user.last_name}"
 
-        last_login_at = datetime.fromtimestamp(response['user']['lastLoginInstant'] / 1000)
-        last_update_at = datetime.fromtimestamp(response['user']['lastUpdateInstant'] / 1000)
-        created_at = datetime.fromtimestamp(response['user']['insertInstant'] / 1000)
+        last_login_at = user.last_login_at
+        update_at = user.updated_on
+        created_at = user.created_on
 
         roles = []
         groups = []
-        if len(response['user']['registrations']) != 0:
-            roles = response['user']['registrations'][0]['roles']
-        if len(response['user']['memberships']) != 0:
-            for x in response['user']['memberships']:
-                group_name = self.get_group_name(x['groupId'])
-                groups.append(group_name)
+        # if len(response['user']['registrations']) != 0:
+        #     roles = response['user']['registrations'][0]['roles']
+        # if len(response['user']['memberships']) != 0:
+        #     for x in response['user']['memberships']:
+        #         group_name = self.get_group_name(x['groupId'])
+        #         groups.append(group_name)
 
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
@@ -245,20 +267,20 @@ class ProviderFusionAuth(Provider):
             aud='ZeAuth',
             expr=int(expr_in_payload),
             iss=os.environ.get('FUSIONAUTH_URL'),
-            sub=response['user']['id'],
-            email=response['user']['email'],
-            username=response['user']['email'],
-            verified=response['user']['verified'],
+            sub=str(user.id),
+            email=user.email,
+            username=user.user_name,
+            verified=user.verified,
             user_status=True,
             avatar_url='',
-            first_name=response['user'].get('firstName') if response['user'].get('firstName') is not '' else "",
-            last_name=response['user'].get('lastName'),
+            first_name=user.first_name,
+            last_name=user.last_name,
             full_name=full_name,
             roles=roles,
             groups=groups,
             created_at=int(created_at.timestamp()),
-            last_login_at=int(last_login_at.timestamp()),
-            last_update_at=int(last_update_at.timestamp()),
+            last_login_at=int(last_login_at.timestamp()) if last_login_at else None,
+            last_update_at=int(update_at.timestamp()) if update_at else None,
         )
         access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
         ip_address = "85.65.125.458"  # for just now
@@ -281,76 +303,66 @@ class ProviderFusionAuth(Provider):
 
         return LoginResponseModel(
             user=User(
-                id=response['user']['id'],
-                email=response['user']['email'],
-                username=response['user']['email'],
-                verified=response['user']['verified'],
-                user_status=response['user']['active'],
-                created_at=str(created_at).split(".")[0],
-                last_login_at=str(last_login_at).split(".")[0],
-                last_update_at=str(last_update_at).split(".")[0],
-                first_name=response['user'].get('firstName') if response['user'].get('firstName') is not '' else "",
-                last_name=response['user'].get('lastName'),
+                id=str(user.id),
+                email=user.email,
+                username=user.user_name,
+                verified=user.verified,
+                user_status=user.user_status,
+                created_at=user.created_on,
+                last_login_at=user.last_login_at,
+                update_at=user.updated_on,
+                first_name=user.first_name,
+                last_name=user.last_name,
                 roles=roles,
                 groups=groups,
                 full_name=full_name
             ),
-            uid=response['user']['id'],
+            uid=str(user.id),
             accessToken=access_token,
             refreshToken=generated_refresh_token,
             expirationTime=payload['expr']
         )
 
     def login(self, user_info, db):
-        self.setup_fusionauth()
         try:
-            response = self.fusionauth_client.login({
-                "applicationId": APPLICATION_ID,
-                "loginId": f'{user_info.email}',
-                "password": f'{user_info.password}'
-            })
-            if response.was_successful():
-                ip_address = requests.get('https://api64.ipify.org?format=json').json()
-                return self._cast_login_model(response.success_response)
-                # return {"data": response.success_response, "ip": ip_address["ip"]}
+            encrypted_password = self.aes.encrypt_str(raw=user_info.password)
+
+            if response := crud.get_user_by_email(db=db, email=user_info.email, password=str(encrypted_password)):
+                # return self._cast_user(response)
+                return self._cast_login_model(response)
             else:
-                # return {"e": response.error_response, "s": response.success_response}
                 raise InvalidCredentialsError('failed login')
         except Exception as e:
             log.error(e)
             raise e
 
     async def signup(self, user: User, db) -> User:
-        self.setup_fusionauth()
+        log.info("zeauth")
         try:
-            if len(user.password) >= 8 and 'string' not in user.password:
-                user_create = {
-                    'skipVerification': False,
-                    'user': {
-                        "email": user.email,
-                        "userName": user.email,
-                        "password": user.password,
-                        "firstName": user.first_name,
-                        "lastName": user.last_name,
-                    }
-                }
-                response = self.fusionauth_client.create_user(user_create)
-                if response.success_response:
-                    user_registration = self.fusionauth_client.register({
-                        "skipRegistrationVerification": False,
-                        "registration": {"applicationId": APPLICATION_ID}
-                    },
-                        user_id=response.success_response['user']['id']
-                    )
-                    log.info(f'successfully created new user: {response.success_response}')
-                    return Provider._enrich_user(self._cast_user_model(response.success_response['user']))
-                else:
-                    raise DuplicateEmailError()
-            else:
-                raise PasswordPolicyError()
-        except Exception as e:
-            log.debug(e)
-            raise e
+            encrypted_password = self.aes.encrypt_str(raw=user.password)
+            log.info(f"encrypted_password {encrypted_password}")
+            log.info(type(encrypted_password))
+
+            user_resp = crud.create_user(db, user={
+                "email": user.email,
+                "user_name": user.username,
+                "password": str(encrypted_password),
+                "verified": False,
+                "user_status": True,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "phone": user.phone,
+            })
+            log.info(user_resp.id)
+            log.info(f"user {user_resp.email} created successfully.")
+            return self._cast_user(user_resp)
+
+        except IntegrityError as err:
+            log.error(err)
+            raise DuplicateEmailError() from err
+        except Exception as err:
+            log.debug(err)
+            raise err
 
     async def reset_password(self, user_info):
         self.setup_fusionauth()
