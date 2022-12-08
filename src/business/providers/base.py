@@ -1,5 +1,5 @@
 from typing import List
-from business.models.users import User
+from business.models.users import UserRequest, User, UserLoginSchema
 from core import log
 import os
 
@@ -22,10 +22,10 @@ class Provider:
             user.first_name, user.last_name = user.full_name.split(' ')
         return user
 
-    def signup(self, user: User):
+    def signup(self, user: UserRequest, db):
         log.error(f"method signup not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
-    def login(self, email: str, password: str):
+    def login(self, user_info: UserLoginSchema, db):
         log.error(f"method signin not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
     def delete_user(self, user_id: str):

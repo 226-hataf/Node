@@ -4,7 +4,6 @@ from .firebase import ProviderFirebase
 from .zeauth import ProviderFusionAuth
 
 
-
 def get_provider():
     provider = os.environ.get('AUTH_PROVIDER')
 

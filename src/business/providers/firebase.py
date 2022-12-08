@@ -51,7 +51,7 @@ class ProviderFirebase(Provider):
             expirationTime=response['expiresIn'],
         )
 
-    def login(self, user_info):
+    def login(self, user_info, db):
         try:
             headers = {
                 'Content-Type': 'application/json'
@@ -73,7 +73,7 @@ class ProviderFirebase(Provider):
             log.error(e)
             raise e
 
-    def signup(self, user: User):
+    def signup(self, user: User, db):
         try:
             user = Provider._enrich_user(user)
             if user.email is not None:
