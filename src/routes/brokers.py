@@ -65,7 +65,7 @@ async def call_back_google(request: Request):
         data = response.json()
         access_token = data['id_token']
         data_jwt = jwt.decode(access_token, audience=aud, options={"verify_signature": False})
-        result = ProviderFusionAuth._cast_login_model_new(data_jwt, {'google': data_jwt})
+        result = ProviderFusionAuth._social_login_model(data_jwt, {'google': data_jwt})
         result = result.json()
         url = f"{frontend_redirect_url}?result={result}"
         return url
@@ -116,7 +116,7 @@ async def call_back(request: Request):
                                   headers=headers,
                                   data=data_user)
         user = user_data.json()
-        result = ProviderFusionAuth._cast_login_model_new(user, {'facebook': user})
+        result = ProviderFusionAuth._social_login_model(user, {'facebook': user})
         result = result.json()
         url = f"{frontend_redirect_url}?result={result}"
         return url
@@ -229,7 +229,7 @@ async def call_back_twitter(request: Request):
         oauth_token_secret = twitter_get_oauth_request_token()[1]
         access_token_key, access_token_secret = get_access_token(oauth_token, oauth_token_secret, verifier)
         twitter_data_person = get_twitter_json(access_token_key, access_token_secret)
-        result = ProviderFusionAuth._cast_login_model_new(twitter_data_person, {'twitter': twitter_data_person})
+        result = ProviderFusionAuth._social_login_model(twitter_data_person, {'twitter': twitter_data_person})
         result = result.json()
         url = f"{frontend_redirect_url}?result={result}"
         return url

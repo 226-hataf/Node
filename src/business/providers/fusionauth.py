@@ -84,7 +84,7 @@ class ProviderFusionAuth(Provider):
             full_name=full_name
         )
 
-    def _cast_login_model_new(self, response: dict) -> object:
+    def _social_login_model(self, response: dict) -> object:
         """
         NOTE: For every social provider, use flag like(Google, twitter, facebook) to know where is response coming from.
                 Because responses are not same for all social providers
@@ -213,7 +213,6 @@ class ProviderFusionAuth(Provider):
             raise e
 
     def _cast_login_model(self, response: dict) -> object:
-        access_token, expiration_time = self._jwt_generate(response['user'])
         full_name = response['user'].get('firstName')
 
         if response['user'].get('lastName'):
@@ -249,9 +248,9 @@ class ProviderFusionAuth(Provider):
                 full_name=full_name
             ),
             uid=response['user']['id'],
-            accessToken=access_token,
+            accessToken='',
             refreshToken='',
-            expirationTime=str(expiration_time)
+            expirationTime=''
         )
 
     def login(self, user_info):
