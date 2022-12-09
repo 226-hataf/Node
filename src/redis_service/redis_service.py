@@ -3,12 +3,6 @@ import os
 from core import log
 from datetime import datetime, timedelta
 
-redi = redis.Redis(
-    host=os.environ.get('REDIS_HOST', 'localhost'),
-    port=int(os.environ.get('REDIS_PORT', 6379)),
-    password=os.environ.get('REDIS_PASSWORD', None)
-
-)
 
 ONE_HOUR_IN_SECONDS = 3600
 REDIS_KEY_PREFIX = os.environ.get('REDIS_KEY_PREFIX')
