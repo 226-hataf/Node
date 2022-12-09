@@ -13,7 +13,7 @@ from business.models.users import *
 from .base import *
 from business.providers.base import *
 import uuid
-from redis_service.redis_service import set_redis, get_redis
+from redis_service.redis_service import RedisClient
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from email_service.mail_service import send_email
 
@@ -33,6 +33,7 @@ DEFAULT_SCOPE = ["list", "get", "update", "del"]
 USER_PERMISSIONS = ["zekoder-zeauth-user-list", "zekoder-zeauth-user-get", "zekoder-zeauth-user-del",
                     "zekoder-zeauth-user-update"]
 
+client = RedisClient()
 
 class ProviderKeycloak(Provider):
     admin_user_created = None
@@ -302,7 +303,7 @@ class ProviderKeycloak(Provider):
             confirm_email_key = hash(uuid.uuid4().hex)
             if not user.username:
                 user.username = user.email
-            set_redis(confirm_email_key, user.username)
+            client.set_redis(confirm_email_key, user.username)
 
             confirm_email_url = f"https://zekoder.netlify.app/auth/confirm-email?token={confirm_email_key}"
 
@@ -392,7 +393,7 @@ class ProviderKeycloak(Provider):
                                             })
 
             confirm_email_key = hash(uuid.uuid4().hex)
-            set_redis(confirm_email_key, user_info.username)
+            client.set_redis(confirm_email_key, user_info.username)
             confirm_email_url = f"https://zekoder.netlify.app/auth/confirm-email?token={confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
@@ -424,7 +425,7 @@ class ProviderKeycloak(Provider):
         self.setup_keycloak()
         try:
             try:
-                email = get_redis(email_verify.token)
+                email = client.get_redis(email_verify.token)
             except Exception as err:
                 log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Token {email_verify.token} is incorrect!") from err
@@ -459,7 +460,7 @@ class ProviderKeycloak(Provider):
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
 
             reset_key = hash(uuid.uuid4().hex)
-            set_redis(reset_key, user_info.username)
+            client.set_redis(reset_key, user_info.username)
 
             reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
             await send_email(
@@ -482,7 +483,7 @@ class ProviderKeycloak(Provider):
         self.setup_keycloak()
         try:
             try:
-                email = get_redis(reset_password.reset_key)
+                email = client.get_redis(reset_password.reset_key)
             except Exception as err:
                 log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!") from err
