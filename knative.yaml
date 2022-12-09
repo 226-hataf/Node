@@ -95,6 +95,16 @@ spec:
             value: "/B?D(G+KbPeShVmYq3t6w9z$C&F)H@Mc"
           - name: AES_KEY
             value: "gUkXp2s5"
+          - name: POSTGRES_USER
+            value: "postgres"
+          - name: POSTGRES_PASSWORD
+            value: "N6nyFiMkPb"
+          - name: POSTGRES_SERVER
+            value: "35.184.231.146"
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: POSTGRES_DB
+            value: "zekoder"
           - name: REDIS_KEY_PREFIX
             value: "zekoder"
           - name: ACCESS_TOKEN_EXPIRY_MINUTES
