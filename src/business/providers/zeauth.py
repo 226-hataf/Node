@@ -328,7 +328,6 @@ class ProviderFusionAuth(Provider):
             encrypted_password = self.aes.encrypt_str(raw=user_info.password)
 
             if response := crud.get_user_by_email(db=db, email=user_info.email, password=str(encrypted_password)):
-                # return self._cast_user(response)
                 return self._cast_login_model(response)
             else:
                 raise InvalidCredentialsError('failed login')
