@@ -1,35 +1,42 @@
-"""
- try:
-     jwt_secret_key = os.environ.get('JWT_SECRET_KEY')
-     refresh_token_exp = int(os.environ.get('REFRESH_TOKEN_EXPIRY_MINUTES'))
-     data = jwt.decode(token, jwt_secret_key, audience='ZeAuth', options={"verify_signature": False})
-     get_user = hget_redis(f"zekoder-{data['sub']}","map_user_id")  # get user from redis,
-     # if redis key expired then no data will be equal to
-     # jwt.decoded data, if not expired then refresh_token will be generated
-     if get_user == data['sub']:
-         data['expr'] = refresh_token_exp
-         refresh_token = jwt.encode(data, key=jwt_secret_key, algorithm="HS256")
-         return refresh_token
-     else:
-         raise InvalidTokenError('failed refresh token request')
- except Exception as err:
-     log.error(err)
-     raise err
+import os
+from core import log
+import redis
+from dotenv import load_dotenv
 
- try:
-     jwt_secret_key = os.environ.get('JWT_SECRET_KEY')
-     REFRESH_TOKEN_EXPIRY_MINUTES = os.environ.get('REFRESH_TOKEN_EXPIRY_MINUTES')
-     refresh_token_exp = datetime.utcnow() + timedelta(minutes = int(REFRESH_TOKEN_EXPIRY_MINUTES))
-     data = jwt.decode(token, key=jwt_secret_key, audience='ZeAuth', options={"verify_signature": False})
-     data['exp'] = refresh_token_exp
-     refresh_token = jwt.encode(data, key=jwt_secret_key, algorithm="HS256")
-     return {"refresh_token": refresh_token}
- except jwt.ExpiredSignatureError as r:
-     log.error(r)
-     raise InvalidTokenError('failed token verification') from r
- """
-from datetime import datetime, timedelta
-REFRESH_TOKEN_EXPIRY_MINUTES = 60
+load_dotenv()
+class SocialProviderConfig:
+    def __init__(self, provider_name):
+        self.provider_name = provider_name
+        self.config = {}
 
-refresh_token_exp = datetime.utcnow() + timedelta(minutes = int(REFRESH_TOKEN_EXPIRY_MINUTES))
-print(refresh_token_exp.timestamp())
+    def set_config(self, config_value: dict):
+        self.config = config_value
+
+    def get_config(self):
+        return self.config
+
+
+class SocialProviderConfigFactory:
+    @staticmethod
+    def create_config(provider_name):
+        return SocialProviderConfig(provider_name)
+
+
+# Create a config for a social providers
+config_google = SocialProviderConfigFactory.create_config('google')
+config_facebook = SocialProviderConfigFactory.create_config('facebook')
+# Set a configuration value
+config_google.set_config({
+    "redirect_url": os.environ.get('GOOGLE_REDIRECT_URL'),
+    "app_id": os.environ.get('GOOGLE_APP_ID'),
+    "client_secret": os.environ.get('GOOGLE_CLIENT_SECRET'),
+    "response_type": "code",
+    "url_auth": "https://accounts.google.com/o/oauth2/v2/auth?",
+    "scope": "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+    "grant_type": "authorization_code"
+})
+
+
+
+
+

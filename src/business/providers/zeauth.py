@@ -163,8 +163,8 @@ class ProviderFusionAuth(Provider):
         uid = user_id
         verified = True
 
-        last_login_at = "Not Created"
-        last_update_at = "Not Created"
+        last_login_at = datetime.utcnow()   # get this data from db
+        last_update_at = datetime.utcnow()  # get this data from db
         created_at = datetime.utcnow()
 
         roles = []  # This will come from DB
@@ -186,8 +186,8 @@ class ProviderFusionAuth(Provider):
             roles=roles,
             groups=groups,
             created_at=int(created_at.timestamp()),
-            last_login_at=last_login_at,
-            last_update_at=last_update_at,
+            last_login_at=int(last_login_at.timestamp()),
+            last_update_at=int(last_update_at.timestamp()),
         )
         try:
             access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
