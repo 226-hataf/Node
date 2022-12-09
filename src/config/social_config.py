@@ -1,6 +1,4 @@
 import os
-from core import log
-import redis
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -60,5 +58,5 @@ config_twitter.set_config({
     "url_request_token": "https://api.twitter.com/oauth/request_token",
     "url_access_token": "https://api.twitter.com/oauth/access_token",
     "url_verify_credentials": "https://api.twitter.com/1.1/account/verify_credentials.json",
-    "url_oauth_token": "https://api.twitter.com/oauth/authorize?oauth_token",
+    "url_oauth_token": "https://api.twitter.com/oauth/authorize?oauth_token"
 })
