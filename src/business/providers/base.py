@@ -77,6 +77,9 @@ class Provider:
     def reset_password_verify(self, reset_pass):
         pass
 
+    def reset_password(self, user_info, db):
+        pass
+
 
 class DuplicateEmailError(Exception):
     pass

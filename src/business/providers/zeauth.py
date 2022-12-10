@@ -327,7 +327,7 @@ class ProviderFusionAuth(Provider):
         try:
             encrypted_password = self.aes.encrypt_str(raw=user_info.password)
 
-            if response := crud.get_user_by_email(db=db, email=user_info.email, password=str(encrypted_password)):
+            if response := crud.get_user_login(db=db, email=user_info.email, password=str(encrypted_password)):
                 return self._cast_login_model(response)
             else:
                 raise InvalidCredentialsError('failed login')
@@ -363,11 +363,10 @@ class ProviderFusionAuth(Provider):
             log.debug(err)
             raise err
 
-    async def reset_password(self, user_info):
-        self.setup_fusionauth()
+    async def reset_password(self, user_info, db):
         try:
-            client_response = self.fusionauth_client.retrieve_user_by_email(user_info.username)
-            if not client_response.was_successful():
+            user_resp = crud.get_user_by_email(db=db, email=user_info.username)
+            if not user_resp:
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
 
             reset_key = hash(uuid.uuid4().hex)
