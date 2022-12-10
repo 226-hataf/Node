@@ -3,8 +3,15 @@ import os
 from core import log
 from datetime import datetime, timedelta
 
+redi = redis.Redis(
+    host=os.environ.get('REDIS_HOST', 'localhost'),
+    port=int(os.environ.get('REDIS_PORT', 6379)),
+    password=os.environ.get('REDIS_PASSWORD', None)
+
+)
 
 ONE_HOUR_IN_SECONDS = 3600
+
 REDIS_KEY_PREFIX = os.environ.get('REDIS_KEY_PREFIX')
 ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
 expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)
@@ -12,6 +19,14 @@ expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)
 REFRESH_TOKEN_EXPIRY_MINUTES = os.environ.get("REFRESH_TOKEN_EXPIRY_MINUTES")
 expr_in_refresh_payload = (datetime.utcnow() + timedelta(minutes=int(REFRESH_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
 expr_in_refresh_payload = expr_in_refresh_payload.timestamp()
+
+
+def set_redis(key, value, expiry_hours=24):
+    redi.set(key, value, ex=ONE_HOUR_IN_SECONDS * expiry_hours)
+
+
+def get_redis(key):
+    return redi.get(key).decode("utf-8")
 
 
 class RedisClient:
@@ -22,7 +37,7 @@ class RedisClient:
             password=os.environ.get('REDIS_PASSWORD', None)
         )
 
-    def hset_redis(self, payload: dict):
+    def set_refresh_token(self, payload: dict):
         ip_address = "85.65.125.458"    # this should be change later
         data_dict = {k: v for k, v in payload.items()}
         log.debug(data_dict)
@@ -56,7 +71,7 @@ class RedisClient:
             log.error(e)
             raise e
 
-    def hget_redis(self, key, field):
+    def get_refresh_token(self, key, field):
         try:
             data = self.redi.hget(key, field)
             if data:
@@ -67,13 +82,7 @@ class RedisClient:
             log.error(e)
             raise e
 
-    def set_redis(self, key, value, expiry_hours=24):
-        self.redi.set(key, value, ex=ONE_HOUR_IN_SECONDS * expiry_hours)
-
-    def get_redis(self, key):
-        return self.redi.get(key).decode("utf-8")
-
-    def del_key(self, key: str):
+    def del_refresh_token(self, key: str):
         try:
             data = self.redi.delete(key)
             if data:

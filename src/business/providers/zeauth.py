@@ -8,7 +8,7 @@ from business.models.users import User, LoginResponseModel
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
-from redis_service.redis_service import RedisClient
+from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from core.AES import AesStringCipher
@@ -191,7 +191,7 @@ class ProviderFusionAuth(Provider):
         try:
             access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
             payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
-            client.hset_redis(payload)   # write data to Redis
+            client.set_refresh_token(payload)   # write data to Redis
 
             return LoginResponseModel(
                 user=User(
@@ -268,7 +268,7 @@ class ProviderFusionAuth(Provider):
         )
         access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
         payload['refreshToken'] = generated_refresh_token   # Dont send in payload jwt.encode
-        client.hset_redis(payload)   # write data to Redis
+        client.set_refresh_token(payload)   # write data to Redis
 
         return LoginResponseModel(
             user=User(
@@ -340,7 +340,7 @@ class ProviderFusionAuth(Provider):
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
 
             reset_key = hash(uuid.uuid4().hex)
-            client.set_redis(reset_key, user_info.username)
+            set_redis(reset_key, user_info.username)
 
             reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
             await send_email(
@@ -357,7 +357,7 @@ class ProviderFusionAuth(Provider):
         self.setup_fusionauth()
         try:
             try:
-                email = client.get_redis(reset_password.reset_key)
+                email = get_redis(reset_password.reset_key)
             except Exception as err:
                 log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!") from err
@@ -392,7 +392,7 @@ class ProviderFusionAuth(Provider):
             self.fusionauth_client.resend_email_verification(user_info.username)
 
             confirm_email_key = hash(uuid.uuid4().hex)
-            client.set_redis(confirm_email_key, user_info.username)
+            set_redis(confirm_email_key, user_info.username)
             confirm_email_url = f"https://zekoder.netlify.app/auth/confirm-email?token={confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
@@ -415,7 +415,7 @@ class ProviderFusionAuth(Provider):
         self.setup_fusionauth()
         try:
             try:
-                email = client.get_redis(email_verify.token)
+                email = get_redis(email_verify.token)
             except Exception as err:
                 log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Token {email_verify.token} is incorrect!") from err
@@ -473,14 +473,14 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
         try:
-            if client.hget_redis(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):  # Search for the key if it is exists
+            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):  # Search for the key if it is exists
                 payload = client.hgetall_redis_refresh_payload(f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
                 if payload:
                     # new access_token generated from valid refresh_token request
                     new_access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
                     payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
-                    client.hset_redis(payload)  # write data to Redis
-                    client.del_key(f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
+                    client.set_refresh_token(payload)  # write data to Redis
+                    client.del_refresh_token(f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
                     return {'accessToken': new_access_token, 'refreshToken': payload['refreshToken']}
                 else:
                     return {'No Redis Data exists !'}
