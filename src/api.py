@@ -114,9 +114,9 @@ async def reset_password(user_info: ResetPasswordSchema, db: Session = Depends(g
 
 
 @app.post("/reset-password/verify")
-def reset_password_verify(reset_pass: ResetPasswordVerifySchema):
+def reset_password_verify(reset_pass: ResetPasswordVerifySchema, db: Session = Depends(get_db)):
     try:
-        if _ := auth_provider.reset_password_verify(reset_pass):
+        if _ := auth_provider.reset_password_verify(reset_pass, db):
             return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Password has been reset."})
 
     except CustomKeycloakPutError as err:

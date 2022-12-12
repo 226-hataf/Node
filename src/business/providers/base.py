@@ -74,7 +74,7 @@ class Provider:
     def user_active_off(self, user_id: str):
         log.error(f'method user_active_off not implemented for {os.environ.get("AUTH_PROVIDER")} provider')
 
-    def reset_password_verify(self, reset_pass):
+    def reset_password_verify(self, reset_pass, db):
         pass
 
     def reset_password(self, user_info, db):
