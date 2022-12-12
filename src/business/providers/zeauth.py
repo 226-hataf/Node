@@ -327,7 +327,7 @@ class ProviderFusionAuth(Provider):
         try:
             encrypted_password = self.aes.encrypt_str(raw=user_info.password)
 
-            if response := crud.get_user_by_email(db=db, email=user_info.email, password=str(encrypted_password)):
+            if response := crud.get_user_login(db=db, email=user_info.email, password=str(encrypted_password)):
                 return self._cast_login_model(response)
             else:
                 raise InvalidCredentialsError('failed login')
@@ -363,11 +363,10 @@ class ProviderFusionAuth(Provider):
             log.debug(err)
             raise err
 
-    async def reset_password(self, user_info):
-        self.setup_fusionauth()
+    async def reset_password(self, user_info, db):
         try:
-            client_response = self.fusionauth_client.retrieve_user_by_email(user_info.username)
-            if not client_response.was_successful():
+            user_resp = crud.get_user_by_email(db=db, email=user_info.username)
+            if not user_resp:
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
 
             reset_key = hash(uuid.uuid4().hex)
@@ -384,8 +383,7 @@ class ProviderFusionAuth(Provider):
             log.error(err)
             raise err
 
-    def reset_password_verify(self, reset_password: ResetPasswordVerifySchema):
-        self.setup_fusionauth()
+    def reset_password_verify(self, reset_password: ResetPasswordVerifySchema, db):
         try:
             try:
                 email = get_redis(reset_password.reset_key)
@@ -393,21 +391,13 @@ class ProviderFusionAuth(Provider):
                 log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!") from err
 
-            res = self.fusionauth_client.forgot_password({
-                "applicationId": APPLICATION_ID,
-                "loginId": email
-            })
-            change_password_id = res.success_response["changePasswordId"]
-            res2 = self.fusionauth_client.change_password(change_password_id,
-                                                          {'password': f'{reset_password.new_password}'})
-            if res2.was_successful():
-                response = self.fusionauth_client.login({
-                    "applicationId": APPLICATION_ID,
-                    "loginId": f'{email}',
-                    "password": f'{reset_password.new_password}'
-                })
-                if response.was_successful():
-                    return self._cast_login_model(response.success_response)
+            encrypted_password = self.aes.encrypt_str(raw=reset_password.new_password)
+            user = crud.get_user_by_email(db, email=email)
+
+            res = crud.reset_user_password(db, password=str(encrypted_password), user_id=user.id)
+            log.info(res.email)
+            if response := crud.get_user_login(db=db, email=email, password=str(encrypted_password)):
+                return self._cast_login_model(response)
         except Exception as err:
             log.error(f"Exception: {err}")
             raise err
