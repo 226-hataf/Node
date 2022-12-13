@@ -14,9 +14,69 @@ class SocialLogin:
         self.redirect_url = redirect_url
         self.client_id = client_id
         self.client_secret = client_secret
+        self.get_provider_name()
 
     def get_provider_name(self):
         return self.provider
+
+    def goto_provider_login_page(self):
+        if self.get_provider_name() != 'twitter':
+            url_client = f"client_id={self.client_id}&redirect_uri={self.redirect_url}"
+            if self.get_provider_name() == 'google':
+                url = f"{GoogleLogin().url_auth}" \
+                      f"{url_client}" \
+                      f"&response_type={GoogleLogin().response_type}" \
+                      f"&scope={GoogleLogin().scope}"
+                return url
+            if self.get_provider_name() == 'facebook':
+                url = f"{FacebookLogin().url_auth}" \
+                      f"{url_client}" \
+                      f"&scope={FacebookLogin().scope}"
+                return url
+        else:
+            if len(TwitterLogin().twitter_get_oauth_request_token()) > 1:
+                oauth_token, oauth_token_secret = TwitterLogin().twitter_get_oauth_request_token()
+            else:
+                oauth_token = None
+                oauth_token_secret = None
+            url = f"{TwitterLogin().url_oauth_token}={oauth_token}" \
+                  f"&oauth_token_secret={oauth_token_secret}" \
+                  f"&oauth_callback_confirmed=true"
+            return url
+
+    def call_back_provider_data(self, code):
+        if self.get_provider_name() != 'twitter':
+            url_main = f"code={code}" \
+                         f"&client_id={self.client_id}" \
+                         f"&client_secret={self.client_secret}" \
+                         f"&redirect_uri={self.redirect_url}"
+
+            if self.get_provider_name() == 'google':
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+                data = f"{url_main}&grant_type={GoogleLogin().grant_type}"
+                response = requests.post(f"{GoogleLogin().url_token}", headers=headers, data=data)
+                data = response.json()
+                access_token = data['id_token']
+                data_jwt = jwt.decode(access_token, audience=self.client_id, options={"verify_signature": False})
+                return data_jwt
+
+            if self.get_provider_name() == 'facebook':
+                headers = {
+                    'Content-Type': 'application/json',
+                }
+                data = url_main
+                access_data = requests.post(f"{FacebookLogin().url_access_token}", headers=headers, data=data)
+                log.debug(f"facebook_access_data: {access_data}")
+                access = access_data.json()
+                access_token = access['access_token']
+                data_user = f"access_token={access_token}&fields={FacebookLogin().fields}"
+                log.debug(f"facebook_data_user: {data_user}")
+                user_data = requests.post(f"{FacebookLogin().url_me}", headers=headers, data=data_user)
+                return user_data
+        else:
+            pass
 
 
 class GoogleLogin(SocialLogin):
@@ -33,29 +93,6 @@ class GoogleLogin(SocialLogin):
                          client_secret=os.environ.get('GOOGLE_CLIENT_SECRET')
                          )
 
-    def goto_provider_login_page(self):
-        url = f"{self.url_auth}" \
-              f"client_id={self.client_id}" \
-              f"&redirect_uri={self.redirect_url}" \
-              f"&response_type={self.response_type}" \
-              f"&scope={self.scope}"
-        return url
-
-    def call_back_provider_data(self, code):
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
-        data = f"code={code}" \
-               f"&client_id={self.client_id}" \
-               f"&client_secret={self.client_secret}" \
-               f"&redirect_uri={self.redirect_url}" \
-               f"&grant_type={self.grant_type}"
-        response = requests.post(f"{self.url_token}", headers=headers, data=data)
-        data = response.json()
-        access_token = data['id_token']
-        data_jwt = jwt.decode(access_token, audience=self.client_id, options={"verify_signature": False})
-        return data_jwt
-
 
 class FacebookLogin(SocialLogin):
     url_auth = "https://www.facebook.com/v15.0/dialog/oauth?"
@@ -70,31 +107,6 @@ class FacebookLogin(SocialLogin):
                          client_id=os.environ.get('FACEBOOK_APP_ID'),
                          client_secret=os.environ.get('FACEBOOK_CLIENT_SECRET')
                          )
-
-    def goto_provider_login_page(self):
-        url = f"{self.url_auth}" \
-              f"client_id={self.client_id}" \
-              f"&redirect_uri={self.redirect_url}" \
-              f"&scope={self.scope}"
-        return url
-
-    def call_back_provider_data(self, code):
-        headers = {
-            'Content-Type': 'application/json',
-        }
-        data = f"code={code}" \
-               f"&client_id={self.client_id}" \
-               f"&client_secret={self.client_secret}" \
-               f"&redirect_uri={self.redirect_url}"
-
-        access_data = requests.post(f"{self.url_access_token}", headers=headers, data=data)
-        log.debug(f"facebook_access_data: {access_data}")
-        access = access_data.json()
-        access_token = access['access_token']
-        data_user = f"access_token={access_token}&fields={self.fields}"
-        log.debug(f"facebook_data_user: {data_user}")
-        user_data = requests.post(f"{self.url_me}", headers=headers, data=data_user)
-        return user_data
 
 
 class TwitterLogin(SocialLogin):
@@ -162,23 +174,8 @@ class TwitterLogin(SocialLogin):
             log.error(e)
             raise e
 
-    def goto_provider_login_page(self):
-        if len(self.twitter_get_oauth_request_token()) > 1:
-            oauth_token, oauth_token_secret = self.twitter_get_oauth_request_token()
-        else:
-            oauth_token = None
-            oauth_token_secret = None
-        url = f"{self.url_oauth_token}={oauth_token}" \
-              f"&oauth_token_secret={oauth_token_secret}" \
-              f"&oauth_callback_confirmed=true"
-        return url
-
     def call_back_provider_data(self, oauth_token, verifier):
         oauth_token_secret = self.twitter_get_oauth_request_token()[1]
         access_token_key, access_token_secret = self.get_access_token(oauth_token, oauth_token_secret, verifier)
         twitter_data_person = self.get_twitter_json(access_token_key, access_token_secret)
         return twitter_data_person
-
-
-
-
