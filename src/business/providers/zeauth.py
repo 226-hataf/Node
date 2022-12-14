@@ -8,10 +8,9 @@ from business.models.users import User, LoginResponseModel
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
-from redis_service.redis_service import set_redis, get_redis, hset_redis, hget_redis, hgetall_redis, del_key
+from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
-from core.AES import AesStringCipher
 from core.AES import AesStringCipher
 import jwt
 
@@ -21,6 +20,7 @@ FUSIONAUTH_URL = os.environ.get('FUSIONAUTH_URL')
 AES_KEY = os.environ.get('AES_KEY')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
+client = RedisClient()
 
 
 class ProviderFusionAuth(Provider):
@@ -157,7 +157,6 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
-        expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)  # Redis is reading from here, don't touch this and use this in Redis
         expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES))) # Don't add redis expr here, use like this.
         expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
 
@@ -165,8 +164,8 @@ class ProviderFusionAuth(Provider):
         uid = user_id
         verified = True
 
-        last_login_at = "Not Created"
-        last_update_at = "Not Created"
+        last_login_at = datetime.utcnow()   # get this data from db
+        last_update_at = datetime.utcnow()  # get this data from db
         created_at = datetime.utcnow()
 
         roles = []  # This will come from DB
@@ -188,28 +187,14 @@ class ProviderFusionAuth(Provider):
             roles=roles,
             groups=groups,
             created_at=int(created_at.timestamp()),
-            last_login_at=last_login_at,
-            last_update_at=last_update_at,
+            last_login_at=int(last_login_at.timestamp()),
+            last_update_at=int(last_update_at.timestamp()),
         )
         try:
             access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-            ip_address = "85.65.125.458"  # for just now
-            hset_redis(f"{generated_refresh_token}",
-                       f"{generated_refresh_token}",
-                       f"{payload['aud']}",
-                       f"{ip_address}",
-                       f"{payload['iss']}",
-                       f"{payload['sub']}",
-                       f"{payload['email']}",
-                       f"{payload['username']}",
-                       f"{payload['verified']}",
-                       f"{payload['avatar_url']}",
-                       f"{payload['first_name']}",
-                       f"{payload['last_name']}",
-                       f"{payload['full_name']}",
-                       f"{payload['roles']}",
-                       f"{payload['groups']}",
-                       f"{expr}")
+            payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
+            client.set_refresh_token(payload)   # write data to Redis
+
             return LoginResponseModel(
                 user=User(
                     id=user_id,
@@ -260,7 +245,6 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
-        expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)  # Redis is reading from here, don't touch this and use this in Redis
         expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
         expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
 
@@ -284,23 +268,8 @@ class ProviderFusionAuth(Provider):
             last_update_at=int(update_at.timestamp()) if update_at else None,
         )
         access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-        ip_address = "85.65.125.458"  # for just now
-        hset_redis(f"{generated_refresh_token}",
-                   f"{generated_refresh_token}",
-                   f"{payload['aud']}",
-                   f"{ip_address}",
-                   f"{payload['iss']}",
-                   f"{payload['sub']}",
-                   f"{payload['email']}",
-                   f"{payload['username']}",
-                   f"{payload['verified']}",
-                   f"{payload['avatar_url']}",
-                   f"{payload['first_name']}",
-                   f"{payload['last_name']}",
-                   f"{payload['full_name']}",
-                   f"{payload['roles']}",
-                   f"{payload['groups']}",
-                   f"{expr}")
+        payload['refreshToken'] = generated_refresh_token   # Dont send in payload jwt.encode
+        client.set_refresh_token(payload)   # write data to Redis
 
         return LoginResponseModel(
             user=User(
@@ -478,20 +447,20 @@ class ProviderFusionAuth(Provider):
                 raise InvalidTokenError('failed token verification')
 
             return User(
-                        id=str(user.get('sub')),
-                        roles=user.get('roles'),
-                        email=user.get('email'),
-                        user_name=user.get('username'),
-                        verified=user.get('verified'),
-                        user_status=user.get('user_status'),
-                        first_name=user.get('first_name'),
-                        last_name=user.get('last_name'),
-                        full_name=user.get('full_name'),
-                        phone=user.get('phone'),
-                        last_login_at=user.get('last_login_at'),
-                        created_at=user.get('created_at'),
-                        update_at=user.get('last_update_at')
-                    )
+                id=str(user.get('sub')),
+                roles=user.get('roles'),
+                email=user.get('email'),
+                user_name=user.get('username'),
+                verified=user.get('verified'),
+                user_status=user.get('user_status'),
+                first_name=user.get('first_name'),
+                last_name=user.get('last_name'),
+                full_name=user.get('full_name'),
+                phone=user.get('phone'),
+                last_login_at=user.get('last_login_at'),
+                created_at=user.get('created_at'),
+                update_at=user.get('last_update_at')
+                )
 
         except Exception as err:
             error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
@@ -502,61 +471,21 @@ class ProviderFusionAuth(Provider):
     def refreshtoken(self, token: str):
         REDIS_KEY_PREFIX = os.environ.get('REDIS_KEY_PREFIX')
 
-        REFRESH_TOKEN_EXPIRY_MINUTES = os.environ.get("REFRESH_TOKEN_EXPIRY_MINUTES")
-        redis_expr = 60 * int(
-            REFRESH_TOKEN_EXPIRY_MINUTES)  # Redis is reading from here, don't touch this and use this in Redis
-        expr_in_payload = (datetime.utcnow() + timedelta(
-            minutes=int(REFRESH_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
-        expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
-
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
-        ip_address = "85.65.125.458" # This will be change !!!!
 
         try:
-            # Search for the key if it is exists
-            if hget_redis(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):
-                # Get data from Redis with refresh token
-                data = hgetall_redis(f"{REDIS_KEY_PREFIX}-{token}")
-                if data:
-                    data_dict = {k.decode(): v.decode() for k, v in data.items()}
-                    payload = dict(
-                        aud=AUDIENCE,
-                        expr=int(expr_in_payload),
-                        iss=os.environ.get("FUSIONAUTH_URL"),
-                        sub=data_dict["map_sub"],
-                        email=data_dict["map_email"],
-                        username=data_dict["map_username"],
-                        verified=data_dict["map_verified"],
-                        avatar_url=data_dict["map_avatar_url"],
-                        first_name=data_dict["map_first_name"],
-                        last_name=data_dict["map_last_name"],
-                        full_name=data_dict["map_full_name"],
-                        roles=data_dict["map_roles"],
-                        groups=data_dict["map_groups"]
-                    )
+            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):  # Search for the key if it is exists
+                payload = client.hgetall_redis_refresh_payload(f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
+                if payload:
                     # new access_token generated from valid refresh_token request
                     new_access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-                    # new access_token data added to Redis
-                    hset_redis(f"{generated_refresh_token}",
-                               f"{generated_refresh_token}",
-                               f"{AUDIENCE}",
-                               f"{ip_address}",
-                               f"{os.environ.get('FUSIONAUTH_URL')}",
-                               f"{data_dict['map_sub']}",
-                               f"{data_dict['map_email']}",
-                               f"{data_dict['map_username']}",
-                               f"{data_dict['map_verified']}",
-                               f"{data_dict['map_avatar_url']}",
-                               f"{data_dict['map_first_name']}",
-                               f"{data_dict['map_last_name']}",
-                               f"{data_dict['map_full_name']}",
-                               f"{data_dict['map_roles']}",
-                               f"{data_dict['map_groups']}",
-                               f"{redis_expr}")
-                    # delete old refresh_token key and the data
-                    del_key(f"{REDIS_KEY_PREFIX}-{token}")
-                    return {'accessToken': new_access_token, 'refreshToken': generated_refresh_token}
+                    payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
+                    client.set_refresh_token(payload)  # write data to Redis
+                    client.del_refresh_token(f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
+                    return {'accessToken': new_access_token, 'refreshToken': payload['refreshToken']}
+                else:
+                    return {'No Redis Data exists !'}
             else:
                 raise InvalidTokenError('failed refresh token request')
         except Exception as err:
