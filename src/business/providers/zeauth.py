@@ -18,7 +18,8 @@ FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
 FUSIONAUTH_URL = os.environ.get('FUSIONAUTH_URL')
 AES_KEY = os.environ.get('AES_KEY')
-
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
+AUDIENCE = 'ZeAuth'
 client = RedisClient()
 
 
@@ -46,15 +47,17 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    def list_users(self, page: str, page_size: int, search: str):
-        headers = {'Authorization': FUSIONAUTH_APIKEY}
-        response = requests.get(f'{FUSIONAUTH_URL}/api/user/search?queryString=*', headers=headers)
-
-        if response.status_code != 200:
-            return [], 0, 0
-        res = response.json()
-        users_data = [self._cast_user_model(user) for user in res['users']]
-        return users_data, int(page) + 1, res['total']
+    def list_users(self, page: str, page_size: int, search: str, db):
+        # headers = {'Authorization': FUSIONAUTH_APIKEY}
+        # response = requests.get(f'{FUSIONAUTH_URL}/api/user/search?queryString=*', headers=headers)
+        users = crud.get_users(db)
+        log.info(users[0])
+        # if response.status_code != 200:
+        #     return [], 0, 0
+        # res = response.json()
+        # users_data = [self._cast_user_model(user) for user in res['users']]
+        # return users_data, int(page) + 1, res['total']
+        return None
 
     def _cast_user_model(self, response: dict):
         full_name = response.get('firstName')
@@ -115,7 +118,6 @@ class ProviderFusionAuth(Provider):
         :param response:
         :return:
         """
-        jwt_secret_key = os.environ['JWT_SECRET_KEY']
         ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
 
         if 'google' in response.keys():  # Flag google
@@ -170,7 +172,7 @@ class ProviderFusionAuth(Provider):
         groups = []  # This will come from DB
 
         payload = dict(
-            aud='ZeAuth',
+            aud=AUDIENCE,
             expr=int(expr_in_payload),
             iss=os.environ.get('FUSIONAUTH_URL'),
             sub=user_id,
@@ -189,7 +191,7 @@ class ProviderFusionAuth(Provider):
             last_update_at=int(last_update_at.timestamp()),
         )
         try:
-            access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+            access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
             payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
             client.set_refresh_token(payload)   # write data to Redis
 
@@ -221,7 +223,6 @@ class ProviderFusionAuth(Provider):
 
     def _cast_login_model(self, user) -> object:
         ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
-        jwt_secret_key = os.environ['JWT_SECRET_KEY']
 
         full_name = user.first_name
 
@@ -248,7 +249,7 @@ class ProviderFusionAuth(Provider):
         expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
 
         payload = dict(
-            aud='ZeAuth',
+            aud=AUDIENCE,
             expr=int(expr_in_payload),
             iss=os.environ.get('FUSIONAUTH_URL'),
             sub=str(user.id),
@@ -266,7 +267,7 @@ class ProviderFusionAuth(Provider):
             last_login_at=int(last_login_at.timestamp()) if last_login_at else None,
             last_update_at=int(update_at.timestamp()) if update_at else None,
         )
-        access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+        access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
         payload['refreshToken'] = generated_refresh_token   # Dont send in payload jwt.encode
         client.set_refresh_token(payload)   # write data to Redis
 
@@ -438,25 +439,36 @@ class ProviderFusionAuth(Provider):
 
     def verify(self, token: str):
         try:
-            self.setup_fusionauth()
+            user = jwt.decode(bytes(token, 'utf-8'), JWT_SECRET_KEY, algorithms=["HS256"], audience=AUDIENCE)
 
-            validate_jwt = self.fusionauth_client.validate_jwt(token)
-            if validate_jwt.status != 200:
-                error_template = "fusionauth verify:  An exception of type {0} occurred. error: {1}"
-                log.error(error_template.format(type(validate_jwt).__name__, str(validate_jwt)))
+            if not user.get('email'):
+                error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
+                log.error(user)
                 raise InvalidTokenError('failed token verification')
 
-            resp = self.fusionauth_client.retrieve_user_by_email(validate_jwt.success_response['jwt']['email'])
-            log.info(resp.success_response)
-            return self._cast_user_model(resp.success_response['user'])
+            return User(
+                id=str(user.get('sub')),
+                roles=user.get('roles'),
+                email=user.get('email'),
+                user_name=user.get('username'),
+                verified=user.get('verified'),
+                user_status=user.get('user_status'),
+                first_name=user.get('first_name'),
+                last_name=user.get('last_name'),
+                full_name=user.get('full_name'),
+                phone=user.get('phone'),
+                last_login_at=user.get('last_login_at'),
+                created_at=user.get('created_at'),
+                update_at=user.get('last_update_at')
+                )
+
         except Exception as err:
-            error_template = "fusionauth verify:  An exception of type {0} occurred. error: {1}"
+            error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
             log.debug(err)
             raise InvalidTokenError('failed token verification') from err
 
     def refreshtoken(self, token: str):
-        jwt_secret_key = os.environ.get('JWT_SECRET_KEY')
         REDIS_KEY_PREFIX = os.environ.get('REDIS_KEY_PREFIX')
 
         generated_refresh_token = uuid.uuid4()
@@ -467,7 +479,7 @@ class ProviderFusionAuth(Provider):
                 payload = client.hgetall_redis_refresh_payload(f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
                 if payload:
                     # new access_token generated from valid refresh_token request
-                    new_access_token = jwt.encode(payload, jwt_secret_key, algorithm="HS256")
+                    new_access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
                     payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
                     client.set_refresh_token(payload)  # write data to Redis
                     client.del_refresh_token(f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data

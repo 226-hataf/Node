@@ -1,7 +1,7 @@
 from typing import List
-
+from config.db import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
-
+from sqlalchemy.orm import Session
 from business import User
 from business.models.users import UserResponseModel, UsersWithIDsResponse
 from business.providers.base import *
@@ -47,13 +47,13 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
 # list users
 @router.get('/', tags=[model.plural],
             status_code=200, response_model=UserResponseModel,
-            response_model_exclude_none=True
+            response_model_exclude_none=True,
             )
-async def list(token: str = Depends(ProtectedMethod), commons: CommonDependencies = Depends(CommonDependencies)):
+async def list(token: str = Depends(ProtectedMethod), commons: CommonDependencies = Depends(CommonDependencies), db: Session = Depends(get_db)):
     token.auth(model.permissions.list)
     try:
         user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size,
-                                                                   search=commons.search)
+                                                                   search=commons.search, db=db)
 
         return {'next_page': next_page, 'page_size': page_size, 'user_list': user_list}
     except Exception as e:
