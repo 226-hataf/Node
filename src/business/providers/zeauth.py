@@ -47,17 +47,17 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    def list_users(self, page: str, page_size: int, search: str, db):
-        users = crud.get_users(db, skip=page, limit=page_size)
-        new_users = []
-        for user in users:
-            new_users.append(self._cast_user(user))
-        # if response.status_code != 200:
-        #     return [], 0, 0
-        # res = response.json()
-        # users_data = [self._cast_user_model(user) for user in res['users']]
-        # return users_data, int(page) + 1, res['total']
-        return new_users, 0, 0
+    def list_users(self, page: int, page_size: int, search: str, db):
+        next_page = 2
+        skip = 0
+        if page > 0:
+            skip = (page - 1) * page_size
+            next_page = page + 1
+
+        users = crud.get_users(db, skip=skip, limit=page_size)
+        users = [self._cast_user(user) for user in users]
+
+        return users, next_page, len(users)
 
     def _cast_user_model(self, response: dict):
         full_name = response.get('firstName')
