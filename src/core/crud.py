@@ -1,8 +1,39 @@
 import datetime
-
+from core.db_models.schemas import Group, GroupBase
 from sqlalchemy.orm import Session
-
 from core.db_models import models
+
+
+def get_groups(db: Session, skip: int = 0, limit: int = 100):
+    # for now for testing i add Role as simulate Group !!! Change to Group when DB is ready
+    return db.query(models.Role).offset(skip).limit(limit).all()
+
+
+def get_group_by_name(db: Session, name: str):
+    return db.query(models.Role).filter(models.Role.name == name).first()
+
+
+def create_group(db: Session, group_create: GroupBase):
+    group = models.Role(name=group_create.name, description=group_create.description)
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+def update_group(db: Session, name: str, description: str):
+    group = get_group_by_name(db=db, name=name)
+    group.name = name
+    group.description = description
+    db.commit()
+    db.refresh(group)
+
+
+def remove_group(db: Session, name: str):
+    group = get_group_by_name(db=db, name=name)
+    db.delete(group)
+    db.commit()
+
 
 
 def create_user(db: Session, user):
@@ -14,7 +45,6 @@ def create_user(db: Session, user):
 
 
 def get_user_login(db: Session, email: str, password: str):
-
     return db.query(models.User).filter(models.User.email == email, models.User.password == password).first()
 
 
