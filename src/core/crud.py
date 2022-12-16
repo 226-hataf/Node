@@ -31,7 +31,7 @@ def reset_user_password(db: Session, password, user_id: int):
     return update
 
 
-def get_users(db: Session, skip: int = 0, limit: int = 100):
+def get_users(db: Session, skip: int = 0, limit: int = 20):
     return db.query(models.User).offset(skip).limit(limit).all()
 
 
