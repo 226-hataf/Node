@@ -1,9 +1,10 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from business.providers import get_provider
 from business.providers.base import *
 from core import log
 from core.types import ZKModel
-from core.db_models.schemas import Group, GroupBase
+from business.models.schemas_groups import Group, GroupBase
 from core import crud
 from config.db import get_db
 from sqlalchemy.orm import Session
@@ -26,13 +27,7 @@ model = ZKModel(**{
 
 # Create Group
 @router.post('/', tags=[model.plural], status_code=201, response_model=Group)
-async def create_group(group_create: GroupBase, db: Session = Depends(get_db)):
-    """
-    TODO: add required field
-    :param group_create:
-    :param db:
-    :return:
-    """
+async def create(group_create: GroupBase, db: Session = Depends(get_db)):
     # check if group name exist, do not create group request
     group_exist = crud.get_group_by_name(db, group_create.name)
     if group_exist:
@@ -42,7 +37,7 @@ async def create_group(group_create: GroupBase, db: Session = Depends(get_db)):
 
 # list all Groups
 @router.get('/', tags=[model.plural], status_code=200, response_model=list[Group])
-async def list_groups(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     try:
         groups = crud.get_groups(db, skip=skip, limit=limit)
         return groups
@@ -53,26 +48,32 @@ async def list_groups(skip: int = 0, limit: int = 100, db: Session = Depends(get
 
 # get a group
 @router.get('/{group_name}', tags=[model.plural], status_code=200, response_model=Group)
-async def get_group(name: str, db: Session = Depends(get_db)):
-    group = crud.get_group_by_name(db, name)
-    if group is None:
+async def group(name: str, db: Session = Depends(get_db)):
+    group_get = crud.get_group_by_name(db, name)
+    if group_get is None:
         raise HTTPException(status_code=404, detail="Group not found")
-    return group
+    return group_get
 
 
 # Update
-@router.put('/{group_name}', tags=[model.plural], status_code=200, response_model=Group)
-async def update_group(request: GroupBase, db: Session = Depends(get_db)):
-    group_exist = crud.get_group_by_name(db, request.name)
-    if not group_exist:
-        raise HTTPException(status_code=404, detail="Group not found")
-    crud.update_group(db, name=request.name, description=request.description)
-    return group_exist
+@router.put('/{id}', tags=[model.plural], status_code=200)
+async def update(id: str, name: str, description: str, db: Session = Depends(get_db)):
+    try:
+        # check if uuid is valid
+        uuid.UUID(str(id))
+        group_exist = crud.get_group_by_id(db=db, id=id)
+        if not group_exist:
+            raise HTTPException(status_code=404, detail="Group not found")
+        updated = crud.update_group(db=db, id=id, name=name, description=description)
+        return updated
+    except ValueError as e:
+        log.error(e)
+        return {"detail": "invalid uuid"}
 
 
 # Delete
 @router.delete('/{group_name}', tags=[model.plural], status_code=202)
-async def delete_group(name: str, db: Session = Depends(get_db)):
+async def delete(name: str, db: Session = Depends(get_db)):
     group_exist = crud.get_group_by_name(db, name)
     if not group_exist:
         raise HTTPException(status_code=404, detail="Group not found")
