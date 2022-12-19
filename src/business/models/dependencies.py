@@ -13,7 +13,7 @@ auth_provider: Provider = get_provider()
 
 class CommonDependencies:
     def __init__(self,
-                 page: Optional[str] = 1,
+                 page: Optional[int] = 1,
                  size: Optional[int] = 20,
                  search: Optional[str] = ''
                  ):

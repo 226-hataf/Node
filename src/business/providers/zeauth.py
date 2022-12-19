@@ -47,17 +47,17 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    def list_users(self, page: str, page_size: int, search: str, db):
-        # headers = {'Authorization': FUSIONAUTH_APIKEY}
-        # response = requests.get(f'{FUSIONAUTH_URL}/api/user/search?queryString=*', headers=headers)
-        users = crud.get_users(db)
-        log.info(users[0])
-        # if response.status_code != 200:
-        #     return [], 0, 0
-        # res = response.json()
-        # users_data = [self._cast_user_model(user) for user in res['users']]
-        # return users_data, int(page) + 1, res['total']
-        return None
+    def list_users(self, page: int, page_size: int, search: str, db):
+        next_page = 2
+        skip = 0
+        if page > 0:
+            skip = (page - 1) * page_size
+            next_page = page + 1
+
+        users = crud.get_users(db, skip=skip, limit=page_size, search=search)
+        users = [self._cast_user(user) for user in users]
+
+        return users, next_page, page_size
 
     def _cast_user_model(self, response: dict):
         full_name = response.get('firstName')
@@ -97,7 +97,7 @@ class ProviderFusionAuth(Provider):
         return User(
             id=str(user.id),
             email=user.email,
-            user_name=user.user_name,
+            username=user.user_name,
             verified=user.verified,
             user_status=user.user_status,
             first_name=user.first_name,
@@ -310,7 +310,6 @@ class ProviderFusionAuth(Provider):
         try:
             encrypted_password = self.aes.encrypt_str(raw=user.password)
             log.info(f"encrypted_password {encrypted_password}")
-            log.info(type(encrypted_password))
 
             user_resp = crud.create_user(db, user={
                 "email": user.email,
