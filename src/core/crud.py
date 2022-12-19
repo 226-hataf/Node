@@ -1,7 +1,6 @@
 import datetime
-
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
-
 from core.db_models import models
 
 
@@ -14,7 +13,6 @@ def create_user(db: Session, user):
 
 
 def get_user_login(db: Session, email: str, password: str):
-
     return db.query(models.User).filter(models.User.email == email, models.User.password == password).first()
 
 
@@ -31,8 +29,14 @@ def reset_user_password(db: Session, password, user_id: int):
     return update
 
 
-def get_users(db: Session, skip: int = 0, limit: int = 20):
-    return db.query(models.User).offset(skip).limit(limit).all()
+def get_users(db: Session, search, skip: int = 0, limit: int = 20):
+    query = db.query(models.User).filter(or_(
+        models.User.email.like(f"%{search}%"),
+        models.User.first_name.like(f"%{search}%"),
+        models.User.last_name.like(f"%{search}%"),
+        models.User.user_name.like(f"%{search}%"),
+    )).offset(skip).limit(limit)
+    return query.all()
 
 
 def create_role(db: Session, role):
