@@ -13,6 +13,7 @@ from email_service.mail_service import send_email
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from core.AES import AesStringCipher
 import jwt
+from config.db import get_db
 
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
@@ -21,9 +22,18 @@ AES_KEY = os.environ.get('AES_KEY')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
 client = RedisClient()
+ROLES = 'zk-zeauth-create,zk-zeauth-read,zk-zeauth-delete,zk-zeauth-update,zk-zeauth-list'
+DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gmail.com')
+DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
+DEFAULT_ADMIN_ROLES = os.environ.get('DEFAULT_ADMIN_ROLES', ROLES).split(',')
+DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).split(',')
+DEFAULT_ROLES = [{"name": "admin", "description": "admin role for users"},
+                 {"name": "user", "description": "user role for users"}]
+DEFAULT_SCOPE = ["list", "get", "update", "del"]
 
 
 class ProviderFusionAuth(Provider):
+    admin_user_created = None
 
     def __init__(self) -> None:
         self.fusionauth_client = None
@@ -157,14 +167,15 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
-        expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES))) # Don't add redis expr here, use like this.
+        expr_in_payload = (datetime.utcnow() + timedelta(
+            minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
         expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
 
         user_id = generated_user_id
         uid = user_id
         verified = True
 
-        last_login_at = datetime.utcnow()   # get this data from db
+        last_login_at = datetime.utcnow()  # get this data from db
         last_update_at = datetime.utcnow()  # get this data from db
         created_at = datetime.utcnow()
 
@@ -193,7 +204,7 @@ class ProviderFusionAuth(Provider):
         try:
             access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
             payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
-            client.set_refresh_token(payload)   # write data to Redis
+            client.set_refresh_token(payload)  # write data to Redis
 
             return LoginResponseModel(
                 user=User(
@@ -245,7 +256,8 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
-        expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
+        expr_in_payload = (datetime.utcnow() + timedelta(
+            minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
         expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
 
         payload = dict(
@@ -268,8 +280,8 @@ class ProviderFusionAuth(Provider):
             last_update_at=int(update_at.timestamp()) if update_at else None,
         )
         access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-        payload['refreshToken'] = generated_refresh_token   # Dont send in payload jwt.encode
-        client.set_refresh_token(payload)   # write data to Redis
+        payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
+        client.set_refresh_token(payload)  # write data to Redis
 
         return LoginResponseModel(
             user=User(
@@ -459,7 +471,7 @@ class ProviderFusionAuth(Provider):
                 last_login_at=user.get('last_login_at'),
                 created_at=user.get('created_at'),
                 update_at=user.get('last_update_at')
-                )
+            )
 
         except Exception as err:
             error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
@@ -474,14 +486,17 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
         try:
-            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):  # Search for the key if it is exists
-                payload = client.hgetall_redis_refresh_payload(f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
+            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}",
+                                        "map_refresh_token"):  # Search for the key if it is exists
+                payload = client.hgetall_redis_refresh_payload(
+                    f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
                 if payload:
                     # new access_token generated from valid refresh_token request
                     new_access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
                     payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
                     client.set_refresh_token(payload)  # write data to Redis
-                    client.del_refresh_token(f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
+                    client.del_refresh_token(
+                        f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
                     return {'accessToken': new_access_token, 'refreshToken': payload['refreshToken']}
                 else:
                     return {'No Redis Data exists !'}
@@ -490,3 +505,136 @@ class ProviderFusionAuth(Provider):
         except Exception as err:
             log.error(err)
             raise err
+
+    def zeauth_bootstrap(self):
+        if ProviderFusionAuth.admin_user_created:
+            return
+        default_admin = User(
+            email=DEFAULT_ADMIN_EMAIL,
+            username=DEFAULT_ADMIN_EMAIL,
+            password=DEFAULT_ADMIN_PASSWORD,
+            first_name="Master",
+            last_name="Account"
+        )
+        # try:
+        #     self.update_password_policy()
+        # except Exception as err:
+        #     error_template = "update_password_policy: An exception of type {0} occurred. error: {1}"
+        #     log.error(error_template.format(type(err).__name__, str(err)))
+
+        try:
+            user = self.signup(db=get_db(), user=default_admin)
+            log.info(f"Master Account created.. {user}")
+        except Exception as ex:
+            log.info("user already created")
+            log.error(ex)
+        try:
+
+            # creating default roles
+            roles = {}
+            for role in DEFAULT_ROLES:
+                role = crud.create_role(db=get_db(), role=role)
+                roles[role] = role
+            login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
+            token = self.login(db=get_db(), user_info=login)
+
+            # Creating Scope
+
+            scope_list = []
+            scope_id = []
+            for scope in DEFAULT_SCOPE:
+                try:
+                    payload = {
+                        "name": scope,
+                        "displayName": scope
+                    }
+                    scope_data = self.create_scope_user(payload=payload, token=token)
+                    if scope_data:
+                        scope_list.append(scope_data)
+                        scope_id.append(scope_data["id"])
+
+                    else:
+                        pass
+                except Exception as ex:
+                    log.error(f"Boot strap fail due to :{ex}")
+
+            # Creating Resource
+            try:
+                payload = {"scopes": scope_list, "attributes": {}, "uris": ["email"], "name": "users",
+                           "ownerManagedAccess": "", "displayName": "email", "type": "table"}
+
+                users_resource = self.get_and_create_client_authz_resource(payload=payload)
+                if users_resource:
+                    log.info("resource created")
+
+            except Exception as ex:
+                log.error(ex)
+                log.info("this resourse already created")
+
+            # Creating Role Policy
+            payload = {
+                "name": USERS_TABLE_ROLE_POLICIES[0],
+                "type": "role",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "roles": [{
+                    "id": roles['user']['id'],
+                    "required": True
+                }]
+            }
+            user_policy = self.get_and_create_client_authz_role_based_policy(payload=payload)
+
+            payload = {
+                "name": USERS_TABLE_ROLE_POLICIES[1],
+                "type": "role",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "roles": [{
+                    "id": roles['admin']['id'],
+                    "required": True
+                }]
+            }
+            admin_policy = self.get_and_create_client_authz_role_based_policy(payload=payload)
+
+            # Creating Permissions
+
+            user_policy_data = []
+
+            for user_permission in USER_PERMISSIONS:
+                if (user_permission == "zekoder-zeauth-user-list") or (
+                        user_permission == "zekoder-zeauth-user-del") or (
+                        user_permission == "zekoder-zeauth-user-update"):
+                    user_policy_data.append(admin_policy["id"])
+
+                elif (user_permission == "zekoder-zeauth-user-get"):
+                    user_policy_data.append(user_policy["id"])
+                    user_policy_data.append(admin_policy["id"])
+
+                payload = {
+                    "type": "scope",
+                    "logic": "POSITIVE",
+                    "decisionStrategy": "UNANIMOUS",
+                    "name": user_permission,
+                    "description": "permission",
+                    "resources": [users_resource["_id"]],
+                    "policies": user_policy_data,
+                    "scopes": scope_id
+                }
+                try:
+                    permission_obj = self.permission_user(payload=payload, token=token)
+                    if permission_obj:
+                        log.info("object create")
+                    else:
+                        pass
+                except Exception as ex:
+                    log.error(ex)
+
+            client_roles = self.keycloak_admin.get_client_roles(client_id=self._get_client_id())
+            user_roles = [rol for rol in client_roles if rol["name"] in DEFAULT_ADMIN_PERMISSIONS]
+            # self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=user, roles=user_roles)
+        except Exception as err:
+            error_template = "zeauth_bootstrap: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+            # log.error(f"user <{DEFAULT_ADMIN_EMAIL}> already exists")
+
+        ProviderFusionAuth.admin_user_created = True
