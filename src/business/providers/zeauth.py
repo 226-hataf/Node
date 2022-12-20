@@ -47,14 +47,16 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    def list_users(self, page: int, page_size: int, search: str, db):
+    def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: datetime,
+                   date_of_last_login: datetime, db):
         next_page = 2
         skip = 0
         if page > 0:
             skip = (page - 1) * page_size
             next_page = page + 1
 
-        users = crud.get_users(db, skip=skip, limit=page_size, search=search)
+        users = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
+                               date_of_creation=date_of_creation, date_of_last_login=date_of_last_login)
         users = [self._cast_user(user) for user in users]
 
         return users, next_page, page_size

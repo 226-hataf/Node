@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from business.models.schema_roles import RoleBase
 from business.models.schemas_groups import GroupBase
 from core.db_models import models
+from datetime import datetime
 from fastapi import HTTPException
 
 
@@ -102,13 +103,24 @@ def reset_user_password(db: Session, password, user_id: int):
     return update
 
 
-def get_users(db: Session, search, skip: int = 0, limit: int = 20):
-    query = db.query(models.User).filter(or_(
-        models.User.email.like(f"%{search}%"),
-        models.User.first_name.like(f"%{search}%"),
-        models.User.last_name.like(f"%{search}%"),
-        models.User.user_name.like(f"%{search}%"),
-    )).offset(skip).limit(limit)
+def get_users(db: Session, search, user_status: bool, date_of_creation: datetime, date_of_last_login: datetime, skip: int = 0, limit: int = 20):
+    query = db.query(models.User)
+    if search:
+        query = query.filter(or_(
+            models.User.email.like(f"%{search}%"),
+            models.User.first_name.like(f"%{search}%"),
+            models.User.last_name.like(f"%{search}%"),
+            models.User.user_name.like(f"%{search}%"),
+        ))
+    if user_status is not None:
+        query = query.filter(models.User.user_status == user_status)
+    if date_of_last_login:
+        query = query.filter(models.User.last_login_at >= date_of_last_login)
+    if date_of_creation:
+        query = query.filter(models.User.created_on >= date_of_creation)
+
+    query = query.offset(skip).limit(limit)
+
     return query.all()
 
 
