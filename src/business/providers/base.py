@@ -32,7 +32,8 @@ class Provider:
     def delete_user(self, user_id: str):
         log.error(f"method delete_user not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
-    def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: datetime, date_of_last_login: datetime, db):
+    def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: datetime,
+                   date_of_last_login: datetime, sort_by, sort_column, db):
         log.error(f"method list_users not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
     def get_user(self, user_ids: List[str]):

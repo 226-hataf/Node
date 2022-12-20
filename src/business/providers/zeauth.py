@@ -48,7 +48,7 @@ class ProviderFusionAuth(Provider):
             raise e
 
     def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: datetime,
-                   date_of_last_login: datetime, db):
+                   date_of_last_login: datetime, sort_by, sort_column, db):
         next_page = 2
         skip = 0
         if page > 0:
@@ -56,7 +56,8 @@ class ProviderFusionAuth(Provider):
             next_page = page + 1
 
         users = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
-                               date_of_creation=date_of_creation, date_of_last_login=date_of_last_login)
+                               date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
+                               sort_by=sort_by, sort_column=sort_column)
         users = [self._cast_user(user) for user in users]
 
         return users, next_page, page_size
