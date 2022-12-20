@@ -6,6 +6,18 @@ from core.db_models import models
 from datetime import datetime
 from fastapi import HTTPException
 
+from pydantic.schema import Enum
+
+
+class SortByEnum(str, Enum):
+    DESE = 'desc'
+    ASC = 'asc'
+
+
+class SortColumnEnum(str, Enum):
+    CREATED_AT = 'created_at'
+    USER_NAME = 'user_name'
+
 
 def get_groups(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Group).offset(skip).limit(limit).all()
@@ -103,7 +115,8 @@ def reset_user_password(db: Session, password, user_id: int):
     return update
 
 
-def get_users(db: Session, search, user_status: bool, date_of_creation: datetime, date_of_last_login: datetime, skip: int = 0, limit: int = 20):
+def get_users(db: Session, search, user_status: bool, date_of_creation: datetime, date_of_last_login: datetime, sort_by,
+              sort_column, skip: int = 0, limit: int = 20):
     query = db.query(models.User)
     if search:
         query = query.filter(or_(
@@ -118,6 +131,17 @@ def get_users(db: Session, search, user_status: bool, date_of_creation: datetime
         query = query.filter(models.User.last_login_at >= date_of_last_login)
     if date_of_creation:
         query = query.filter(models.User.created_on >= date_of_creation)
+
+    if sort_column == SortColumnEnum.USER_NAME:
+        if sort_by == SortByEnum.ASC:
+            query = query.order_by(models.User.user_name.asc())
+        else:
+            query = query.order_by(models.User.user_name.desc())
+    else:
+        if sort_by == SortByEnum.ASC:
+            query = query.order_by(models.User.created_on.asc())
+        else:
+            query = query.order_by(models.User.created_on.desc())
 
     query = query.offset(skip).limit(limit)
 

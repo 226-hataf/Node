@@ -6,11 +6,22 @@ from datetime import datetime
 from business.models.users import UserResponseModel, UsersWithIDsResponse
 from business.providers.base import *
 from business.providers import get_provider
-from business.models.dependencies import CommonDependencies
 from core import log
 from core.types import ZKModel
-from business.models.dependencies import ProtectedMethod
-from fastapi import Query, Body
+from business.models.dependencies import CommonDependencies, ProtectedMethod
+from fastapi import Query
+from pydantic.schema import Enum
+
+
+class SortByEnum(str, Enum):
+    DESE = 'desc'
+    ASC = 'asc'
+
+
+class SortColumnEnum(str, Enum):
+    CREATED_AT = 'created_at'
+    USER_NAME = 'user_name'
+
 
 router = APIRouter()
 
@@ -52,6 +63,8 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
 async def list(
         token: str = Depends(ProtectedMethod),
         date_of_creation: datetime = Query(default=None),
+        sort_by: SortByEnum = SortByEnum.DESE,
+        sort_column: SortColumnEnum = Query(default=SortColumnEnum.CREATED_AT),
         date_of_last_login: datetime = Query(default=None),
         user_status: bool = Query(default=None),
         commons: CommonDependencies = Depends(CommonDependencies),
@@ -66,6 +79,8 @@ async def list(
             user_status=user_status,
             date_of_creation=date_of_creation,
             date_of_last_login=date_of_last_login,
+            sort_by=sort_by,
+            sort_column=sort_column,
             db=db
         )
 
