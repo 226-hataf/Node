@@ -37,14 +37,14 @@ class Group(Base, TrackTimeMixin):
 
 
 class GroupsRole(Base, TrackTimeMixin):
-    __tablename__ = "groups_roles"
+    __tablename__ = "groups__roles"
     id = Column(Integer, primary_key=True, index=True)
     roles_id = Column(Integer, ForeignKey("roles.id"))
     groups_id = Column(Integer, ForeignKey("groups.id"))
 
 
 class GroupsUser(Base, TrackTimeMixin):
-    __tablename__ = "groups_users"
+    __tablename__ = "groups__users"
     id = Column(Integer, primary_key=True, index=True)
     groups_id = Column(Integer, ForeignKey("groups.id"))
     users_id = Column(Integer, ForeignKey("users.id"))

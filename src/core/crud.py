@@ -4,6 +4,7 @@ from business.models.schema_roles import RoleBase
 from business.models.schemas_groups import GroupBase
 from core.db_models import models
 from datetime import datetime
+from fastapi import HTTPException
 
 
 def get_groups(db: Session, skip: int = 0, limit: int = 100):
@@ -121,3 +122,37 @@ def get_users(db: Session, search, user_status: bool, date_of_creation: datetime
     query = query.offset(skip).limit(limit)
 
     return query.all()
+
+
+def update_user_group(db: Session, user_id: str, groups: list):
+    # First delete the assigned group of the user,
+    db.query(models.GroupsUser) \
+        .filter(models.GroupsUser.users_id == user_id) \
+        .delete()
+    # then assign requested group/s to the user
+    for obj in db.query(models.Group) \
+            .filter(models.Group.name.in_(groups)):
+        group = models.GroupsUser(groups_id=obj.id, users_id=user_id)
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+        yield group
+
+
+def group_name_exists(db: Session, groups: list):
+    # check the request group names is exists in the Group table, if not throw 404
+    # also with this method, if request repeated group name, then it will not allow to use
+    # repeated group name, so the update_user_group func. will not run in routes/assignment.py
+    res = db.query(models.Group).filter(models.Group.name.in_(groups)).count()
+    print(res)
+    if len(groups) == res:
+        return True
+    else:
+        raise HTTPException(status_code=404, detail="Group name not exist or repeated ! Check again..")
+
+
+def get_groups_of_user_by_id(db: Session, user_id: str):
+    # Get all groups assigned to the user
+    return db.query(models.GroupsUser.users_id, models.Group.name) \
+        .join(models.Group) \
+        .filter(models.GroupsUser.users_id == user_id).all()
