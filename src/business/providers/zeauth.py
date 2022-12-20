@@ -30,7 +30,8 @@ DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).s
 DEFAULT_ROLES = [{"name": "admin", "description": "admin role for users"},
                  {"name": "user", "description": "user role for users"}]
 DEFAULT_SCOPE = ["list", "get", "update", "del"]
-
+USER_PERMISSIONS = ["zekoder-zeauth-user-list", "zekoder-zeauth-user-get", "zekoder-zeauth-user-del",
+                    "zekoder-zeauth-user-update"]
 
 class ProviderFusionAuth(Provider):
     admin_user_created = None
@@ -506,6 +507,12 @@ class ProviderFusionAuth(Provider):
             log.error(err)
             raise err
 
+    def get_and_create_client_authz_resource(self, payload):
+        return True
+
+    def create_scope_user(self, payload, token):
+        pass
+
     def zeauth_bootstrap(self):
         if ProviderFusionAuth.admin_user_created:
             return
@@ -521,10 +528,11 @@ class ProviderFusionAuth(Provider):
         # except Exception as err:
         #     error_template = "update_password_policy: An exception of type {0} occurred. error: {1}"
         #     log.error(error_template.format(type(err).__name__, str(err)))
-
+        user_id = None
         try:
             user = self.signup(db=get_db(), user=default_admin)
-            log.info(f"Master Account created.. {user}")
+            user_id = user['id']
+            log.info(f"Master Account created.. {user_id}")
         except Exception as ex:
             log.info("user already created")
             log.error(ex)
@@ -533,8 +541,10 @@ class ProviderFusionAuth(Provider):
             # creating default roles
             roles = {}
             for role in DEFAULT_ROLES:
-                role = crud.create_role(db=get_db(), role=role)
-                roles[role] = role
+                db_role = crud.create_role(db=get_db(), role=role)
+                user_role = {"role_id": db_role.id, "user_id": user_id}
+                crud.create_user_role(db=get_db(), role=user_role)
+                roles[role] = db_role
             login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
             token = self.login(db=get_db(), user_info=login)
 
@@ -548,13 +558,10 @@ class ProviderFusionAuth(Provider):
                         "name": scope,
                         "displayName": scope
                     }
-                    scope_data = self.create_scope_user(payload=payload, token=token)
-                    if scope_data:
+                    if scope_data := self.create_scope_user(payload=payload, token=token):
                         scope_list.append(scope_data)
                         scope_id.append(scope_data["id"])
 
-                    else:
-                        pass
                 except Exception as ex:
                     log.error(f"Boot strap fail due to :{ex}")
 
@@ -624,8 +631,6 @@ class ProviderFusionAuth(Provider):
                     permission_obj = self.permission_user(payload=payload, token=token)
                     if permission_obj:
                         log.info("object create")
-                    else:
-                        pass
                 except Exception as ex:
                     log.error(ex)
 
