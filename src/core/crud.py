@@ -1,9 +1,43 @@
-import datetime
-import logging
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from business.models.schema_roles import RoleBase
+from business.models.schemas_groups import GroupBase
 from core.db_models import models
+
+
+def get_groups(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Group).offset(skip).limit(limit).all()
+
+
+def get_group_by_name(db: Session, name: str):
+    return db.query(models.Group).filter(models.Group.name == name).first()
+
+
+def get_group_by_id(db: Session, id: str):
+    return db.query(models.Group).filter(models.Group.id == id).first()
+
+
+def create_group(db: Session, group_create: GroupBase):
+    group = models.Group(name=group_create.name, description=group_create.description)
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+def update_group(db: Session, id: str, name: str, description: str):
+    group = get_group_by_id(db=db, id=id)
+    group.name = name
+    group.description = description
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+def remove_group(db: Session, name: str):
+    group = get_group_by_name(db=db, name=name)
+    db.delete(group)
+    db.commit()
 
 
 def get_role_by_id(db: Session, role_id: str):
@@ -75,4 +109,3 @@ def get_users(db: Session, search, skip: int = 0, limit: int = 20):
         models.User.user_name.like(f"%{search}%"),
     )).offset(skip).limit(limit)
     return query.all()
-
