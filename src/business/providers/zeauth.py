@@ -55,12 +55,12 @@ class ProviderFusionAuth(Provider):
             skip = (page - 1) * page_size
             next_page = page + 1
 
-        users = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
+        users, total_count = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
                                date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
                                sort_by=sort_by, sort_column=sort_column)
         users = [self._cast_user(user) for user in users]
 
-        return users, next_page, page_size
+        return users, next_page, page_size, total_count
 
     def _cast_user_model(self, response: dict):
         full_name = response.get('firstName')
