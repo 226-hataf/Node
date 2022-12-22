@@ -120,10 +120,10 @@ def get_users(db: Session, search, user_status: bool, date_of_creation: datetime
     query = db.query(models.User)
     if search:
         query = query.filter(or_(
-            models.User.email.like(f"%{search}%"),
-            models.User.first_name.like(f"%{search}%"),
-            models.User.last_name.like(f"%{search}%"),
-            models.User.user_name.like(f"%{search}%"),
+            models.User.email.ilike(f"%{search}%"),
+            models.User.first_name.ilike(f"%{search}%"),
+            models.User.last_name.ilike(f"%{search}%"),
+            models.User.user_name.ilike(f"%{search}%"),
         ))
     if user_status is not None:
         query = query.filter(models.User.user_status == user_status)
@@ -145,7 +145,7 @@ def get_users(db: Session, search, user_status: bool, date_of_creation: datetime
 
     query = query.offset(skip).limit(limit)
 
-    return query.all()
+    return query.all(), query.count()
 
 
 def update_user_group(db: Session, user_id: str, groups: list):

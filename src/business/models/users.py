@@ -103,6 +103,7 @@ class UserResponseModel(BaseModel):
     next_page: Optional[str]
     user_list: Optional[List[User]]
     page_size: Optional[int]
+    total_count: int
 
 
 class UserLoginSchema(BaseModel):

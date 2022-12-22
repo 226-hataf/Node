@@ -72,7 +72,7 @@ async def list(
 ):
     token.auth(model.permissions.list)
     try:
-        user_list, next_page, page_size = auth_provider.list_users(
+        user_list, next_page, page_size, total_count = auth_provider.list_users(
             page=commons.page,
             page_size=commons.size,
             search=commons.search,
@@ -84,7 +84,7 @@ async def list(
             db=db
         )
 
-        return {'next_page': next_page, 'page_size': page_size, 'user_list': user_list}
+        return {'next_page': next_page, 'page_size': page_size, 'user_list': user_list, 'total_count': total_count}
     except Exception as e:
         log.error(e)
         raise HTTPException(status_code=500, detail="unknown error") from e
