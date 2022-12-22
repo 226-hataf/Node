@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import os
 import json
 import uuid
@@ -47,8 +47,8 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: datetime,
-                   date_of_last_login: datetime, sort_by, sort_column, db):
+    def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: date,
+                   date_of_last_login: date, sort_by, sort_column, db):
         next_page = 2
         skip = 0
         if page > 0:

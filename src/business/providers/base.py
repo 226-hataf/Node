@@ -1,6 +1,6 @@
 from typing import List
 from business.models.users import UserRequest, User, UserLoginSchema
-from datetime import datetime
+from datetime import date
 from core import log
 import os
 
@@ -32,8 +32,8 @@ class Provider:
     def delete_user(self, user_id: str):
         log.error(f"method delete_user not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
-    def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: datetime,
-                   date_of_last_login: datetime, sort_by, sort_column, db):
+    def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: date,
+                   date_of_last_login: date, sort_by, sort_column, db):
         log.error(f"method list_users not implement for {os.environ.get('AUTH_PROVIDER')} provider")
 
     def get_user(self, user_ids: List[str]):

@@ -1,9 +1,9 @@
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from business.models.schema_roles import RoleBase
 from business.models.schemas_groups import GroupBase
 from core.db_models import models
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from fastapi import HTTPException
 
 from pydantic.schema import Enum
@@ -99,7 +99,13 @@ def create_user(db: Session, user):
 
 
 def get_user_login(db: Session, email: str, password: str):
-    return db.query(models.User).filter(models.User.email == email, models.User.password == password).first()
+    user_login = db.query(models.User).filter(models.User.email == email, models.User.password == password).first()
+    # if user_login:
+    #     update = db.query(models.User).get(user_login.id)
+    #     update.last_login_at = datetime.now()
+    #     db.commit()
+    #     db.refresh(update)
+    return user_login
 
 
 def get_user_by_email(db: Session, email: str):
@@ -115,7 +121,7 @@ def reset_user_password(db: Session, password, user_id: int):
     return update
 
 
-def get_users(db: Session, search, user_status: bool, date_of_creation: datetime, date_of_last_login: datetime, sort_by,
+def get_users(db: Session, search, user_status: bool, date_of_creation: date, date_of_last_login: date, sort_by,
               sort_column, skip: int = 0, limit: int = 20):
     query = db.query(models.User)
     if search:
@@ -128,9 +134,11 @@ def get_users(db: Session, search, user_status: bool, date_of_creation: datetime
     if user_status is not None:
         query = query.filter(models.User.user_status == user_status)
     if date_of_last_login:
-        query = query.filter(models.User.last_login_at >= date_of_last_login)
+        query = query.filter(and_(models.User.last_login_at > date_of_last_login,
+                                  models.User.last_login_at < date_of_last_login + timedelta(days=1)))
     if date_of_creation:
-        query = query.filter(models.User.created_on >= date_of_creation)
+        query = query.filter(and_(models.User.created_on > date_of_creation,
+                                  models.User.created_on < date_of_creation + timedelta(days=1)))
 
     if sort_column == SortColumnEnum.USER_NAME:
         if sort_by == SortByEnum.ASC:

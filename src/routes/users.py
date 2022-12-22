@@ -2,7 +2,7 @@ from typing import List
 from config.db import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import date, datetime
 from business.models.users import UserResponseModel, UsersWithIDsResponse
 from business.providers.base import *
 from business.providers import get_provider
@@ -62,10 +62,10 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
             )
 async def list(
         token: str = Depends(ProtectedMethod),
-        date_of_creation: datetime = Query(default=None),
+        date_of_creation: date = Query(default=None),
         sort_by: SortByEnum = SortByEnum.DESE,
         sort_column: SortColumnEnum = Query(default=SortColumnEnum.CREATED_AT),
-        date_of_last_login: datetime = Query(default=None),
+        date_of_last_login: date = Query(default=None),
         user_status: bool = Query(default=None),
         commons: CommonDependencies = Depends(CommonDependencies),
         db: Session = Depends(get_db)
