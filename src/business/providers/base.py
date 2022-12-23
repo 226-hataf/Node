@@ -111,23 +111,7 @@ class LimitExceededError(Exception):
     pass
 
 
-class CustomKeycloakConnectionError(Exception):
-    pass
-
-
-class CustomKeycloakPostError(Exception):
-    pass
-
-
 class UserNotFoundError(Exception):
-    pass
-
-
-class CustomKeycloakPutError(Exception):
-    pass
-
-
-class CustomKeycloakInvalidGrantError(Exception):
     pass
 
 

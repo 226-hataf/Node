@@ -7,3 +7,4 @@ venv
 test.yaml
 src/sandbox.py
 src/routes/sandbox.py
+src/bbs.yaml

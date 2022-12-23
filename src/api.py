@@ -1,7 +1,5 @@
 from dotenv import load_dotenv
-
 from config.db import get_db
-
 load_dotenv()
 import os
 import importlib
@@ -60,9 +58,6 @@ async def user_login(user_info: UserLoginSchema, db: Session = Depends(get_db)):
     except InvalidCredentialsError as e:
         log.error(e)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records")
-    except CustomKeycloakPostError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Account not Verified!') from err
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
@@ -101,7 +96,6 @@ async def reset_password(user_info: ResetPasswordSchema, db: Session = Depends(g
         response = await auth_provider.reset_password(user_info, db)
         if response:
             return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "email has been sent"})
-
     except UserNotFoundError as err:
         log.error(err)
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
@@ -118,19 +112,12 @@ def reset_password_verify(reset_pass: ResetPasswordVerifySchema, db: Session = D
     try:
         if _ := auth_provider.reset_password_verify(reset_pass, db):
             return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Password has been reset."})
-
-    except CustomKeycloakPutError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
     except IncorrectResetKeyError as err:
         log.error(err)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
     except NotExistingResourceError as err:
         log.error(err)
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
-    except CustomKeycloakInvalidGrantError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
