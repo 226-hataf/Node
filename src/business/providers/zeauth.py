@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import os
 import json
 import uuid
@@ -23,7 +23,7 @@ JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
 client = RedisClient()
 ROLES = 'zk-zeauth-create,zk-zeauth-read,zk-zeauth-delete,zk-zeauth-update,zk-zeauth-list'
-DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'tuncelezgisu111@gmail.com')
+DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'zekoder-zeauth@zedkoer.net')
 DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
 DEFAULT_ADMIN_ROLES = os.environ.get('DEFAULT_ADMIN_ROLES', ROLES).split(',')
 DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).split(',')
@@ -58,17 +58,20 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    def list_users(self, page: int, page_size: int, search: str, db):
+    def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: date,
+                   date_of_last_login: date, sort_by, sort_column, db):
         next_page = 2
         skip = 0
         if page > 0:
             skip = (page - 1) * page_size
             next_page = page + 1
 
-        users = crud.get_users(db, skip=skip, limit=page_size, search=search)
+        users, total_count = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
+                               date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
+                               sort_by=sort_by, sort_column=sort_column)
         users = [self._cast_user(user) for user in users]
 
-        return users, next_page, page_size
+        return users, next_page, page_size, total_count
 
     def _cast_user_model(self, response: dict):
         full_name = response.get('firstName')

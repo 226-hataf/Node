@@ -29,9 +29,22 @@ class Role(Base, TrackTimeMixin):
     description = Column(String)
 
 
-class UserRole(Base, TrackTimeMixin):
-    __tablename__ = "user_roles"
+class Group(Base, TrackTimeMixin):
+    __tablename__ = "groups"
     id = Column(Integer, primary_key=True, index=True)
-    role_id = Column(Integer, ForeignKey("role.id"))
-    user_id = Column(Integer, ForeignKey("user.id"))
+    name = Column(String, unique=True)
+    description = Column(String)
 
+
+class GroupsRole(Base, TrackTimeMixin):
+    __tablename__ = "groups__roles"
+    id = Column(Integer, primary_key=True, index=True)
+    roles_id = Column(Integer, ForeignKey("roles.id"))
+    groups_id = Column(Integer, ForeignKey("groups.id"))
+
+
+class GroupsUser(Base, TrackTimeMixin):
+    __tablename__ = "groups__users"
+    id = Column(Integer, primary_key=True, index=True)
+    groups_id = Column(Integer, ForeignKey("groups.id"))
+    users_id = Column(Integer, ForeignKey("users.id"))

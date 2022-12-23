@@ -2,15 +2,26 @@ from typing import List
 from config.db import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from business import User
+from datetime import date, datetime
 from business.models.users import UserResponseModel, UsersWithIDsResponse
 from business.providers.base import *
 from business.providers import get_provider
-from business.models.dependencies import CommonDependencies
 from core import log
 from core.types import ZKModel
-from business.models.dependencies import ProtectedMethod
+from business.models.dependencies import CommonDependencies, ProtectedMethod
 from fastapi import Query
+from pydantic.schema import Enum
+
+
+class SortByEnum(str, Enum):
+    DESE = 'desc'
+    ASC = 'asc'
+
+
+class SortColumnEnum(str, Enum):
+    CREATED_AT = 'created_at'
+    USER_NAME = 'user_name'
+
 
 router = APIRouter()
 
@@ -49,13 +60,31 @@ create.__doc__ = f" Create a new {model.name}".expandtabs()
             status_code=200, response_model=UserResponseModel,
             response_model_exclude_none=True,
             )
-async def list(token: str = Depends(ProtectedMethod), commons: CommonDependencies = Depends(CommonDependencies), db: Session = Depends(get_db)):
+async def list(
+        token: str = Depends(ProtectedMethod),
+        date_of_creation: date = Query(default=None),
+        sort_by: SortByEnum = SortByEnum.DESE,
+        sort_column: SortColumnEnum = Query(default=SortColumnEnum.CREATED_AT),
+        date_of_last_login: date = Query(default=None),
+        user_status: bool = Query(default=None),
+        commons: CommonDependencies = Depends(CommonDependencies),
+        db: Session = Depends(get_db)
+):
     token.auth(model.permissions.list)
     try:
-        user_list, next_page, page_size = auth_provider.list_users(page=commons.page, page_size=commons.size,
-                                                                   search=commons.search, db=db)
+        user_list, next_page, page_size, total_count = auth_provider.list_users(
+            page=commons.page,
+            page_size=commons.size,
+            search=commons.search,
+            user_status=user_status,
+            date_of_creation=date_of_creation,
+            date_of_last_login=date_of_last_login,
+            sort_by=sort_by,
+            sort_column=sort_column,
+            db=db
+        )
 
-        return {'next_page': next_page, 'page_size': page_size, 'user_list': user_list}
+        return {'next_page': next_page, 'page_size': page_size, 'user_list': user_list, 'total_count': total_count}
     except Exception as e:
         log.error(e)
         raise HTTPException(status_code=500, detail="unknown error") from e

@@ -6,6 +6,8 @@ from enum import Enum
 
 from pydantic.validators import datetime
 
+from core import log
+
 
 # from business.models.roles import Roles
 
@@ -66,9 +68,31 @@ class UserRequest(BaseModel):
 
     @validator('password')
     def check_password(cls, password):
-        if not re.match(r"(?!^[0-9]*$)(?!^[a-z]*$)(?!^[A-Z]*$)^(.{8,15})$", password):
+        """
+        Password generation fails if the pattern rules are not met.!
+        not Less than 8 character
+        Not containing at least one number
+        Not containing at least one capital letter
+        Not containing at least one small letter
+        Not containing at least one special character
+        :param password:
+        :return:
+        """
+        patterns = {'([A-Z])': 'one capital letter,',
+                    '([a-z])': 'one small letter,',
+                    '([0-9])': 'one number,',
+                    '([#?!@$%^&*-])': 'one special character'}
+
+        if len(password) >= 8:
+            log.debug(password)
+            result = ' '.join([v for k, v in patterns.items() if not re.search(k, password)])
+            if result:
+                log.debug(result)
+                raise ValueError(f"Password needs at least {result}")
+            else:
+                return password
+        else:
             raise ValueError("invalid password format")
-        return password
 
 
 class Config:
@@ -79,6 +103,7 @@ class UserResponseModel(BaseModel):
     next_page: Optional[str]
     user_list: Optional[List[User]]
     page_size: Optional[int]
+    total_count: int
 
 
 class UserLoginSchema(BaseModel):
