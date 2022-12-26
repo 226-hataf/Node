@@ -10,6 +10,7 @@ from core import log, crud
 import requests
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
+from ..models.schema_roles import RoleBase
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from core.AES import AesStringCipher
 import jwt
@@ -22,16 +23,12 @@ AES_KEY = os.environ.get('AES_KEY')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
 client = RedisClient()
-ROLES = 'zk-zeauth-create,zk-zeauth-read,zk-zeauth-delete,zk-zeauth-update,zk-zeauth-list'
 DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'zekoder-zeauth@zedkoer.net')
 DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
-DEFAULT_ADMIN_ROLES = os.environ.get('DEFAULT_ADMIN_ROLES', ROLES).split(',')
-DEFAULT_ADMIN_PERMISSIONS = os.environ.get('DEFAULT_ADMIN_PERMISSIONS', ROLES).split(',')
 DEFAULT_ROLES = [{"name": "admin", "description": "admin role for users"},
                  {"name": "user", "description": "user role for users"}]
 DEFAULT_SCOPE = ["list", "get", "update", "del"]
-USER_PERMISSIONS = ["zekoder-zeauth-user-list", "zekoder-zeauth-user-get", "zekoder-zeauth-user-del",
-                    "zekoder-zeauth-user-update"]
+
 
 class ProviderFusionAuth(Provider):
     admin_user_created = None
@@ -510,13 +507,8 @@ class ProviderFusionAuth(Provider):
             log.error(err)
             raise err
 
-    def get_and_create_client_authz_resource(self, payload):
-        return True
-
-    def create_scope_user(self, payload, token):
-        pass
-
     def zeauth_bootstrap(self):
+        log.info("zeauth_bootstrap...")
         if ProviderFusionAuth.admin_user_created:
             return
         default_admin = User(
@@ -526,11 +518,7 @@ class ProviderFusionAuth(Provider):
             first_name="Master",
             last_name="Account"
         )
-        # try:
-        #     self.update_password_policy()
-        # except Exception as err:
-        #     error_template = "update_password_policy: An exception of type {0} occurred. error: {1}"
-        #     log.error(error_template.format(type(err).__name__, str(err)))
+
         user_id = None
         try:
             user = self.signup(db=get_db(), user=default_admin)
@@ -544,102 +532,13 @@ class ProviderFusionAuth(Provider):
             # creating default roles
             roles = {}
             for role in DEFAULT_ROLES:
-                db_role = crud.create_role(db=get_db(), role=role)
-                user_role = {"role_id": db_role.id, "user_id": user_id}
-                crud.create_user_role(db=get_db(), role=user_role)
-                roles[role] = db_role
+                db_role = crud.create_role(db=get_db(), role_create=RoleBase(**role))
+                # user_role = {"role_id": db_role.id, "user_id": user_id}
+                # crud.create_user_role(db=get_db(), role=user_role)
+                # roles[role] = db_role
             login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
             token = self.login(db=get_db(), user_info=login)
 
-            # Creating Scope
-
-            scope_list = []
-            scope_id = []
-            for scope in DEFAULT_SCOPE:
-                try:
-                    payload = {
-                        "name": scope,
-                        "displayName": scope
-                    }
-                    if scope_data := self.create_scope_user(payload=payload, token=token):
-                        scope_list.append(scope_data)
-                        scope_id.append(scope_data["id"])
-
-                except Exception as ex:
-                    log.error(f"Boot strap fail due to :{ex}")
-
-            # Creating Resource
-            try:
-                payload = {"scopes": scope_list, "attributes": {}, "uris": ["email"], "name": "users",
-                           "ownerManagedAccess": "", "displayName": "email", "type": "table"}
-
-                users_resource = self.get_and_create_client_authz_resource(payload=payload)
-                if users_resource:
-                    log.info("resource created")
-
-            except Exception as ex:
-                log.error(ex)
-                log.info("this resourse already created")
-
-            # Creating Role Policy
-            payload = {
-                "name": USERS_TABLE_ROLE_POLICIES[0],
-                "type": "role",
-                "logic": "POSITIVE",
-                "decisionStrategy": "UNANIMOUS",
-                "roles": [{
-                    "id": roles['user']['id'],
-                    "required": True
-                }]
-            }
-            user_policy = self.get_and_create_client_authz_role_based_policy(payload=payload)
-
-            payload = {
-                "name": USERS_TABLE_ROLE_POLICIES[1],
-                "type": "role",
-                "logic": "POSITIVE",
-                "decisionStrategy": "UNANIMOUS",
-                "roles": [{
-                    "id": roles['admin']['id'],
-                    "required": True
-                }]
-            }
-            admin_policy = self.get_and_create_client_authz_role_based_policy(payload=payload)
-
-            # Creating Permissions
-
-            user_policy_data = []
-
-            for user_permission in USER_PERMISSIONS:
-                if (user_permission == "zekoder-zeauth-user-list") or (
-                        user_permission == "zekoder-zeauth-user-del") or (
-                        user_permission == "zekoder-zeauth-user-update"):
-                    user_policy_data.append(admin_policy["id"])
-
-                elif (user_permission == "zekoder-zeauth-user-get"):
-                    user_policy_data.append(user_policy["id"])
-                    user_policy_data.append(admin_policy["id"])
-
-                payload = {
-                    "type": "scope",
-                    "logic": "POSITIVE",
-                    "decisionStrategy": "UNANIMOUS",
-                    "name": user_permission,
-                    "description": "permission",
-                    "resources": [users_resource["_id"]],
-                    "policies": user_policy_data,
-                    "scopes": scope_id
-                }
-                try:
-                    permission_obj = self.permission_user(payload=payload, token=token)
-                    if permission_obj:
-                        log.info("object create")
-                except Exception as ex:
-                    log.error(ex)
-
-            client_roles = self.keycloak_admin.get_client_roles(client_id=self._get_client_id())
-            user_roles = [rol for rol in client_roles if rol["name"] in DEFAULT_ADMIN_PERMISSIONS]
-            # self.keycloak_admin.assign_client_role(client_id=self._get_client_id(), user_id=user, roles=user_roles)
         except Exception as err:
             error_template = "zeauth_bootstrap: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
