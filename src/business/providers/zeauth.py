@@ -10,6 +10,7 @@ from core import log, crud
 import requests
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
+from ..models.schema_groups_role import GroupsRoleBase, GroupsUserBase
 from ..models.schema_roles import RoleBase
 from ..models.schemas_groups import GroupBase
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
@@ -38,6 +39,7 @@ ROLE_RESOURCE = ["users", "roles", "groups"]
 
 class ProviderFusionAuth(Provider):
     admin_user_created = None
+    admin_user_id = None
 
     def __init__(self) -> None:
         self.fusionauth_client = None
@@ -537,15 +539,14 @@ class ProviderFusionAuth(Provider):
         try:
 
             # creating default roles
-            roles = {}
             for resource in ROLE_RESOURCE:
                 for action in ROLE_ACTIONS:
                     db = get_db().__next__()
                     role_name = f"{APP_NAME}-{resource}-{action}"
                     try:
                         role_description = f"{APP_NAME} action {action} for {resource} "
-                        db_role = crud.create_role(db, role_create=RoleBase(name=role_name, description=role_description))
-                        roles['role_id'] = db_role.id
+                        db_role = crud.create_role(db,
+                                                   role_create=RoleBase(name=role_name, description=role_description))
                         log.info(f"role: {role_name} created..")
                     except IntegrityError as err:
                         log.info(f"role {role_name} already created")
@@ -559,7 +560,8 @@ class ProviderFusionAuth(Provider):
             for group in DEFAULT_GROUPS:
                 db = get_db().__next__()
                 try:
-                    db_group = crud.create_group(db, group_create=GroupBase(name=group['name'], description=group['description']))
+                    db_group = crud.create_group(db, group_create=GroupBase(name=group['name'],
+                                                                            description=group['description']))
                     groups['group_id'] = db_group.id
                     log.info(f"group: {group['name']} created..")
                 except IntegrityError as err:
@@ -569,10 +571,39 @@ class ProviderFusionAuth(Provider):
                     log.error(err)
                     return None
 
+            # groups roles
+            db = get_db().__next__()
+            admin_group = crud.get_group_by_name(db, name='admin')
+            db = get_db().__next__()
+            db_roles = crud.get_roles(db)
+
+            for role in db_roles:
+                db = get_db().__next__()
+                try:
+                    group_role = crud.create_groups_role(db, GroupsRoleBase(roles_id=role.id, groups_id=admin_group.id))
+                    log.info(f"groups role: {group_role.id} created..")
+                except IntegrityError as err:
+                    log.info(f"groups role already created")
+                except Exception as err:
+                    log.error("unable to bootstrap")
+                    log.error(err)
+                    return None
+
             login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
             db = get_db().__next__()
-            token = self.login(login, db)
-            log.info(token)
+            admin_user = self.login(login, db)
+            log.info(admin_user)
+            admin_user_id = admin_user.uid
+            db = get_db().__next__()
+            try:
+                group_user = crud.create_groups_user(db, GroupsUserBase(user_id=admin_user_id, groups_id=admin_group.id))
+                log.info(f"groups user: {group_user.id} created..")
+            except IntegrityError as err:
+                log.info(f"groups user already created")
+            except Exception as err:
+                log.error("unable to bootstrap")
+                log.error(err)
+                return None
 
         except Exception as err:
             error_template = "zeauth_bootstrap: An exception of type {0} occurred. error: {1}"
