@@ -10,9 +10,13 @@ from core import log, crud
 import requests
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
+from ..models.schema_groups_role import GroupsRoleBase, GroupsUserBase
+from ..models.schema_roles import RoleBase
+from ..models.schemas_groups import GroupBase
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from core.AES import AesStringCipher
 import jwt
+from config.db import get_db
 
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
@@ -21,9 +25,21 @@ AES_KEY = os.environ.get('AES_KEY')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
 client = RedisClient()
+DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'zekoder-zeauth@zedkoer.net')
+DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
+DEFAULT_GROUPS = [
+    {"name": "admin", "description": "Administrators of system"},
+    {"name": "super-user", "description": "Users with additional previlages"},
+    {"name": "user", "description": "Regular users"}
+]
+APP_NAME = 'zekoder-zeauth'
+ROLE_ACTIONS = ["create", "list", "get", "update", "del"]
+ROLE_RESOURCE = ["users", "roles", "groups"]
 
 
 class ProviderFusionAuth(Provider):
+    admin_user_created = None
+    admin_user_id = None
 
     def __init__(self) -> None:
         self.fusionauth_client = None
@@ -56,8 +72,8 @@ class ProviderFusionAuth(Provider):
             next_page = page + 1
 
         users, total_count = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
-                               date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
-                               sort_by=sort_by, sort_column=sort_column)
+                                            date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
+                                            sort_by=sort_by, sort_column=sort_column)
         users = [self._cast_user(user) for user in users]
 
         return users, next_page, page_size, total_count
@@ -160,14 +176,15 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
-        expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES))) # Don't add redis expr here, use like this.
+        expr_in_payload = (datetime.utcnow() + timedelta(
+            minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
         expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
 
         user_id = generated_user_id
         uid = user_id
         verified = True
 
-        last_login_at = datetime.utcnow()   # get this data from db
+        last_login_at = datetime.utcnow()  # get this data from db
         last_update_at = datetime.utcnow()  # get this data from db
         created_at = datetime.utcnow()
 
@@ -196,7 +213,7 @@ class ProviderFusionAuth(Provider):
         try:
             access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
             payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
-            client.set_refresh_token(payload)   # write data to Redis
+            client.set_refresh_token(payload)  # write data to Redis
 
             return LoginResponseModel(
                 user=User(
@@ -248,7 +265,8 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
-        expr_in_payload = (datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
+        expr_in_payload = (datetime.utcnow() + timedelta(
+            minutes=int(ACCESS_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
         expr_in_payload = expr_in_payload.timestamp()  # Timestamp format '1670440005'
 
         payload = dict(
@@ -271,8 +289,8 @@ class ProviderFusionAuth(Provider):
             last_update_at=int(update_at.timestamp()) if update_at else None,
         )
         access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-        payload['refreshToken'] = generated_refresh_token   # Dont send in payload jwt.encode
-        client.set_refresh_token(payload)   # write data to Redis
+        payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
+        client.set_refresh_token(payload)  # write data to Redis
 
         return LoginResponseModel(
             user=User(
@@ -308,7 +326,7 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    async def signup(self, user: User, db) -> User:
+    def signup(self, db, user: UserRequest) -> User:
         log.info("zeauth")
         try:
             encrypted_password = self.aes.encrypt_str(raw=user.password)
@@ -462,7 +480,7 @@ class ProviderFusionAuth(Provider):
                 last_login_at=user.get('last_login_at'),
                 created_at=user.get('created_at'),
                 update_at=user.get('last_update_at')
-                )
+            )
 
         except Exception as err:
             error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
@@ -477,14 +495,17 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
 
         try:
-            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):  # Search for the key if it is exists
-                payload = client.hgetall_redis_refresh_payload(f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
+            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}",
+                                        "map_refresh_token"):  # Search for the key if it is exists
+                payload = client.hgetall_redis_refresh_payload(
+                    f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
                 if payload:
                     # new access_token generated from valid refresh_token request
                     new_access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
                     payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
                     client.set_refresh_token(payload)  # write data to Redis
-                    client.del_refresh_token(f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
+                    client.del_refresh_token(
+                        f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
                     return {'accessToken': new_access_token, 'refreshToken': payload['refreshToken']}
                 else:
                     return {'No Redis Data exists !'}
@@ -493,3 +514,99 @@ class ProviderFusionAuth(Provider):
         except Exception as err:
             log.error(err)
             raise err
+
+    def zeauth_bootstrap(self):
+        log.info("zeauth_bootstrap...")
+        if ProviderFusionAuth.admin_user_created:
+            return
+        try:
+            db = get_db().__next__()
+            user = self.signup(db, UserRequest(
+                email=DEFAULT_ADMIN_EMAIL,
+                username=DEFAULT_ADMIN_EMAIL,
+                password=DEFAULT_ADMIN_PASSWORD,
+                first_name="Master",
+                last_name="Account"
+            ))
+            user_id = user.id
+            log.info(f"Master Account created.. {user_id}")
+        except DuplicateEmailError as e:
+            log.info("user already created")
+        except Exception as ex:
+            log.error("unable to bootstrap")
+            log.error(ex)
+            return None
+        try:
+
+            # creating default roles
+            for resource in ROLE_RESOURCE:
+                for action in ROLE_ACTIONS:
+                    db = get_db().__next__()
+                    role_name = f"{APP_NAME}-{resource}-{action}"
+                    try:
+                        role_description = f"{APP_NAME} action {action} for {resource} "
+                        db_role = crud.create_role(db,
+                                                   role_create=RoleBase(name=role_name, description=role_description))
+                        log.info(f"role: {role_name} created..")
+                    except IntegrityError as err:
+                        log.info(f"role {role_name} already created")
+                    except Exception as err:
+                        log.error("unable to bootstrap")
+                        log.error(err)
+                        return None
+
+            # creating default groups
+            groups = {}
+            for group in DEFAULT_GROUPS:
+                db = get_db().__next__()
+                try:
+                    db_group = crud.create_group(db, group_create=GroupBase(name=group['name'],
+                                                                            description=group['description']))
+                    groups['group_id'] = db_group.id
+                    log.info(f"group: {group['name']} created..")
+                except IntegrityError as err:
+                    log.info(f"group {group['name']} already created")
+                except Exception as err:
+                    log.error("unable to bootstrap")
+                    log.error(err)
+                    return None
+
+            # groups roles
+            db = get_db().__next__()
+            admin_group = crud.get_group_by_name(db, name='admin')
+            db = get_db().__next__()
+            db_roles = crud.get_roles(db)
+
+            for role in db_roles:
+                db = get_db().__next__()
+                try:
+                    group_role = crud.create_groups_role(db, GroupsRoleBase(roles_id=role.id, groups_id=admin_group.id))
+                    log.info(f"groups role: {group_role.id} created..")
+                except IntegrityError as err:
+                    log.info(f"groups role already created")
+                except Exception as err:
+                    log.error("unable to bootstrap")
+                    log.error(err)
+                    return None
+
+            login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
+            db = get_db().__next__()
+            admin_user = self.login(login, db)
+            log.info(admin_user)
+            admin_user_id = admin_user.uid
+            db = get_db().__next__()
+            try:
+                group_user = crud.create_groups_user(db, GroupsUserBase(user_id=admin_user_id, groups_id=admin_group.id))
+                log.info(f"groups user: {group_user.id} created..")
+            except IntegrityError as err:
+                log.info(f"groups user already created")
+            except Exception as err:
+                log.error("unable to bootstrap")
+                log.error(err)
+                return None
+
+        except Exception as err:
+            error_template = "zeauth_bootstrap: An exception of type {0} occurred. error: {1}"
+            log.error(error_template.format(type(err).__name__, str(err)))
+
+        ProviderFusionAuth.admin_user_created = True

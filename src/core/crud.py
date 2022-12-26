@@ -1,5 +1,7 @@
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
+
+from business.models.schema_groups_role import GroupsRoleBase, GroupsUserBase
 from business.models.schema_roles import RoleBase
 from business.models.schemas_groups import GroupBase
 from core.db_models import models
@@ -189,3 +191,19 @@ def get_groups_of_user_by_id(db: Session, user_id: str):
     return db.query(models.GroupsUser.users_id, models.Group.name) \
         .join(models.Group) \
         .filter(models.GroupsUser.users_id == user_id).all()
+
+
+def create_groups_role(db: Session, groups_role_create: GroupsRoleBase):
+    groups_role = models.GroupsRole(roles_id=groups_role_create.roles_id, groups_id=groups_role_create.groups_id)
+    db.add(groups_role)
+    db.commit()
+    db.refresh(groups_role)
+    return groups_role
+
+
+def create_groups_user(db: Session, groups_user_create: GroupsUserBase):
+    groups_role = models.GroupsUser(users_id=groups_user_create.user_id, groups_id=groups_user_create.groups_id)
+    db.add(groups_role)
+    db.commit()
+    db.refresh(groups_role)
+    return groups_role
