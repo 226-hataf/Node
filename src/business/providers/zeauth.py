@@ -318,7 +318,7 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
-    async def signup(self, user: User, db) -> User:
+    def signup(self, db, user: UserRequest) -> User:
         log.info("zeauth")
         try:
             encrypted_password = self.aes.encrypt_str(raw=user.password)
@@ -511,37 +511,45 @@ class ProviderFusionAuth(Provider):
         log.info("zeauth_bootstrap...")
         if ProviderFusionAuth.admin_user_created:
             return
-        default_admin = User(
-            email=DEFAULT_ADMIN_EMAIL,
-            username=DEFAULT_ADMIN_EMAIL,
-            password=DEFAULT_ADMIN_PASSWORD,
-            first_name="Master",
-            last_name="Account"
-        )
-
-        user_id = None
         try:
-            user = self.signup(db=get_db(), user=default_admin)
-            user_id = user['id']
+            db = get_db().__next__()
+            user = self.signup(db, UserRequest(
+                email=DEFAULT_ADMIN_EMAIL,
+                username=DEFAULT_ADMIN_EMAIL,
+                password=DEFAULT_ADMIN_PASSWORD,
+                first_name="Master",
+                last_name="Account"
+            ))
+            user_id = user.id
             log.info(f"Master Account created.. {user_id}")
-        except Exception as ex:
+        except DuplicateEmailError as e:
             log.info("user already created")
+        except Exception as ex:
             log.error(ex)
         try:
 
             # creating default roles
             roles = {}
             for role in DEFAULT_ROLES:
-                db_role = crud.create_role(db=get_db(), role_create=RoleBase(**role))
+                db = get_db().__next__()
+                try:
+                    db_role = crud.create_role(db, role_create=RoleBase(**role))
+                    log.info(f"{role} created.. {db_role.id}")
+                except IntegrityError as err:
+                    log.info(f"role {role['name']} already created")
+                except Exception as err:
+                    log.error(err)
+
                 # user_role = {"role_id": db_role.id, "user_id": user_id}
                 # crud.create_user_role(db=get_db(), role=user_role)
                 # roles[role] = db_role
             login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
-            token = self.login(db=get_db(), user_info=login)
+            db = get_db().__next__()
+            token = self.login(login, db)
+            log.info(token)
 
         except Exception as err:
             error_template = "zeauth_bootstrap: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
-            # log.error(f"user <{DEFAULT_ADMIN_EMAIL}> already exists")
 
         ProviderFusionAuth.admin_user_created = True
