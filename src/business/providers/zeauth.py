@@ -11,6 +11,7 @@ import requests
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.schema_roles import RoleBase
+from ..models.schemas_groups import GroupBase
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from core.AES import AesStringCipher
 import jwt
@@ -25,9 +26,14 @@ AUDIENCE = 'ZeAuth'
 client = RedisClient()
 DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'zekoder-zeauth@zedkoer.net')
 DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
-DEFAULT_ROLES = [{"name": "admin", "description": "admin role for users"},
-                 {"name": "user", "description": "user role for users"}]
-DEFAULT_SCOPE = ["list", "get", "update", "del"]
+DEFAULT_GROUPS = [
+    {"name": "admin", "description": "Administrators of system"},
+    {"name": "super-user", "description": "Users with additional previlages"},
+    {"name": "user", "description": "Regular users"}
+]
+APP_NAME = 'zekoder-zeauth'
+ROLE_ACTIONS = ["create", "list", "get", "update", "del"]
+ROLE_RESOURCE = ["users", "roles", "groups"]
 
 
 class ProviderFusionAuth(Provider):
@@ -64,8 +70,8 @@ class ProviderFusionAuth(Provider):
             next_page = page + 1
 
         users, total_count = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
-                               date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
-                               sort_by=sort_by, sort_column=sort_column)
+                                            date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
+                                            sort_by=sort_by, sort_column=sort_column)
         users = [self._cast_user(user) for user in users]
 
         return users, next_page, page_size, total_count
@@ -525,24 +531,44 @@ class ProviderFusionAuth(Provider):
         except DuplicateEmailError as e:
             log.info("user already created")
         except Exception as ex:
+            log.error("unable to bootstrap")
             log.error(ex)
+            return None
         try:
 
             # creating default roles
             roles = {}
-            for role in DEFAULT_ROLES:
+            for resource in ROLE_RESOURCE:
+                for action in ROLE_ACTIONS:
+                    db = get_db().__next__()
+                    role_name = f"{APP_NAME}-{resource}-{action}"
+                    try:
+                        role_description = f"{APP_NAME} action {action} for {resource} "
+                        db_role = crud.create_role(db, role_create=RoleBase(name=role_name, description=role_description))
+                        roles['role_id'] = db_role.id
+                        log.info(f"role: {role_name} created..")
+                    except IntegrityError as err:
+                        log.info(f"role {role_name} already created")
+                    except Exception as err:
+                        log.error("unable to bootstrap")
+                        log.error(err)
+                        return None
+
+            # creating default groups
+            groups = {}
+            for group in DEFAULT_GROUPS:
                 db = get_db().__next__()
                 try:
-                    db_role = crud.create_role(db, role_create=RoleBase(**role))
-                    log.info(f"{role} created.. {db_role.id}")
+                    db_group = crud.create_group(db, group_create=GroupBase(name=group['name'], description=group['description']))
+                    groups['group_id'] = db_group.id
+                    log.info(f"group: {group['name']} created..")
                 except IntegrityError as err:
-                    log.info(f"role {role['name']} already created")
+                    log.info(f"group {group['name']} already created")
                 except Exception as err:
+                    log.error("unable to bootstrap")
                     log.error(err)
+                    return None
 
-                # user_role = {"role_id": db_role.id, "user_id": user_id}
-                # crud.create_user_role(db=get_db(), role=user_role)
-                # roles[role] = db_role
             login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
             db = get_db().__next__()
             token = self.login(login, db)
