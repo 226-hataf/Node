@@ -151,10 +151,10 @@ def get_users(db: Session, search, user_status: bool, date_of_creation: date, da
             query = query.order_by(models.User.created_on.asc())
         else:
             query = query.order_by(models.User.created_on.desc())
-
+    count = query.count()
     query = query.offset(skip).limit(limit)
 
-    return query.all(), query.count()
+    return query.all(), count
 
 
 def update_user_group(db: Session, user_id: str, groups: list):
