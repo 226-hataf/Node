@@ -23,6 +23,7 @@ Base = declarative_base()
 
 def get_db():
     db = SessionLocal()
+    # db.execute("SET zekoder.id = '09c645f2-8353-11ed-80ca-571e9bc0bf17'")
     try:
         yield db
     finally:
