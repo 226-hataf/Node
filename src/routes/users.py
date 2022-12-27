@@ -1,4 +1,6 @@
-from typing import List
+import uuid
+
+from business.models.schema_main import UUIDCheckerSchema
 from config.db import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -6,7 +8,8 @@ from datetime import date, datetime
 from business.models.users import UserResponseModel, UsersWithIDsResponse
 from business.providers.base import *
 from business.providers import get_provider
-from core import log
+from core import log, crud
+from core.crud import assign_user_to_group, deassign_user_from_group
 from core.types import ZKModel
 from business.models.dependencies import CommonDependencies, ProtectedMethod
 from fastapi import Query
@@ -93,23 +96,6 @@ async def list(
 list.__doc__ = f" List all {model.plural}".expandtabs()
 
 
-# assign roles to a user
-@router.put('/{user_id}/roles', tags=[model.plural], status_code=201, response_model=User)
-async def update_roles(user_id: str, new_role: List[str], token: str = Depends(ProtectedMethod)):
-    """
-    Update the roles of a user by its id and a list of roles
-    """
-    token.auth(model.permissions.update)
-    try:
-        user = (auth_provider.update_user_roles(new_role=new_role, user_id=user_id))
-        return user  # list of permissins
-    except NotExistingResourceError:
-        raise HTTPException(status_code=404, detail="attempt to update not existing user")
-    except Exception as e:
-        log.error(e)
-        raise HTTPException(status_code=500, detail="unknown error")
-
-
 @router.get('/with_ids', tags=[model.plural], status_code=200, response_model=UsersWithIDsResponse,
             response_model_exclude={"password"})
 async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMethod)):
@@ -141,7 +127,7 @@ async def update(user_id: str, user: User, token: str = Depends(ProtectedMethod)
     try:
         updated_user = auth_provider.update_user(user_id=user_id, user=user)
         return {'updated user': updated_user.uid}
-    except NotExistingResourceError:
+    except NotExistingResourceError as e:
         log.debug(e)
         raise HTTPException(status_code=404, detail="attempt to update not existing user")
     except Exception as e:
@@ -198,6 +184,37 @@ async def active_off(user_id: str):
         error_template = "active_off Exception: An exception of type {0} occurred. error: {1}"
         log.error(error_template.format(type(err).__name__, str(err)))
         raise HTTPException(status_code=500, detail="unknown error")
+
+
+@router.patch('/{user_id}/group/{group_id}', tags=[model.plural], status_code=200)
+async def user_to_group(group_id: UUIDCheckerSchema = Depends(UUIDCheckerSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
+    """Assign User to a Group"""
+    checked_uuid = group_id.id
+    group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
+    if not group_exist:
+        raise HTTPException(status_code=404, detail="Group not found")
+    try:
+        data = assign_user_to_group(db, str(checked_uuid), user_id)
+        return data
+    except ValueError as e:
+        log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
+
+
+
+@router.patch('/{user_id}/group/{group_id}/remove', tags=[model.plural], status_code=200)
+async def remove_user_from_group(group_id: UUIDCheckerSchema = Depends(UUIDCheckerSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
+    """Remove User from a Group"""
+    checked_uuid = group_id.id
+    group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
+    if not group_exist:
+        raise HTTPException(status_code=404, detail="Group not found")
+    try:
+        data = deassign_user_from_group(db, str(checked_uuid), user_id)
+        return data
+    except ValueError as e:
+        log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
 
 active_off.__doc__ = f" Delete a {model.name}".expandtabs()

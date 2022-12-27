@@ -4,9 +4,9 @@ from pydantic.validators import datetime
 from uuid import uuid4, UUID
 
 
-class GroupBase(BaseModel):
-    name: str
-    description: str
+class GroupBaseSchema(BaseModel):
+    name: str = Field(description="The name of Group", title="Group name")
+    description: str = Field(description="Description of Group", title="Group description")
 
     @validator('name')
     def check_group_not_empty(cls, v):
@@ -17,10 +17,10 @@ class GroupBase(BaseModel):
         return v
 
 
-class Group(GroupBase):
-    id: UUID = Field(default_factory=uuid4)
-    created_on: Optional[datetime] = None
-    updated_on: Optional[datetime] = None
+class GroupSchema(GroupBaseSchema):
+    id: UUID = Field(default_factory=uuid4, description="uuid's of Group", title="Group id's")
+    created_on: Optional[datetime] = Field(default=None, description="Group created date", title="Group created date")
+    updated_on: Optional[datetime] = Field(default=None, description="Group update date", title="Group update date")
 
     class Config:
         orm_mode = True

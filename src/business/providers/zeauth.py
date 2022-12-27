@@ -11,8 +11,8 @@ import requests
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.schema_groups_role import GroupsRoleBase, GroupsUserBase
-from ..models.schema_roles import RoleBase
-from ..models.schemas_groups import GroupBase
+from ..models.schema_roles import RoleBaseSchema
+from ..models.schemas_groups import GroupBaseSchema
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 from core.AES import AesStringCipher
 import jwt
@@ -546,7 +546,7 @@ class ProviderFusionAuth(Provider):
                     try:
                         role_description = f"{APP_NAME} action {action} for {resource} "
                         db_role = crud.create_role(db,
-                                                   role_create=RoleBase(name=role_name, description=role_description))
+                                                   role_create=RoleBaseSchema(name=role_name, description=role_description))
                         log.info(f"role: {role_name} created..")
                     except IntegrityError as err:
                         log.info(f"role {role_name} already created")
@@ -560,7 +560,7 @@ class ProviderFusionAuth(Provider):
             for group in DEFAULT_GROUPS:
                 db = get_db().__next__()
                 try:
-                    db_group = crud.create_group(db, group_create=GroupBase(name=group['name'],
+                    db_group = crud.create_group(db, group_create=GroupBaseSchema(name=group['name'],
                                                                             description=group['description']))
                     groups['group_id'] = db_group.id
                     log.info(f"group: {group['name']} created..")
