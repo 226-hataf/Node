@@ -44,10 +44,10 @@ model = ZKModel(**{
 
 
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def create(user: User, token: str = Depends(ProtectedMethod)):
+async def create(user: User, token: str = Depends(ProtectedMethod), db: Session = Depends(get_db)):
     token.auth(model.permissions.create)
     try:
-        signed_up_user = auth_provider.signup(user=user)
+        signed_up_user = auth_provider.signup(user=user, db=db)
         return signed_up_user.dict()
     except DuplicateEmailError:
         raise HTTPException(status_code=403, detail=f"'{user.email}' email is already linked to an account")
