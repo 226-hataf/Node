@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
-load_dotenv()
 from config.db import get_db
+load_dotenv()
 import os
 import importlib
 from fastapi import HTTPException
@@ -17,7 +17,32 @@ from fastapi.responses import JSONResponse
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-app = FastAPI(title="ZeAuth")
+metadata = [
+    {
+        "name": "users",
+        "description": "Endpoints where **Users** operations are made.",
+    },
+    {
+        "name": "default",
+        "description": "Endpoints where **Authentication/Authorization** operations are made.",
+    },
+    {
+        "name": "broker",
+        "description": "Endpoints where **Social Login** operations are made. "
+                       "You can not use this endpoints directly from here !",
+    },
+    {
+        "name": "groups",
+        "description": "Endpoints where **Group** definitions are made, "
+                       "you can also assign **multiple roles or users** for a specific group",
+    },
+    {
+        "name": "roles",
+        "description": "Endpoints where **Role** definitions are made",
+    },
+]
+
+app = FastAPI(title="ZeAuth Security Module", openapi_tags=metadata)
 
 origins = ["*"]
 app.add_middleware(
@@ -32,7 +57,7 @@ auth_provider: Provider = get_provider()
 
 @app.get('/')
 async def root():
-    return {"message": "ZeKoder security managment API"}
+    return {"message": "ZeKoder Security Management API"}
 
 
 @app.post('/signup', status_code=201, response_model=User, response_model_exclude={"password"})
@@ -162,8 +187,6 @@ for module in os.listdir(f"{os.path.dirname(__file__)}/routes"):
     except Exception as e:
         log.error(f"failed importing <{module_name}> endpoints")
         print(e)
-
-
 
 app.add_middleware(
     CORSMiddleware,
