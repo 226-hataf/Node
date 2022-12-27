@@ -25,8 +25,8 @@ AES_KEY = os.environ.get('AES_KEY')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
 client = RedisClient()
-DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'zekoder-zeauth@zedkoer.net')
-DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Webdir243R!@')
+DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL')
+DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD')
 DEFAULT_GROUPS = [
     {"name": "admin", "description": "Administrators of system"},
     {"name": "super-user", "description": "Users with additional previlages"},
