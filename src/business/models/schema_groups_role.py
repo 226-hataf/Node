@@ -10,4 +10,4 @@ class GroupsRoleBase(BaseModel):
 
 class GroupsUserBase(BaseModel):
     users: UUID
-    groups_id: UUID
+    groups: UUID

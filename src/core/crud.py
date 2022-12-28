@@ -348,9 +348,32 @@ def create_groups_role(db: Session, groups_role_create: GroupsRoleBase):
     return groups_role
 
 
+def is_groups_role_not_exists(db: Session, groups_role_create: GroupsRoleBase):
+    return not (
+        groups_role := db.query(models.GroupsRole)
+        .filter(
+            models.GroupsRole.roles == groups_role_create.roles,
+            models.GroupsRole.groups == groups_role_create.groups,
+        )
+        .first()
+    )
+
+
 def create_groups_user(db: Session, groups_user_create: GroupsUserBase):
-    groups_role = models.GroupsUser(users=groups_user_create.user_id, groups=groups_user_create.groups_id)
-    db.add(groups_role)
+    groups_user = models.GroupsUser(users=groups_user_create.users, groups=groups_user_create.groups)
+    db.add(groups_user)
     db.commit()
-    db.refresh(groups_role)
-    return groups_role
+    db.refresh(groups_user)
+    return groups_user
+
+
+def is_groups_user_not_exists(db: Session, groups_user_create: GroupsUserBase):
+    return not (
+        groups_user := db.query(models.GroupsRole)
+        .filter(
+            models.GroupsRole.roles == groups_user_create.groups,
+            models.GroupsRole.groups == groups_user_create.users,
+        )
+        .first()
+    )
+
