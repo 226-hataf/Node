@@ -516,11 +516,11 @@ class ProviderFusionAuth(Provider):
             raise err
 
     def zeauth_bootstrap(self):
+        db = get_db().__next__()
         log.info("zeauth_bootstrap...")
         if ProviderFusionAuth.admin_user_created:
             return
         try:
-            db = get_db().__next__()
             user = self.signup(db, UserRequest(
                 email=DEFAULT_ADMIN_EMAIL,
                 username=DEFAULT_ADMIN_EMAIL,
@@ -532,6 +532,7 @@ class ProviderFusionAuth(Provider):
             log.info(f"Master Account created.. {user_id}")
         except DuplicateEmailError as e:
             log.info("user already created")
+            db.rollback()
         except Exception as ex:
             log.error("unable to bootstrap")
             log.error(ex)
@@ -541,7 +542,6 @@ class ProviderFusionAuth(Provider):
             # creating default roles
             for resource in ROLE_RESOURCE:
                 for action in ROLE_ACTIONS:
-                    db = get_db().__next__()
                     role_name = f"{APP_NAME}-{resource}-{action}"
                     try:
                         role_description = f"{APP_NAME} action {action} for {resource} "
@@ -550,6 +550,7 @@ class ProviderFusionAuth(Provider):
                         log.info(f"role: {role_name} created..")
                     except IntegrityError as err:
                         log.info(f"role {role_name} already created")
+                        db.rollback()
                     except Exception as err:
                         log.error("unable to bootstrap")
                         log.error(err)
@@ -558,13 +559,13 @@ class ProviderFusionAuth(Provider):
             # creating default groups
             groups = {}
             for group in DEFAULT_GROUPS:
-                db = get_db().__next__()
                 try:
                     db_group = crud.create_group(db, group_create=GroupBaseSchema(name=group['name'],
                                                                             description=group['description']))
                     groups['group_id'] = db_group.id
                     log.info(f"group: {group['name']} created..")
                 except IntegrityError as err:
+                    db.rollback()
                     log.info(f"group {group['name']} already created")
                 except Exception as err:
                     log.error("unable to bootstrap")
@@ -572,33 +573,30 @@ class ProviderFusionAuth(Provider):
                     return None
 
             # groups roles
-            db = get_db().__next__()
             admin_group = crud.get_group_by_name(db, name='admin')
-            db = get_db().__next__()
             db_roles = crud.get_roles(db)
 
             for role in db_roles:
-                db = get_db().__next__()
                 try:
-                    group_role = crud.create_groups_role(db, GroupsRoleBase(roles_id=role.id, groups_id=admin_group.id))
+                    group_role = crud.create_groups_role(db, GroupsRoleBase(roles=role.id, groups=admin_group.id))
                     log.info(f"groups role: {group_role.id} created..")
                 except IntegrityError as err:
                     log.info(f"groups role already created")
+                    db.rollback()
                 except Exception as err:
                     log.error("unable to bootstrap")
                     log.error(err)
                     return None
 
             login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
-            db = get_db().__next__()
             admin_user = self.login(login, db)
             log.info(admin_user)
             admin_user_id = admin_user.uid
-            db = get_db().__next__()
             try:
-                group_user = crud.create_groups_user(db, GroupsUserBase(user_id=admin_user_id, groups_id=admin_group.id))
+                group_user = crud.create_groups_user(db, GroupsUserBase(users=admin_user_id, groups=admin_group.id))
                 log.info(f"groups user: {group_user.id} created..")
             except IntegrityError as err:
+                db.rollback()
                 log.info(f"groups user already created")
             except Exception as err:
                 log.error("unable to bootstrap")
