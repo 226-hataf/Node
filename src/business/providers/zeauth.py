@@ -533,6 +533,8 @@ class ProviderFusionAuth(Provider):
         except DuplicateEmailError as e:
             log.info("user already created")
             db.rollback()
+            ProviderFusionAuth.admin_user_created = True
+            return None
         except Exception as ex:
             log.error("unable to bootstrap")
             log.error(ex)
@@ -578,10 +580,13 @@ class ProviderFusionAuth(Provider):
 
             for role in db_roles:
                 try:
-                    group_role = crud.create_groups_role(db, GroupsRoleBase(roles=role.id, groups=admin_group.id))
-                    log.info(f"groups role: {group_role.id} created..")
+                    if crud.is_groups_role_not_exists(db, GroupsRoleBase(roles=role.id, groups=admin_group.id)):
+                        group_role = crud.create_groups_role(db, GroupsRoleBase(roles=role.id, groups=admin_group.id))
+                        log.info(f"groups role: {group_role.id} created..")
+                    else:
+                        log.info("groups role already created")
                 except IntegrityError as err:
-                    log.info(f"groups role already created")
+                    log.info("groups role already created")
                     db.rollback()
                 except Exception as err:
                     log.error("unable to bootstrap")
@@ -593,11 +598,15 @@ class ProviderFusionAuth(Provider):
             log.info(admin_user)
             admin_user_id = admin_user.uid
             try:
-                group_user = crud.create_groups_user(db, GroupsUserBase(users=admin_user_id, groups=admin_group.id))
-                log.info(f"groups user: {group_user.id} created..")
+                if crud.is_groups_user_not_exists(db, GroupsUserBase(users=admin_user_id, groups=admin_group.id)):
+                    group_user = crud.create_groups_user(db, GroupsUserBase(users=admin_user_id, groups=admin_group.id))
+                    log.info(f"groups user: {group_user.id} created..")
+                else:
+                    log.info("groups user already created")
+
             except IntegrityError as err:
                 db.rollback()
-                log.info(f"groups user already created")
+                log.info("groups user already created")
             except Exception as err:
                 log.error("unable to bootstrap")
                 log.error(err)
