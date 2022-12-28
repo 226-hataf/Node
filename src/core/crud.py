@@ -172,7 +172,7 @@ def update_user_group(db: Session, user_id: str, groups: list):
     # then assign requested group/s to the user
     for obj in \
             query_group \
-            .filter(models.Group.name.in_(groups)):
+                    .filter(models.Group.name.in_(groups)):
         group = models.GroupsUser(groups_id=obj.id, users_id=user_id)
         db.add(group)
         db.commit()
@@ -200,7 +200,7 @@ def get_groups_of_user_by_id(db: Session, user_id: str):
 
     return query \
         .join(models.Group) \
-        .filter(models.GroupsUser.users_id == user_id)\
+        .filter(models.GroupsUser.users_id == user_id) \
         .all()
 
 
@@ -307,10 +307,10 @@ def remove_multi_users_or_roles_from_group(db: Session, group_id: str, group_use
             # available users are ready for to delete...
             if available_users_to_delete:
                 query_groupUser \
-                            .filter(and_(
-                                models.GroupsUser.id.in_(available_users_to_delete),
-                                models.GroupsUser.groups_id == group_id))\
-                            .delete()
+                    .filter(and_(
+                    models.GroupsUser.id.in_(available_users_to_delete),
+                    models.GroupsUser.groups_id == group_id)) \
+                    .delete()
                 db.commit()
                 return available_users_to_delete
             else:
@@ -320,17 +320,17 @@ def remove_multi_users_or_roles_from_group(db: Session, group_id: str, group_use
             # check if available roles in GroupsRole table to delete
             available_roles_to_delete = [obj.roles_id for obj in
                                          query_groupsRole
-                                            .filter(and_(
+                                         .filter(and_(
                                              models.GroupsRole.roles_id.in_(group_user_role.roles),
                                              models.GroupsRole.groups_id == group_id))
                                          ]
             # available roles are ready for to delete..
             if available_roles_to_delete:
                 query_groupsRole \
-                            .filter(and_(
-                                    models.GroupsRole.roles_id.in_(available_roles_to_delete),
-                                    models.GroupsRole.groups_id == group_id))\
-                            .delete()
+                    .filter(and_(
+                    models.GroupsRole.roles_id.in_(available_roles_to_delete),
+                    models.GroupsRole.groups_id == group_id)) \
+                    .delete()
                 db.commit()
                 return available_roles_to_delete
             else:
@@ -339,11 +339,9 @@ def remove_multi_users_or_roles_from_group(db: Session, group_id: str, group_use
         log.error(e)
         return {"detail": "invalid uuid"}
 
-        
-
 
 def create_groups_role(db: Session, groups_role_create: GroupsRoleBase):
-    groups_role = models.GroupsRole(roles_id=groups_role_create.roles_id, groups_id=groups_role_create.groups_id)
+    groups_role = models.GroupsRole(roles=groups_role_create.roles, groups=groups_role_create.groups)
     db.add(groups_role)
     db.commit()
     db.refresh(groups_role)
@@ -351,9 +349,8 @@ def create_groups_role(db: Session, groups_role_create: GroupsRoleBase):
 
 
 def create_groups_user(db: Session, groups_user_create: GroupsUserBase):
-    groups_role = models.GroupsUser(users_id=groups_user_create.user_id, groups_id=groups_user_create.groups_id)
+    groups_role = models.GroupsUser(users=groups_user_create.user_id, groups=groups_user_create.groups_id)
     db.add(groups_role)
     db.commit()
     db.refresh(groups_role)
     return groups_role
-
