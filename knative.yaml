@@ -112,6 +112,6 @@ spec:
           - name: REFRESH_TOKEN_EXPIRY_MINUTES
             value: "60"
           - name: DEFAULT_ADMIN_EMAIL
-            value: "zekoder-zeauth@zedkoer.net"
+            value: "zekoder-zeauth@zekoder.net"
           - name: DEFAULT_ADMIN_PASSWORD
-            value: "Webdir243R!@"
+            value: "Zekoder@123!"
