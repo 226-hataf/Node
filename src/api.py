@@ -83,15 +83,18 @@ async def user_login(user_info: UserLoginSchema, db: Session = Depends(get_db)):
     except InvalidCredentialsError as e:
         log.error(e)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "username or password is not matching our records")
+    except UserNotVerifiedError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "user is not verified!")
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
 
 
 @app.post("/resend_confirmation_email")
-async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema):
+async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema, db: Session = Depends(get_db)):
     try:
-        return await auth_provider.resend_confirmation_email(user_info)
+        return await auth_provider.resend_confirmation_email(db, user_info)
     except UserNotFoundError as err:
         log.error(err)
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
@@ -101,9 +104,9 @@ async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema):
 
 
 @app.post("/verify_email")
-def verify_email(token: ConfirmationEmailVerifySchema):
+def verify_email(token: ConfirmationEmailVerifySchema, db: Session = Depends(get_db)):
     try:
-        return auth_provider.verify_email(token)
+        return auth_provider.verify_email(db, token)
     except UserNotFoundError as err:
         log.error(err)
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
