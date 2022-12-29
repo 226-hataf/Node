@@ -167,13 +167,13 @@ def update_user_group(db: Session, user_id: str, groups: list):
     query_group = db.query(models.Group)
     # First delete the assigned group of the user,
     query_groupUser \
-        .filter(models.GroupsUser.users_id == user_id) \
+        .filter(models.GroupsUser.users == user_id) \
         .delete()
     # then assign requested group/s to the user
     for obj in \
             query_group \
                     .filter(models.Group.name.in_(groups)):
-        group = models.GroupsUser(groups_id=obj.id, users_id=user_id)
+        group = models.GroupsUser(groups=obj.id, users=user_id)
         db.add(group)
         db.commit()
         db.refresh(group)
@@ -196,41 +196,55 @@ def group_name_exists(db: Session, groups: list):
 
 def get_groups_of_user_by_id(db: Session, user_id: str):
     # Get all groups assigned to a user
-    query = db.query(models.GroupsUser.users_id, models.Group.name)
+    query = db.query(models.GroupsUser.users, models.Group.name)
 
     return query \
         .join(models.Group) \
-        .filter(models.GroupsUser.users_id == user_id) \
+        .filter(models.GroupsUser.users == user_id) \
         .all()
 
 
 def assign_user_to_group(db: Session, group_id: str, user_id: uuid.UUID):
-    query = db.query(models.User)
+    query_user = db.query(models.User)
+    query_group_user = db.query(models.GroupsUser)
 
-    if query.filter(models.User.id == user_id).first():
-        group_user = models.GroupsUser(groups_id=group_id, users_id=user_id)
-        db.add(group_user)
-        db.commit()
-        db.refresh(group_user)
-        yield group_user
+    user_id_exist_in_users_table = query_user.filter(models.User.id == user_id).first()
+    if user_id_exist_in_users_table:
+        if query_group_user \
+                .filter(and_(models.GroupsUser.users == user_id_exist_in_users_table.id,
+                             models.GroupsUser.groups == group_id)).first():
+            raise HTTPException(status_code=403, detail="Available users are already in the group")
+        else:
+            group_user = models.GroupsUser(groups=group_id, users=user_id)
+            db.add(group_user)
+            db.commit()
+            db.refresh(group_user)
+            yield group_user
     else:
-        return {"detail": "User not exist"}
+        raise HTTPException(status_code=404, detail="User not exist")
 
 
 def deassign_user_from_group(db: Session, group_id: str, user_id: uuid.UUID):
     query_user = db.query(models.User)
     query_group_user = db.query(models.GroupsUser)
 
-    if query_user.filter(models.User.id == user_id).first():
-        remove = query_group_user \
-            .filter(models.GroupsUser.users_id == user_id) \
-            .filter(models.GroupsUser.groups_id == group_id) \
-            .first()
-        db.delete(remove)
-        db.commit()
-        yield remove
+    group_exist = get_group_by_id(db, group_id)
+    if not group_exist:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    user_id_exist_in_users_table = query_user.filter(models.User.id == user_id).first()
+    if user_id_exist_in_users_table:
+        user_exist_in_group = query_group_user \
+                .filter(and_(models.GroupsUser.users == user_id_exist_in_users_table.id,
+                             models.GroupsUser.groups == group_id)).first()
+        if user_exist_in_group:
+            db.delete(user_exist_in_group)
+            db.commit()
+            yield user_exist_in_group
+        else:
+            raise HTTPException(status_code=404, detail="User not exist")
     else:
-        return {"detail": "User not exist"}
+        raise HTTPException(status_code=404, detail="User not exist")
 
 
 def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_role: GroupUserRoleSchema):
@@ -244,21 +258,21 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
                                    query_user
                                    .filter(models.User.id.in_(group_user_role.users))]
             # check users in the group
-            users_in_groupUserTable = [obj.users_id for obj in
+            users_in_groupUserTable = [obj.users for obj in
                                        query_groupUser
-                                       .filter(models.GroupsUser.users_id.in_(users_in_usersTable))]
+                                       .filter(models.GroupsUser.users.in_(users_in_usersTable))]
             # If users exist in UserTable and not in the groupTable, so assign them to the group
             assign_users_to_group = [obj for obj in users_in_usersTable if obj not in set(users_in_groupUserTable)]
 
             if assign_users_to_group:  # These users not in the group, so you can assign them to this group
                 db.bulk_insert_mappings(
                     models.GroupsUser,
-                    [dict(groups_id=group_id, users_id=users_id, ) for users_id in assign_users_to_group],
+                    [dict(groups=group_id, users=users, ) for users in assign_users_to_group],
                 )
                 db.commit()
                 yield {"users": assign_users_to_group}
             else:
-                raise HTTPException(status_code=404, detail="Available users are already in the group")
+                raise HTTPException(status_code=403, detail="Available users are already in the group")
 
         # check if request data has 'roles' key, assign users to the group
         if group_user_role.roles:
@@ -270,21 +284,21 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
                                    query_role
                                    .filter(models.Role.id.in_(group_user_role.roles))]
             # check roles in the group
-            roles_in_groupRolesTable = [obj.roles_id for obj in
+            roles_in_groupRolesTable = [obj.roles for obj in
                                         query_groupsRole
-                                        .filter(models.GroupsRole.roles_id.in_(roles_in_rolesTable))]
+                                        .filter(models.GroupsRole.roles.in_(roles_in_rolesTable))]
             # If roles exist in RolesTable and not in the groupRolesTable, so assign roles to the group
             assign_roles_to_group = [obj for obj in roles_in_rolesTable if obj not in set(roles_in_groupRolesTable)]
 
             if assign_roles_to_group:
                 db.bulk_insert_mappings(
                     models.GroupsRole,
-                    [dict(groups_id=group_id, roles_id=roles_id, ) for roles_id in assign_roles_to_group],
+                    [dict(groups=group_id, roles=roles, ) for roles in assign_roles_to_group],
                 )
                 db.commit()
                 yield {"roles": assign_roles_to_group}
             else:
-                raise HTTPException(status_code=404, detail="Available roles are already in the group")
+                raise HTTPException(status_code=403, detail="Available roles are already in the group")
     except ValueError as e:
         log.error(e)
         return {"detail": "invalid uuid"}
@@ -292,24 +306,22 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
 
 def remove_multi_users_or_roles_from_group(db: Session, group_id: str, group_user_role: GroupUserRoleSchema):
     try:
-        query_user = db.query(models.User)
         query_groupUser = db.query(models.GroupsUser)
         query_groupsRole = db.query(models.GroupsRole)
 
         if group_user_role.users:
             # check if available roles in GroupsRole table to delete
             available_users_to_delete = [obj.id for obj in
-                                         query_user
+                                         query_groupUser
                                          .filter(and_(
-                                             models.User.id.in_(group_user_role.users),
-                                             models.User.groups_id == group_id))
+                                             models.GroupsUser.users.in_(group_user_role.users),
+                                             models.GroupsUser.groups == group_id))
                                          ]
             # available users are ready for to delete...
             if available_users_to_delete:
                 query_groupUser \
-                    .filter(and_(
-                    models.GroupsUser.id.in_(available_users_to_delete),
-                    models.GroupsUser.groups_id == group_id)) \
+                    .filter(
+                    models.GroupsUser.id.in_(available_users_to_delete)) \
                     .delete()
                 db.commit()
                 return available_users_to_delete
@@ -318,18 +330,17 @@ def remove_multi_users_or_roles_from_group(db: Session, group_id: str, group_use
 
         if group_user_role.roles:
             # check if available roles in GroupsRole table to delete
-            available_roles_to_delete = [obj.roles_id for obj in
+            available_roles_to_delete = [obj.id for obj in
                                          query_groupsRole
                                          .filter(and_(
-                                             models.GroupsRole.roles_id.in_(group_user_role.roles),
-                                             models.GroupsRole.groups_id == group_id))
+                                             models.GroupsRole.roles.in_(group_user_role.roles),
+                                             models.GroupsRole.groups == group_id))
                                          ]
             # available roles are ready for to delete..
             if available_roles_to_delete:
                 query_groupsRole \
-                    .filter(and_(
-                    models.GroupsRole.roles_id.in_(available_roles_to_delete),
-                    models.GroupsRole.groups_id == group_id)) \
+                    .filter(
+                    models.GroupsRole.id.in_(available_roles_to_delete)) \
                     .delete()
                 db.commit()
                 return available_roles_to_delete
@@ -376,4 +387,3 @@ def is_groups_user_not_exists(db: Session, groups_user_create: GroupsUserBase):
         )
         .first()
     )
-
