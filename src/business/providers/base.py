@@ -82,6 +82,12 @@ class Provider:
     def reset_password(self, user_info, db):
         pass
 
+    def resend_confirmation_email(self, db, user_info):
+        pass
+
+    def verify_email(self, db, token):
+        pass
+
 
 class DuplicateEmailError(Exception):
     pass
@@ -100,6 +106,10 @@ class InvalidTokenError(Exception):
 
 
 class InvalidCredentialsError(Exception):
+    pass
+
+
+class UserNotVerifiedError(Exception):
     pass
 
 

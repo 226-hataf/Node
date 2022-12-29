@@ -392,15 +392,13 @@ class ProviderFusionAuth(Provider):
             log.error(f"Exception: {err}")
             raise err
 
-    async def resend_confirmation_email(self, user_info):
-        self.setup_fusionauth()
+    async def resend_confirmation_email(self, db, user_info):
         try:
-            resp = self.fusionauth_client.retrieve_user_by_email(user_info.username)
-            if resp.status != 200:
+            user = crud.get_user_by_email(db, user_info.username)
+            if not user:
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
-            user = resp.success_response['user']
 
-            self.fusionauth_client.resend_email_verification(user_info.username)
+            crud.user_verified(db, verified=False, user_id=user.id)
 
             confirm_email_key = hash(uuid.uuid4().hex)
             set_redis(confirm_email_key, user_info.username)
@@ -408,7 +406,7 @@ class ProviderFusionAuth(Provider):
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
-                    .replace("{{first_name}}", user["firstName"]) \
+                    .replace("{{first_name}}", user.first_name) \
                     .replace("{{verification_link}}", confirm_email_url)
 
                 await send_email(
@@ -422,8 +420,7 @@ class ProviderFusionAuth(Provider):
             log.error(err)
             raise err
 
-    def verify_email(self, email_verify: ConfirmationEmailVerifySchema):
-        self.setup_fusionauth()
+    def verify_email(self, db, email_verify: ConfirmationEmailVerifySchema):
         try:
             try:
                 email = get_redis(email_verify.token)
@@ -431,9 +428,8 @@ class ProviderFusionAuth(Provider):
                 log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Token {email_verify.token} is incorrect!") from err
 
-            user = self.fusionauth_client.retrieve_user_by_email(email)
-            if user.status == 200:
-                self.fusionauth_client.verify_email(user.success_response['user']['id'])
+            if user := crud.get_user_by_email(db, email):
+                crud.user_verified(db, verified=True, user_id=user.id)
 
             return "Email Verified!"
         except Exception as err:
@@ -548,7 +544,8 @@ class ProviderFusionAuth(Provider):
                     try:
                         role_description = f"{APP_NAME} action {action} for {resource} "
                         db_role = crud.create_role(db,
-                                                   role_create=RoleBaseSchema(name=role_name, description=role_description))
+                                                   role_create=RoleBaseSchema(name=role_name,
+                                                                              description=role_description))
                         log.info(f"role: {role_name} created..")
                     except IntegrityError as err:
                         log.info(f"role {role_name} already created")
@@ -563,7 +560,7 @@ class ProviderFusionAuth(Provider):
             for group in DEFAULT_GROUPS:
                 try:
                     db_group = crud.create_group(db, group_create=GroupBaseSchema(name=group['name'],
-                                                                            description=group['description']))
+                                                                                  description=group['description']))
                     groups['group_id'] = db_group.id
                     log.info(f"group: {group['name']} created..")
                 except IntegrityError as err:

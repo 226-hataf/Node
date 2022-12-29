@@ -6,6 +6,7 @@ from business.models.schema_groups_role import GroupsUserBase, GroupsRoleBase
 from business.models.schema_roles import RoleBaseSchema
 from business.models.schemas_groups import GroupBaseSchema
 from business.models.schemas_groups_users import GroupUserRoleSchema
+from business.providers.base import UserNotVerifiedError
 from core import log
 from core.db_models import models
 from datetime import date, datetime, timedelta
@@ -103,6 +104,8 @@ def create_user(db: Session, user):
 
 def get_user_login(db: Session, email: str, password: str):
     user_login = db.query(models.User).filter(models.User.email == email, models.User.password == password).first()
+    if user_login.verified is False:
+        raise UserNotVerifiedError("user is not verified!")
     if user_login is None:
         return None
     db.execute(f"SET zekoder.id = '{user_login.id}'")
@@ -116,6 +119,16 @@ def get_user_login(db: Session, email: str, password: str):
 
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
+
+
+def user_verified(db: Session, verified: bool, user_id: int):
+    db.execute(f"SET zekoder.id = '{user_id}'")
+    update = db.query(models.User).get(user_id)
+    if update:
+        update.verified = verified
+        db.commit()
+    db.refresh(update)
+    return update
 
 
 def reset_user_password(db: Session, password, user_id: int):
@@ -376,4 +389,3 @@ def is_groups_user_not_exists(db: Session, groups_user_create: GroupsUserBase):
         )
         .first()
     )
-
