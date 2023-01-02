@@ -8,3 +8,7 @@ src/routes/test.yaml
 src/sandbox.py
 src/routes/sandbox.py
 src/bbs.yaml
+.pytest_cache
+.vscode
+.coverage
+coverage_html

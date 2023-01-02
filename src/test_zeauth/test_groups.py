@@ -11,12 +11,15 @@ class TestEnv:
     """
     group_id = "c2d8326a-86b6-11ed-9197-cf76c39d044b"
     group_id_non_uuid_format = "890779dc-85d6"
+    not_exists_group_id = "8077c4ab-5fe7-4e14-b85d-e0f49b41cf5d"
 
     users1 = "608f16de-86a5-11ed-aa9a-7fd0581785c5"
     users2 = "448c113a-86a5-11ed-ade8-27ce4ff8439f"
+    not_exist_user = "e6f4f61b-dfbe-4296-8fe5-266f9970929e"
 
     roles1 = "b379e70a-86b6-11ed-9197-77f2920fbaf9"
     roles2 = "b456dc32-86b6-11ed-9197-dfa4647856ad"
+    not_exist_role = "99b380f0-cb43-4ddc-b1b5-69b04ca5ce4b"
 
     group_name = "user"
     group_name_non_exist = "user-admin-super"
@@ -164,6 +167,15 @@ def test_roles_to_group_group_id_empty_request():
     assert json_response == {"detail": "Method Not Allowed"}
 
 
+def test_roles_to_group_group_id_not_found():
+    group_id = TestEnv.not_exists_group_id
+    json_data = {"roles": [f"{TestEnv.roles1}", f"{TestEnv.roles2}"]}
+    response = client.patch(f'/groups/{group_id}', json=json_data)
+    json_response = response.json()
+    assert response.status_code == 404
+    assert json_response == {"detail": "Group not found"}
+
+
 def test_roles_to_group_roles_id_empty_request():
     """if roles_id none, then roles uuid not valid uuid"""
     group_id = TestEnv.group_id
@@ -276,6 +288,42 @@ def test_remove_users_or_roles_from_group_roles_success():
     json_data = {"roles": [f"{TestEnv.roles1}", f"{TestEnv.roles2}"]}
     response = client.patch(f'/groups/{group_id}/remove', json=json_data)
     assert response.status_code == 200
+
+
+def test_remove_roles_from_a_group_group_id_not_found():
+    group_id = TestEnv.not_exists_group_id
+    json_data = {"roles": [f"{TestEnv.roles1}", f"{TestEnv.roles2}"]}
+    response = client.patch(f'/groups/{group_id}/remove', json=json_data)
+    json_response = response.json()
+    assert response.status_code == 404
+    assert json_response == {"detail": "Group not found"}
+
+
+def test_remove_users_from_a_group_group_id_not_found():
+    group_id = TestEnv.not_exists_group_id
+    json_data = {"users": [f"{TestEnv.users1}", f"{TestEnv.users2}"]}
+    response = client.patch(f'/groups/{group_id}/remove', json=json_data)
+    json_response = response.json()
+    assert response.status_code == 404
+    assert json_response == {"detail": "Group not found"}
+
+
+def test_remove_users_from_a_group_not_exist_user():
+    group_id = TestEnv.group_id
+    json_data = {"users": [f"{TestEnv.not_exist_user}"]}
+    response = client.patch(f'/groups/{group_id}/remove', json=json_data)
+    json_response = response.json()
+    assert response.status_code == 404
+    assert json_response == {"detail": "Users not exist"}
+
+
+def test_remove_roles_from_a_group_not_exist_role():
+    group_id = TestEnv.group_id
+    json_data = {"roles": [f"{TestEnv.not_exist_role}"]}
+    response = client.patch(f'/groups/{group_id}/remove', json=json_data)
+    json_response = response.json()
+    assert response.status_code == 404
+    assert json_response == {"detail": "Roles not exist"}
 
 
 def test_remove_users_and_roles_at_the_same_time_from_a_group():

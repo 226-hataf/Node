@@ -1,6 +1,8 @@
-from fastapi import status
+from fastapi import Depends
+from business.models.dependencies import ProtectedMethod
 from fastapi.testclient import TestClient
 from api import app
+from routes.roles import model
 
 client = TestClient(app)
 
@@ -92,7 +94,8 @@ def test_create_empty_role():
     assert [x["type"] for x in json_response["detail"]] == ['assertion_error']
 
 
-def test_update_a_role():
+def test_update_a_role(token: str = Depends(ProtectedMethod)):
+    token.auth(model.permissions.update)
     id = TestEnv.role_id
     json_data = {
         "name": f"{TestEnv.role_name_delete}",

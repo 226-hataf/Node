@@ -7,6 +7,7 @@ client = TestClient(app)
 class TestEnv:
 
     user_id = "2f3c92fa-86a5-11ed-8a13-634c2704cdf0"
+    invalid_user_id = "12345"
     not_exists_user = "8077c4ab-5fe7-4e14-b85d-e0f49b41cf5d"
     group_id = "c2d8326a-86b6-11ed-9197-cf76c39d044b"
     not_exists_group_id = "8077c4ab-5fe7-4e14-b85d-e0f49b41cf5d"
@@ -22,6 +23,15 @@ def test_user_to_group_success():
     assert ''.join([x["groups"] for x in json_response]) == f"{group_id}"
 
 
+def test_user_to_group_group_not_found():
+    user_id = TestEnv.user_id
+    group_id = TestEnv.not_exists_group_id
+    response = client.patch(f"/users/{user_id}/group/{group_id}")
+    json_response = response.json()
+    assert response.status_code == 404
+    assert json_response == {"detail": "Group not found"}
+
+
 def test_user_to_group_again():
     user_id = TestEnv.user_id
     group_id = TestEnv.group_id
@@ -29,6 +39,16 @@ def test_user_to_group_again():
     json_response = response.json()
     assert response.status_code == 403
     assert json_response == {"detail": "Available users are already in the group"}
+
+
+def test_user_to_group_with_invalid_uuid():
+    user_id = TestEnv.invalid_user_id
+    group_id = TestEnv.group_id
+    response = client.patch(f"/users/{user_id}/group/{group_id}")
+    json_response = response.json()
+    assert response.status_code == 422
+    assert [x["msg"] for x in json_response["detail"]] == ['value is not a valid uuid']
+
 
 
 def test_user_deassign_from_a_group():
