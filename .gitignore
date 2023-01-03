@@ -12,3 +12,4 @@ src/bbs.yaml
 .vscode
 .coverage
 coverage_html
+test.sh

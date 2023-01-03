@@ -260,7 +260,8 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
             # check users in the group
             users_in_groupUserTable = [obj.users for obj in
                                        query_groupUser
-                                       .filter(models.GroupsUser.users.in_(users_in_usersTable))]
+                                       .filter(and_(models.GroupsUser.users.in_(users_in_usersTable)),
+                                               (models.GroupsUser.groups == group_id))]
             # If users exist in UserTable and not in the groupTable, so assign them to the group
             assign_users_to_group = [obj for obj in users_in_usersTable if obj not in set(users_in_groupUserTable)]
 
@@ -286,7 +287,8 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
             # check roles in the group
             roles_in_groupRolesTable = [obj.roles for obj in
                                         query_groupsRole
-                                        .filter(models.GroupsRole.roles.in_(roles_in_rolesTable))]
+                                        .filter(and_(models.GroupsRole.roles.in_(roles_in_rolesTable)),
+                                                (models.GroupsRole.groups == group_id))]
             # If roles exist in RolesTable and not in the groupRolesTable, so assign roles to the group
             assign_roles_to_group = [obj for obj in roles_in_rolesTable if obj not in set(roles_in_groupRolesTable)]
 
