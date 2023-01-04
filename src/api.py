@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema, ResetPasswordSchema, \
-    ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
+    ResetPasswordVerifySchema, ConfirmationEmailVerifySchema, EncryptDecryptStrSchema
 import uvicorn
 from business.providers.base import *
 from business.providers import get_provider
@@ -150,6 +150,24 @@ def reset_password_verify(reset_pass: ResetPasswordVerifySchema, db: Session = D
     except NotExistingResourceError as err:
         log.error(err)
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
+
+
+@app.post("/encrypt_str", response_model=EncryptDecryptStrSchema)
+def encrypt_str(str_for_enc: str):
+    try:
+        return auth_provider.encrypt_str(str_for_enc)
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
+
+
+@app.post("/decrypt_str", response_model=EncryptDecryptStrSchema)
+def decrypt_str(str_for_dec: str):
+    try:
+        return auth_provider.decrypt_str(str_for_dec)
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err

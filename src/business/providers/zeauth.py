@@ -4,24 +4,24 @@ import json
 import uuid
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
-from business.models.users import User, LoginResponseModel
+from business.models.users import User, LoginResponseModel, EncryptDecryptStrSchema
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
+from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.schema_groups_role import GroupsRoleBase, GroupsUserBase
 from ..models.schema_roles import RoleBaseSchema
 from ..models.schemas_groups import GroupBaseSchema
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
-from core.AES import AesStringCipher
 import jwt
 from config.db import get_db
 
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
 FUSIONAUTH_URL = os.environ.get('FUSIONAUTH_URL')
-AES_KEY = os.environ.get('AES_KEY')
+STR_ENCRYPT_DECRYPT_KEY = os.environ.get('STR_ENCRYPT_DECRYPT_KEY')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
 client = RedisClient()
@@ -44,7 +44,7 @@ class ProviderFusionAuth(Provider):
     def __init__(self) -> None:
         self.fusionauth_client = None
         self.setup_fusionauth()
-        self.aes = AesStringCipher(AES_KEY)
+        self.str_enc_dec = StringEncryptDecrypt(STR_ENCRYPT_DECRYPT_KEY)
         super().__init__()
 
     def setup_fusionauth(self):
@@ -316,9 +316,10 @@ class ProviderFusionAuth(Provider):
 
     def login(self, user_info, db):
         try:
-            encrypted_password = self.aes.encrypt_str(raw=user_info.password)
-
-            if response := crud.get_user_login(db=db, email=user_info.email, password=str(encrypted_password)):
+            if response := crud.get_user_login(db=db, email=user_info.email):
+                decrypted_password = self.str_enc_dec.decrypt_str(enc_message=response.password)
+                if decrypted_password != user_info.password:
+                    raise InvalidCredentialsError('failed login')
                 return self._cast_login_model(response)
             else:
                 raise InvalidCredentialsError('failed login')
@@ -326,10 +327,18 @@ class ProviderFusionAuth(Provider):
             log.error(e)
             raise e
 
+    def encrypt_str(self, str_for_enc: str):
+        encrypted_str = self.str_enc_dec.encrypt_str(message=str_for_enc)
+        return EncryptDecryptStrSchema(encrypt_decrypt_str=encrypted_str)
+
+    def decrypt_str(self, str_for_dec: str):
+        decrypted_str = self.str_enc_dec.decrypt_str(enc_message=str_for_dec)
+        return EncryptDecryptStrSchema(encrypt_decrypt_str=decrypted_str)
+
     def signup(self, db, user: UserRequest) -> User:
         log.info("zeauth")
         try:
-            encrypted_password = self.aes.encrypt_str(raw=user.password)
+            encrypted_password = self.str_enc_dec.encrypt_str(message=user.password)
             log.info(f"encrypted_password {encrypted_password}")
 
             user_resp = crud.create_user(db, user={
@@ -361,7 +370,7 @@ class ProviderFusionAuth(Provider):
 
             reset_key = hash(uuid.uuid4().hex)
             set_redis(reset_key, user_info.username)
-
+            
             reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
             await send_email(
                 recipients=[user_info.username],
@@ -381,12 +390,12 @@ class ProviderFusionAuth(Provider):
                 log.error(f"redis err: {err}")
                 raise IncorrectResetKeyError(f"Reset key {reset_password.reset_key} is incorrect!") from err
 
-            encrypted_password = self.aes.encrypt_str(raw=reset_password.new_password)
+            encrypted_password = self.str_enc_dec.encrypt_str(message=reset_password.new_password)
             user = crud.get_user_by_email(db, email=email)
 
             res = crud.reset_user_password(db, password=str(encrypted_password), user_id=user.id)
             log.info(res.email)
-            if response := crud.get_user_login(db=db, email=email, password=str(encrypted_password)):
+            if response := crud.get_user_login(db=db, email=email):
                 return self._cast_login_model(response)
         except Exception as err:
             log.error(f"Exception: {err}")
