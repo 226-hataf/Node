@@ -132,6 +132,7 @@ def user_verified(db: Session, verified: bool, user_id: int):
 
 
 def reset_user_password(db: Session, password, user_id: int):
+    db.execute(f"SET zekoder.id = '{user_id}'")
     update = db.query(models.User).get(user_id)
     if update:
         update.password = password

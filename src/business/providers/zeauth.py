@@ -370,7 +370,7 @@ class ProviderFusionAuth(Provider):
 
             reset_key = hash(uuid.uuid4().hex)
             set_redis(reset_key, user_info.username)
-
+            
             reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
             await send_email(
                 recipients=[user_info.username],
@@ -395,7 +395,7 @@ class ProviderFusionAuth(Provider):
 
             res = crud.reset_user_password(db, password=str(encrypted_password), user_id=user.id)
             log.info(res.email)
-            if response := crud.get_user_login(db=db, email=email, password=str(encrypted_password)):
+            if response := crud.get_user_login(db=db, email=email):
                 return self._cast_login_model(response)
         except Exception as err:
             log.error(f"Exception: {err}")
