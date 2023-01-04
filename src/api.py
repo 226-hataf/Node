@@ -40,6 +40,10 @@ metadata = [
         "name": "roles",
         "description": "Endpoints where **Role** definitions are made",
     },
+{
+        "name": "clients",
+        "description": "Endpoints where **Client** definitions are made",
+    },
 ]
 
 app = FastAPI(title="ZeAuth Security Module", openapi_tags=metadata)

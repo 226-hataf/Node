@@ -14,10 +14,13 @@ ONE_HOUR_IN_SECONDS = 3600
 
 REDIS_KEY_PREFIX = os.environ.get('REDIS_KEY_PREFIX')
 ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
+CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
 expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)
+expr_client = 30 * int(CLIENT_TOKEN_EXPIRY_MINUTES)
 
 REFRESH_TOKEN_EXPIRY_MINUTES = os.environ.get("REFRESH_TOKEN_EXPIRY_MINUTES")
-expr_in_refresh_payload = (datetime.utcnow() + timedelta(minutes=int(REFRESH_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
+expr_in_refresh_payload = (datetime.utcnow() + timedelta(
+    minutes=int(REFRESH_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
 expr_in_refresh_payload = expr_in_refresh_payload.timestamp()
 
 
@@ -38,7 +41,7 @@ class RedisClient:
         )
 
     def set_refresh_token(self, payload: dict):
-        ip_address = "85.65.125.458"    # this should be change later
+        ip_address = "85.65.125.458"  # this should be change later
         data_dict = {k: v for k, v in payload.items()}
         log.debug(data_dict)
         try:
@@ -65,6 +68,29 @@ class RedisClient:
                     log.debug(f"cannot create access token <{key}> to redis")
                 else:
                     log.debug(f"token successfully created <{key}> to redis")
+            else:
+                log.debug(f"No data included while Redis run")
+        except Exception as e:
+            log.error(e)
+            raise e
+
+    def set_client_token(self, payload: dict):
+        data_dict = {k: v for k, v in payload.items()}
+        try:
+            if data_dict:
+                key = data_dict['client_id']
+                res = self.redi.hset(key, mapping={
+                    "map_client_id": f"{data_dict['client_id']}",
+                    "map_iss": f"{data_dict['iss']}",
+                    "map_name": f"{data_dict['name']}",
+                    "map_email": f"{data_dict['email']}",
+                    "map_roles": f"{data_dict['roles']}"
+                })
+                self.redi.expire(key, expr_client)  # set expiry for client for 30 Minutes
+                if type(res) is not int:
+                    log.debug(f"cannot create client token <{key}> to redis")
+                else:
+                    log.debug(f"Client token successfully created <{key}> to redis")
             else:
                 log.debug(f"No data included while Redis run")
         except Exception as e:
@@ -120,6 +146,3 @@ class RedisClient:
         except Exception as e:
             log.error(e)
             raise e
-
-
-
