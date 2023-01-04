@@ -1,6 +1,6 @@
 import uuid
 
-from business.models.schema_main import UUIDCheckerSchema
+from business.models.schema_main import UUIDCheckForGroupIdSchema
 from config.db import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -187,9 +187,9 @@ async def active_off(user_id: str):
 
 
 @router.patch('/{user_id}/group/{group_id}', tags=[model.plural], status_code=200)
-async def user_to_group(group_id: UUIDCheckerSchema = Depends(UUIDCheckerSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
+async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
     """Assign User to a Group"""
-    checked_uuid = group_id.id
+    checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
     if not group_exist:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -201,11 +201,10 @@ async def user_to_group(group_id: UUIDCheckerSchema = Depends(UUIDCheckerSchema)
         raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
 
-
 @router.patch('/{user_id}/group/{group_id}/remove', tags=[model.plural], status_code=200)
-async def remove_user_from_group(group_id: UUIDCheckerSchema = Depends(UUIDCheckerSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
+async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
     """Remove User from a Group"""
-    checked_uuid = group_id.id
+    checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
     if not group_exist:
         raise HTTPException(status_code=404, detail="Group not found")
