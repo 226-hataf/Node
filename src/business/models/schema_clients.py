@@ -75,6 +75,8 @@ class ClientCreateSchema(BaseModel):
             assert v != [''], 'Empty list not excepted ! '
         if v == 'string':
             assert v != 'string', 'Value string not excepted ! '
+        if v == ['string']:
+            assert v != ['string'], 'Value string not excepted ! '
         return v
 
     class Config:
