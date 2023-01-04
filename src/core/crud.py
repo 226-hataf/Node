@@ -102,12 +102,12 @@ def create_user(db: Session, user):
     return db_user
 
 
-def get_user_login(db: Session, email: str, password: str):
-    user_login = db.query(models.User).filter(models.User.email == email, models.User.password == password).first()
-    if user_login.verified is False:
-        raise UserNotVerifiedError("user is not verified!")
+def get_user_login(db: Session, email: str):
+    user_login = db.query(models.User).filter(models.User.email == email).first()
     if user_login is None:
         return None
+    if user_login.verified is False:
+        raise UserNotVerifiedError("user is not verified!")
     db.execute(f"SET zekoder.id = '{user_login.id}'")
     if user_login:
         update = db.query(models.User).get(user_login.id)

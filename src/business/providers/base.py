@@ -88,6 +88,12 @@ class Provider:
     def verify_email(self, db, token):
         pass
 
+    def encrypt_str(self, str_for_enc: str):
+        pass
+
+    def decrypt_str(self, str_for_dec: str):
+        pass
+
 
 class DuplicateEmailError(Exception):
     pass
