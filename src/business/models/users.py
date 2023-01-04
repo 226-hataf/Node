@@ -136,6 +136,10 @@ class ConfirmationEmailVerifySchema(BaseModel):
     token: str
 
 
+class EncryptDecryptStrSchema(BaseModel):
+    encrypt_decrypt_str: str
+
+
 class UserActiveOnOff(BaseModel):
     uid: str
 
