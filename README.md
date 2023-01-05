@@ -27,6 +27,7 @@
 | REDIS_KEY_PREFIX             |                                                                  ****                                                                  |
 | ACCESS_TOKEN_EXPIRY_MINUTES  |                                                                  ****                                                                  |
  REFRESH_TOKEN_EXPIRY_MINUTES |                                                                  ****                                                                  |
+CLIENT_TOKEN_EXPIRY_MINUTES |                                                                  ****                                                                  |
  DIGITS                       |                                                                   1                                                                    |
 | LENGTH                       |                                                                   8                                                                    |
 | REALM_NAME                   |                                                               zeauth-dev                                                               |

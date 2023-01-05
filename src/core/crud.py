@@ -1,7 +1,10 @@
+import os
 import uuid
+
+import jwt
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
-
+from business.models.schema_clients import ClientCreateSchema, ClientSchema, ClientJWTSchema
 from business.models.schema_groups_role import GroupsUserBase, GroupsRoleBase
 from business.models.schema_roles import RoleBaseSchema
 from business.models.schemas_groups import GroupBaseSchema
@@ -12,6 +15,12 @@ from core.db_models import models
 from datetime import date, datetime, timedelta
 from fastapi import HTTPException
 from pydantic.schema import Enum
+import random
+import string
+from redis_service.redis_service import RedisClient
+client = RedisClient()
+
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 
 
 class SortByEnum(str, Enum):
@@ -403,3 +412,72 @@ def is_groups_user_not_exists(db: Session, groups_user_create: GroupsUserBase):
         )
         .first()
     )
+
+
+def generate_client_secret():
+    return ''.join(
+        random.choices(
+            string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation,
+            k=32
+        )
+    )
+
+
+def create_new_client(db: Session, client: ClientCreateSchema):
+    if client:
+        # Do database operations
+        pass
+    else:
+        raise HTTPException(status_code=403, detail="Client already exist!")
+    # if create is success return these value
+    # these values are new clients, client_id and client_secret info's generated from system
+    client_response = ClientCreateSchema
+    client_response.client_id = uuid.uuid4()
+    client_response.client_secret = generate_client_secret()
+    return {"client_id": client_response.client_id, "client_secret": client_response.client_secret} # for only to test NOW !!
+
+
+def create_client_auth(db: Session, client_auth: ClientSchema):
+    """
+    TODO: Operational transactions will be completed when the DB is ready
+    TODO: JWT, Redis is DONE
+    """
+    CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
+    if client_auth:
+        # do database operations
+        pass
+
+    # These data will come from DB !!!
+    payload = ClientJWTSchema
+    payload.expr = (datetime.utcnow() + timedelta(minutes=int(CLIENT_TOKEN_EXPIRY_MINUTES)))  # This is not for redis only for payload
+    payload.expr = payload.expr.timestamp()
+    payload.client_id = client_auth.client_id
+    payload.name = "name from db"
+    payload.roles = ["roles1", "roles2"]
+    payload.email = "test@test.com"
+    payload.iss = "zeauth.[solution domain]"
+
+    payload = dict(
+        client_id=str(payload.client_id),
+        expr=int(payload.expr),
+        iss=payload.iss,
+        name=payload.name,
+        email=payload.email,
+        roles=payload.roles
+    )
+    # JWT operations
+    client_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
+    payload['client_token'] = client_token
+    # Write payload to Redis with expiry 30 Minutes
+    client.set_client_token(payload)
+    return payload  # for only to test NOW !!
+
+
+def remove_client(db: Session, client_id: str):
+    """
+    TODO: Operational transactions will be completed when the DB is ready
+    TODO: Write funct to get clients id
+    """
+    return client_id    # for only to test NOW !!
+
+
