@@ -36,6 +36,30 @@ def get_group_by_id(db: Session, id: str):
     return db.query(models.Group).filter(models.Group.id == id).first()
 
 
+def get_groups_name_of_user_by_id(db: Session, user_id: str):
+    # Get all groups assigned to a user
+    query = db.query(models.GroupsUser.users, models.Group.name)
+    groups = query \
+        .join(models.Group) \
+        .filter(models.GroupsUser.users == user_id) \
+        .all()
+    if groups is None:
+        return None
+    return groups
+
+
+def get_roles_name_of_group(db: Session, groups: list):
+    # Get roles name from group_roles
+    query = db.query(models.Role.name)
+    roles = query.select_from(models.GroupsRole) \
+        .join(models.Group, models.Role) \
+        .filter(models.Group.name.in_([gr for gr in groups])) \
+        .all()
+    if roles is None:
+        return None
+    return roles
+
+
 def create_group(db: Session, group_create: GroupBaseSchema):
     group = models.Group(name=group_create.name, description=group_create.description)
     db.add(group)
@@ -249,8 +273,8 @@ def deassign_user_from_group(db: Session, group_id: str, user_id: uuid.UUID):
     user_id_exist_in_users_table = query_user.filter(models.User.id == user_id).first()
     if user_id_exist_in_users_table:
         user_exist_in_group = query_group_user \
-                .filter(and_(models.GroupsUser.users == user_id_exist_in_users_table.id,
-                             models.GroupsUser.groups == group_id)).first()
+            .filter(and_(models.GroupsUser.users == user_id_exist_in_users_table.id,
+                         models.GroupsUser.groups == group_id)).first()
         if user_exist_in_group:
             db.delete(user_exist_in_group)
             db.commit()

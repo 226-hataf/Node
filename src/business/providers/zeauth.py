@@ -8,6 +8,8 @@ from business.models.users import User, LoginResponseModel, EncryptDecryptStrSch
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
+
+from core.crud import get_groups_name_of_user_by_id, get_roles_name_of_group
 from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
@@ -137,6 +139,7 @@ class ProviderFusionAuth(Provider):
         :param response:
         :return:
         """
+        db = get_db().__next__()
         ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
 
         if 'google' in response.keys():  # Flag google
@@ -188,8 +191,13 @@ class ProviderFusionAuth(Provider):
         last_update_at = datetime.utcnow()  # get this data from db
         created_at = datetime.utcnow()
 
-        roles = []  # This will come from DB
-        groups = []  # This will come from DB
+        roles = []
+        groups = []
+        get_groups = get_groups_name_of_user_by_id(db, str(user_id))
+        if get_groups:
+            groups = [group['name'] for group in get_groups]
+            get_roles = get_roles_name_of_group(db, groups)
+            roles = [roles for roles, in get_roles]
 
         payload = dict(
             aud=AUDIENCE,
@@ -242,6 +250,7 @@ class ProviderFusionAuth(Provider):
             raise e
 
     def _cast_login_model(self, user) -> object:
+        db = get_db().__next__()
         ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
 
         full_name = user.first_name
@@ -255,12 +264,11 @@ class ProviderFusionAuth(Provider):
 
         roles = []
         groups = []
-        # if len(response['user']['registrations']) != 0:
-        #     roles = response['user']['registrations'][0]['roles']
-        # if len(response['user']['memberships']) != 0:
-        #     for x in response['user']['memberships']:
-        #         group_name = self.get_group_name(x['groupId'])
-        #         groups.append(group_name)
+        get_groups = get_groups_name_of_user_by_id(db, str(user.id))
+        if get_groups:
+            groups = [group['name'] for group in get_groups]
+            get_roles = get_roles_name_of_group(db, groups)
+            roles = [roles for roles, in get_roles]
 
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
