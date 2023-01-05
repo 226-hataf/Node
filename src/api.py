@@ -173,9 +173,9 @@ def decrypt_str(str_for_dec: str):
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
 
 
-@app.post('/verify')
+@app.post('/verify', description="Verify users and clients jwt token")
 async def verify(token: str):
-    """verify jwt token"""
+    """verify users and clients jwt token"""
     try:
         decoded = auth_provider.verify(token)
         return decoded
