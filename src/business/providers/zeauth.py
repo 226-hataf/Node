@@ -545,6 +545,7 @@ class ProviderFusionAuth(Provider):
     def zeauth_bootstrap(self):
         db = get_db().__next__()
         log.info("zeauth_bootstrap...")
+
         if ProviderFusionAuth.admin_user_created:
             return
         try:
@@ -574,9 +575,9 @@ class ProviderFusionAuth(Provider):
                     role_name = f"{APP_NAME}-{resource}-{action}"
                     try:
                         role_description = f"{APP_NAME} action {action} for {resource} "
-                        db_role = crud.create_role(db,
-                                                   role_create=RoleBaseSchema(name=role_name,
-                                                                              description=role_description))
+                        role_create = RoleBaseSchema(name=role_name, description=role_description)
+                        if crud.is_role_not_exists(db, role_create):
+                            db_role = crud.create_role(db, role_create)
                         log.info(f"role: {role_name} created..")
                     except IntegrityError as err:
                         log.info(f"role {role_name} already created")
@@ -585,6 +586,14 @@ class ProviderFusionAuth(Provider):
                         log.error("unable to bootstrap")
                         log.error(err)
                         return None
+            role_name = f"{APP_NAME}-users-signup"
+            role_description = f"{APP_NAME} action signup for users"
+            role_create = RoleBaseSchema(
+                name=role_name,
+                description=role_description
+            )
+            if crud.is_role_not_exists(db, role_create):
+                db_role = crud.create_role(db, role_create)
 
             # creating default groups
             groups = {}
