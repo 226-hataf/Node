@@ -1,11 +1,14 @@
 from typing import Optional
-from pydantic import BaseModel, Field, validator, constr
+from pydantic import BaseModel, Field, validator
 from pydantic.validators import datetime
 from uuid import uuid4, UUID
 import re
 
 
 class RoleBaseSchema(BaseModel):
+    """
+    Roles name patterns are added -> Task: ZEK-657
+    """
     name: str = Field(description="The name of Role", title="Role name",
                       example="[provider short name]-[app short name]-[resource name]-[permission name]")
     description: str = Field(description="Description of Role", title="Role description")
