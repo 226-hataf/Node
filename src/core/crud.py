@@ -418,6 +418,14 @@ def is_groups_role_not_exists(db: Session, groups_role_create: GroupsRoleBase):
         .first()
     )
 
+def is_role_not_exists(db: Session, role_create: RoleBaseSchema):
+    return not (
+        db.query(models.Role)
+        .filter(
+            models.Role.name == role_create.name
+        )
+        .first()
+    )
 
 def create_groups_user(db: Session, groups_user_create: GroupsUserBase):
     groups_user = models.GroupsUser(users=groups_user_create.users, groups=groups_user_create.groups)
