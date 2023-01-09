@@ -81,6 +81,7 @@ class RedisClient:
                 key = data_dict['client_id']
                 res = self.redi.hset(key, mapping={
                     "map_client_id": f"{data_dict['client_id']}",
+                    "map_aud": f"{data_dict['aud']}",
                     "map_iss": f"{data_dict['iss']}",
                     "map_name": f"{data_dict['name']}",
                     "map_email": f"{data_dict['email']}",

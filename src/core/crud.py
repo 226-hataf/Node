@@ -1,6 +1,5 @@
 import os
 import uuid
-
 import jwt
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
@@ -21,6 +20,7 @@ from redis_service.redis_service import RedisClient
 client = RedisClient()
 
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
+AUDIENCE = 'ZeAuth'
 
 
 class SortByEnum(str, Enum):
@@ -465,6 +465,8 @@ def create_client_auth(db: Session, client_auth: ClientSchema):
     """
     TODO: Operational transactions will be completed when the DB is ready
     TODO: JWT, Redis is DONE
+    TODO: Client_id will id, but dont forget to assign this id as client_id,
+    TODO: jwt decode is fetching from client_id, dont forget this point
     """
     CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
     if client_auth:
@@ -483,6 +485,7 @@ def create_client_auth(db: Session, client_auth: ClientSchema):
 
     payload = dict(
         client_id=str(payload.client_id),
+        aud=AUDIENCE,  # this will need when to decode jwt
         expr=int(payload.expr),
         iss=payload.iss,
         name=payload.name,

@@ -479,21 +479,35 @@ class ProviderFusionAuth(Provider):
                 log.error(user)
                 raise InvalidTokenError('failed token verification')
 
-            return User(
-                id=str(user.get('sub')),
-                roles=user.get('roles'),
-                email=user.get('email'),
-                user_name=user.get('username'),
-                verified=user.get('verified'),
-                user_status=user.get('user_status'),
-                first_name=user.get('first_name'),
-                last_name=user.get('last_name'),
-                full_name=user.get('full_name'),
-                phone=user.get('phone'),
-                last_login_at=user.get('last_login_at'),
-                created_at=user.get('created_at'),
-                update_at=user.get('last_update_at')
-            )
+            if user.get('client_id'):
+                client_payload = dict(
+                    client_id=str(user.get('client_id')),
+                    aud=user.get('aud'),
+                    expr=int(user.get('expr')),
+                    iss=user.get('iss'),
+                    name=user.get('name'),
+                    email=user.get('email'),
+                    roles=user.get('roles')
+                )
+                return client_payload
+
+            else:
+                return User(
+                    id=str(user.get('sub')),
+                    roles=user.get('roles'),
+                    groups=user.get('groups'),
+                    email=user.get('email'),
+                    user_name=user.get('username'),
+                    verified=user.get('verified'),
+                    user_status=user.get('user_status'),
+                    first_name=user.get('first_name'),
+                    last_name=user.get('last_name'),
+                    full_name=user.get('full_name'),
+                    phone=user.get('phone'),
+                    last_login_at=user.get('last_login_at'),
+                    created_at=user.get('created_at'),
+                    update_at=user.get('last_update_at')
+                )
 
         except Exception as err:
             error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
