@@ -27,7 +27,7 @@ model = ZKModel(**{
 # Create Client
 @router.post('/', tags=[model.plural], status_code=201, response_model=ClientSchema, description="Create a Client")
 async def create(client: ClientCreateSchema, db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["roles-create"])):
+                 user: str = Security(get_current_user, scopes=["clients-create"])):
     """
     TODO: To create a new client account the user must has role zekoder-zeauth-admin, we must add this !
     TODO: crud side is not done, add it when DB is ready
@@ -44,7 +44,7 @@ async def create(client: ClientCreateSchema, db: Session = Depends(get_db),
 # Auth using client account
 @router.post('/auth', tags=[model.plural], status_code=201, response_model=ClientJWTSchema, description="To Auth using client account")
 async def auth(client_auth: ClientSchema, db: Session = Depends(get_db),
-               user: str = Security(get_current_user, scopes=["roles-create"])):
+               user: str = Security(get_current_user, scopes=["clients-create"])):
     """
     TODO: crud side is not done, add it when DB is ready
     """
@@ -58,7 +58,7 @@ async def auth(client_auth: ClientSchema, db: Session = Depends(get_db),
 
 @router.delete('/{client_id}', tags=[model.plural], status_code=202, description="Delete Client Account")
 async def delete(client_id: str, db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["roles-del"])):
+                 user: str = Security(get_current_user, scopes=["clients-del"])):
     """
     TODO: crud side is not done, add it when DB is ready
     """

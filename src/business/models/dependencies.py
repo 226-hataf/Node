@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from business.providers import get_provider
 from business.providers.base import Provider
 from config.db import get_db
-from jose import jwt
 from core import log, crud
 from core.db_models import models
 
@@ -14,8 +13,6 @@ from src.business import User
 
 auth_schema = HTTPBearer()
 auth_provider: Provider = get_provider()
-
-
 
 
 class CommonDependencies:
@@ -28,12 +25,6 @@ class CommonDependencies:
         self.size = size
         self.search = search
 
-
-# scopes = [(resource_name, permission_name)]
-# scopes = [("users", "create")]
-# for scope in scopes:
-#   role_to_check = f'zekoder-zeauth-{scope[0]}-{scope[1]}'
-#   ## check role is there in user roles
 
 class ProtectedMethod:
     def __init__(self, token: str = Depends(auth_schema), db: Session = Depends(get_db)):
@@ -49,7 +40,6 @@ class ProtectedMethod:
         except:
             raise HTTPException(401, "user not authenticated or using invalid token")
         return verified
-
 
 
 def get_current_user(

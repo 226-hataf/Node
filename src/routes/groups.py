@@ -35,7 +35,7 @@ model = ZKModel(**{
 # Create Group
 @router.post('/', tags=[model.plural], status_code=201, response_model=GroupSchema, description="Create a group")
 async def create(group_create: GroupBaseSchema, db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["roles-create"])):
+                 user: str = Security(get_current_user, scopes=["groups-create"])):
     """Create a group"""
     # check if group name exist, do not create group request
     group_exist = crud.get_group_by_name(db, group_create.name)
@@ -47,7 +47,7 @@ async def create(group_create: GroupBaseSchema, db: Session = Depends(get_db),
 # list all Groups
 @router.get('/', tags=[model.plural], status_code=200, response_model=list[GroupSchema], description="List all groups")
 async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db),
-               user: str = Security(get_current_user, scopes=["roles-list"])):
+               user: str = Security(get_current_user, scopes=["groups-list"])):
     """List all the groups"""
     try:
         groups = crud.get_groups(db, skip=skip, limit=limit)
@@ -61,7 +61,7 @@ async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db),
 @router.get('/{group_name}', tags=[model.plural], status_code=200, response_model=GroupSchema,
             description="Get a group by name")
 async def group(group_name: str, db: Session = Depends(get_db),
-                user: str = Security(get_current_user, scopes=["roles-get"])):
+                user: str = Security(get_current_user, scopes=["groups-get"])):
     """Get a group by name"""
     group_get = crud.get_group_by_name(db, group_name)
     if group_get is None:
@@ -73,7 +73,7 @@ async def group(group_name: str, db: Session = Depends(get_db),
 @router.put('/{id}', tags=[model.plural], status_code=200, description="Update a group")
 async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), groups: GroupBaseSchema = ...,
                  token: str = Depends(ProtectedMethod), db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["roles-update"])):
+                 user: str = Security(get_current_user, scopes=["groups-update"])):
     """ Update a group"""
     token.auth(model.permissions.update)
     checked_uuid = id.id
@@ -91,7 +91,7 @@ async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), group
 # Delete
 @router.delete('/{group_name}', tags=[model.plural], status_code=202, description="Delete a group")
 async def delete(group_name: str, db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["roles-del"])):
+                 user: str = Security(get_current_user, scopes=["groups-del"])):
     """Delete a group"""
     group_exist = crud.get_group_by_name(db, group_name)
     if not group_exist:
@@ -107,7 +107,7 @@ async def delete(group_name: str, db: Session = Depends(get_db),
 @router.patch('/{group_id}', tags=[model.plural], status_code=200, description="Assign users or roles to a group")
 async def users_or_roles_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
                                   group_user_role: GroupUserRoleSchema = ..., db: Session = Depends(get_db),
-                                  user: str = Security(get_current_user, scopes=["roles-update"])):
+                                  user: str = Security(get_current_user, scopes=["groups-update"])):
     """Assign Users or Roles to a Group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
@@ -125,7 +125,7 @@ async def users_or_roles_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(
               description="Remove users or roles from a group")
 async def remove_users_or_roles_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
                                            group_user_role: GroupUserRoleSchema = ..., db: Session = Depends(get_db),
-                                           user: str = Security(get_current_user, scopes=["roles-update"])):
+                                           user: str = Security(get_current_user, scopes=["groups-update"])):
     """Remove users or roles from a group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db, id=str(checked_uuid))

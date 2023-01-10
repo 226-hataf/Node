@@ -29,7 +29,7 @@ frontend_redirect_url = os.environ.get('FRONTEND_REDIRECT_URL')
 
 
 @router.get('/google', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def google(user: str = Security(get_current_user, scopes=["roles-get"])):
+async def google(user: str = Security(get_current_user, scopes=["brokers-get"])):
     try:
         conf = GoogleLogin()   # get google configs
         url = conf.goto_provider_login_page()
@@ -40,7 +40,7 @@ async def google(user: str = Security(get_current_user, scopes=["roles-get"])):
 
 
 @router.get('/google/callback', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def call_back_google(request: Request, user: str = Security(get_current_user, scopes=["roles-get"])):
+async def call_back_google(request: Request, user: str = Security(get_current_user, scopes=["brokers-get"])):
     try:
         code = request.query_params['code']
         conf = GoogleLogin()    # get google configs
@@ -56,7 +56,7 @@ async def call_back_google(request: Request, user: str = Security(get_current_us
 
 
 @router.get('/facebook', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def facebook(user: str = Security(get_current_user, scopes=["roles-get"])):
+async def facebook(user: str = Security(get_current_user, scopes=["brokers-get"])):
     try:
         conf = FacebookLogin()     # get facebook configs
         url = conf.goto_provider_login_page()
@@ -67,7 +67,7 @@ async def facebook(user: str = Security(get_current_user, scopes=["roles-get"]))
 
 
 @router.get('/facebook/callback', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def call_back(request: Request, user: str = Security(get_current_user, scopes=["roles-get"])):
+async def call_back(request: Request, user: str = Security(get_current_user, scopes=["brokers-get"])):
     try:
         code = request.query_params['code']
         conf = FacebookLogin()     # get facebook configs
@@ -84,7 +84,7 @@ async def call_back(request: Request, user: str = Security(get_current_user, sco
 
 
 @router.get('/twitter', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def twitter(user: str = Security(get_current_user, scopes=["roles-get"])):
+async def twitter(user: str = Security(get_current_user, scopes=["brokers-get"])):
     try:
         conf = TwitterLogin()   # get twitter configs
         url = conf.goto_provider_login_page()
@@ -95,7 +95,7 @@ async def twitter(user: str = Security(get_current_user, scopes=["roles-get"])):
 
 
 @router.get('/twitter/callback', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def call_back_twitter(request: Request, user: str = Security(get_current_user, scopes=["roles-get"])):
+async def call_back_twitter(request: Request, user: str = Security(get_current_user, scopes=["brokers-get"])):
     verifier = request.query_params['oauth_verifier']
     oauth_token = request.query_params['oauth_token']
     try:
