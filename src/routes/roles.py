@@ -13,6 +13,8 @@ from core.db_models import models
 import uuid
 from core.types import ZKModel
 
+from src.business.models.dependencies import get_current_user
+
 router = APIRouter()
 auth_provider: Provider = get_provider()
 
@@ -31,7 +33,10 @@ model = ZKModel(**{
 
 # Create Role
 @router.post('/', tags=[model.plural], status_code=201, response_model=RoleSchema, description="Create a Role")
-async def create(role_create: RoleBaseSchema, db: Session = Depends(get_db)):
+async def create(
+        role_create: RoleBaseSchema, db: Session = Depends(get_db),
+        user: str = Security(get_current_user, scopes=["roles-create"])
+    ):
     """Create a role"""
     # check if role name exist, do not create group request
     role_exist = crud.get_role_by_name(db, role_create.name)
@@ -66,10 +71,9 @@ async def role(role_name: str, db: Session = Depends(get_db)):
 # Update role
 @router.put('/{id}', tags=[model.plural], status_code=200, description="Update a Role")
 async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), roles: GroupBaseSchema = ...,
-                 token: str = Depends(ProtectedMethod),
+                 user: str = Security(get_current_user, scopes=["roles-update"]),
                  db: Session = Depends(get_db)):
     """Update a Role"""
-    token.auth(model.permissions.update)
     checked_uuid = id.id
     role_exist = crud.get_role_by_id(db, str(checked_uuid))
     if not role_exist:
