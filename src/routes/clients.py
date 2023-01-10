@@ -43,8 +43,7 @@ async def create(client: ClientCreateSchema, db: Session = Depends(get_db),
 
 # Auth using client account
 @router.post('/auth', tags=[model.plural], status_code=201, response_model=ClientJWTSchema, description="To Auth using client account")
-async def auth(client_auth: ClientSchema, db: Session = Depends(get_db),
-               user: str = Security(get_current_user, scopes=["clients-create"])):
+async def auth(client_auth: ClientSchema, db: Session = Depends(get_db)):
     """
     TODO: crud side is not done, add it when DB is ready
     """
