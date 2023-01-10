@@ -1,9 +1,11 @@
 import os
-from fastapi import Request, APIRouter
+from fastapi import Request, APIRouter, Security
 from config.social_config import GoogleLogin, FacebookLogin, TwitterLogin
 from core import log
 from starlette.responses import RedirectResponse
 from business.providers.zeauth import ProviderFusionAuth
+from src.business.models.dependencies import get_current_user
+
 from core.types import ZKModel
 from dotenv import load_dotenv
 import json
@@ -27,7 +29,7 @@ frontend_redirect_url = os.environ.get('FRONTEND_REDIRECT_URL')
 
 
 @router.get('/google', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def google():
+async def google(user: str = Security(get_current_user, scopes=["roles-get"])):
     try:
         conf = GoogleLogin()   # get google configs
         url = conf.goto_provider_login_page()
@@ -38,7 +40,7 @@ async def google():
 
 
 @router.get('/google/callback', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def call_back_google(request: Request):
+async def call_back_google(request: Request, user: str = Security(get_current_user, scopes=["roles-get"])):
     try:
         code = request.query_params['code']
         conf = GoogleLogin()    # get google configs
@@ -54,7 +56,7 @@ async def call_back_google(request: Request):
 
 
 @router.get('/facebook', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def facebook():
+async def facebook(user: str = Security(get_current_user, scopes=["roles-get"])):
     try:
         conf = FacebookLogin()     # get facebook configs
         url = conf.goto_provider_login_page()
@@ -65,7 +67,7 @@ async def facebook():
 
 
 @router.get('/facebook/callback', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def call_back(request: Request):
+async def call_back(request: Request, user: str = Security(get_current_user, scopes=["roles-get"])):
     try:
         code = request.query_params['code']
         conf = FacebookLogin()     # get facebook configs
@@ -82,7 +84,7 @@ async def call_back(request: Request):
 
 
 @router.get('/twitter', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def twitter():
+async def twitter(user: str = Security(get_current_user, scopes=["roles-get"])):
     try:
         conf = TwitterLogin()   # get twitter configs
         url = conf.goto_provider_login_page()
@@ -93,7 +95,7 @@ async def twitter():
 
 
 @router.get('/twitter/callback', tags=[model.name], status_code=307, response_class=RedirectResponse)
-async def call_back_twitter(request: Request):
+async def call_back_twitter(request: Request, user: str = Security(get_current_user, scopes=["roles-get"])):
     verifier = request.query_params['oauth_verifier']
     oauth_token = request.query_params['oauth_token']
     try:

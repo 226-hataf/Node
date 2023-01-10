@@ -2,7 +2,7 @@ import uuid
 
 from business.models.schema_main import UUIDCheckForGroupIdSchema
 from config.db import get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Security
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 from business.models.users import UserResponseModel, UsersWithIDsResponse
@@ -12,6 +12,7 @@ from core import log, crud
 from core.crud import assign_user_to_group, deassign_user_from_group
 from core.types import ZKModel
 from business.models.dependencies import CommonDependencies, ProtectedMethod
+from src.business.models.dependencies import get_current_user
 from fastapi import Query
 from pydantic.schema import Enum
 
@@ -44,7 +45,8 @@ model = ZKModel(**{
 
 
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def create(user: User, token: str = Depends(ProtectedMethod), db: Session = Depends(get_db)):
+async def create(token: str = Depends(ProtectedMethod), db: Session = Depends(get_db),
+                 user: str = Security(get_current_user, scopes=["roles-create"])):
     token.auth(model.permissions.create)
     try:
         signed_up_user = auth_provider.signup(user=user, db=db)
@@ -71,7 +73,8 @@ async def list(
         date_of_last_login: date = Query(default=None),
         user_status: bool = Query(default=None),
         commons: CommonDependencies = Depends(CommonDependencies),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        user: str = Security(get_current_user, scopes=["roles-list"])
 ):
     token.auth(model.permissions.list)
     try:
@@ -98,7 +101,8 @@ list.__doc__ = f" List all {model.plural}".expandtabs()
 
 @router.get('/with_ids', tags=[model.plural], status_code=200, response_model=UsersWithIDsResponse,
             response_model_exclude={"password"})
-async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMethod)):
+async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMethod),
+              user: str = Security(get_current_user, scopes=["roles-get"])):
     token.auth(model.permissions.read)
 
     try:
@@ -122,7 +126,8 @@ get.__doc__ = f" Get a specific {model.name} by it s id".expandtabs()
 
 @router.put('/{user_id}', tags=[model.plural],
             status_code=200)  # , response_model=User, response_model_exclude={"password"}
-async def update(user_id: str, user: User, token: str = Depends(ProtectedMethod)):
+async def update(user_id: str, token: str = Depends(ProtectedMethod),
+                 user: str = Security(get_current_user, scopes=["roles-update"])):
     token.auth(model.permissions.update)
     try:
         updated_user = auth_provider.update_user(user_id=user_id, user=user)
@@ -139,7 +144,8 @@ update.__doc__ = f" Update a {model.name} by its id and payload".expandtabs()
 
 
 @router.delete('/{user_id}', tags=[model.plural], status_code=202)
-async def delete(user_id: str, token: str = Depends(ProtectedMethod)):
+async def delete(user_id: str, token: str = Depends(ProtectedMethod),
+                 user: str = Security(get_current_user, scopes=["roles-del"])):
     token.auth(model.permissions.delete)
     try:
         deleted_user = auth_provider.delete_user(user_id=user_id)
@@ -156,7 +162,8 @@ delete.__doc__ = f" Delete a {model.name} by its id".expandtabs()
 
 
 @router.put('/{user_id}/on', tags=[model.plural], status_code=201)
-async def active_on(user_id: str):
+async def active_on(user_id: str,
+                    user: str = Security(get_current_user, scopes=["roles-update"])):
     try:
         updated_user = auth_provider.user_active_on(user_id=user_id)
         return {'updated user': updated_user.uid}
@@ -173,7 +180,8 @@ active_on.__doc__ = f" Set {model.name}".expandtabs()
 
 
 @router.put('/{user_id}/off', tags=[model.plural], status_code=201)
-async def active_off(user_id: str):
+async def active_off(user_id: str,
+                     user: str = Security(get_current_user, scopes=["roles-update"])):
     try:
         updated_user = auth_provider.user_active_off(user_id=user_id)
         return {'updated user': updated_user.uid}
@@ -187,7 +195,8 @@ async def active_off(user_id: str):
 
 
 @router.patch('/{user_id}/group/{group_id}', tags=[model.plural], status_code=200)
-async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
+async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db),
+                        user: str = Security(get_current_user, scopes=["roles-update"])):
     """Assign User to a Group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
@@ -202,7 +211,8 @@ async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckF
 
 
 @router.patch('/{user_id}/group/{group_id}/remove', tags=[model.plural], status_code=200)
-async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
+async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db),
+                                 user: str = Security(get_current_user, scopes=["roles-update"])):
     """Remove User from a Group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))

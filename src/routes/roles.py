@@ -48,7 +48,7 @@ async def create(
 # list all Roles
 @router.get('/', tags=[model.plural], status_code=200, response_model=list[RoleSchema], description="List all Roles", )
 async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db),
-               current_user: models.User = Security(dependencies.get_current_active_user, scopes=["coach"])):
+               user: str = Security(get_current_user, scopes=["roles-list"])):
     """List all Roles"""
     try:
         roles = crud.get_roles(db, skip=skip, limit=limit)
@@ -60,7 +60,9 @@ async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db),
 
 # get a role
 @router.get('/{role_name}', tags=[model.plural], status_code=200, response_model=RoleSchema, description="Get a Role")
-async def role(role_name: str, db: Session = Depends(get_db)):
+async def role(role_name: str,
+               user: str = Security(get_current_user, scopes=["roles-get"]),
+               db: Session = Depends(get_db)):
     """Get a Role"""
     role_get = crud.get_role_by_name(db, role_name)
     if role_get is None:
@@ -88,7 +90,8 @@ async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), roles
 
 # Delete role
 @router.delete('/{role_name}', tags=[model.plural], status_code=202, description="Delete a Role")
-async def delete(role_name: str, db: Session = Depends(get_db)):
+async def delete(role_name: str, db: Session = Depends(get_db),
+                 user: str = Security(get_current_user, scopes=["roles-del"])):
     """Delete a Role"""
     role_exist = crud.get_role_by_name(db, role_name)
     if not role_exist:
