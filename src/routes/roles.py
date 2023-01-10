@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.orm import Session
 from business.models.dependencies import ProtectedMethod
+from business.models import dependencies
 from business.models.schema_main import UUIDCheckForIDSchema
 from business.models.schema_roles import RoleBaseSchema, RoleSchema
 from business.models.schemas_groups import GroupBaseSchema
@@ -8,6 +9,7 @@ from business.providers import get_provider
 from business.providers.base import *
 from config.db import get_db
 from core import log, crud
+from core.db_models import models
 import uuid
 from core.types import ZKModel
 
@@ -39,8 +41,9 @@ async def create(role_create: RoleBaseSchema, db: Session = Depends(get_db)):
 
 
 # list all Roles
-@router.get('/', tags=[model.plural], status_code=200, response_model=list[RoleSchema], description="List all Roles")
-async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+@router.get('/', tags=[model.plural], status_code=200, response_model=list[RoleSchema], description="List all Roles", )
+async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db),
+               current_user: models.User = Security(dependencies.get_current_active_user, scopes=["coach"])):
     """List all Roles"""
     try:
         roles = crud.get_roles(db, skip=skip, limit=limit)
