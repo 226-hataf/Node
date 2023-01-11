@@ -75,7 +75,6 @@ async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), group
                  token: str = Depends(ProtectedMethod), db: Session = Depends(get_db),
                  user: str = Security(get_current_user, scopes=["groups-update"])):
     """ Update a group"""
-    token.auth(model.permissions.update)
     checked_uuid = id.id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
     if not group_exist:

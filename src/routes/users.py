@@ -45,9 +45,8 @@ model = ZKModel(**{
 
 
 @router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def create(token: str = Depends(ProtectedMethod), db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["users-create"])):
-    token.auth(model.permissions.create)
+async def create(user: User, token: str = Depends(ProtectedMethod), db: Session = Depends(get_db),
+                 users: str = Security(get_current_user, scopes=["users-create"])):
     try:
         signed_up_user = auth_provider.signup(user=user, db=db)
         return signed_up_user.dict()
@@ -76,7 +75,6 @@ async def list(
         db: Session = Depends(get_db),
         user: str = Security(get_current_user, scopes=["users-list"])
 ):
-    token.auth(model.permissions.list)
     try:
         user_list, next_page, page_size, total_count = auth_provider.list_users(
             page=commons.page,
@@ -103,8 +101,6 @@ list.__doc__ = f" List all {model.plural}".expandtabs()
             response_model_exclude={"password"})
 async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMethod),
               user: str = Security(get_current_user, scopes=["users-get"])):
-    token.auth(model.permissions.read)
-
     try:
         if len(user_ids) >= 51:
             raise LimitExceededError("limit exceeded!")
@@ -126,9 +122,8 @@ get.__doc__ = f" Get a specific {model.name} by it s id".expandtabs()
 
 @router.put('/{user_id}', tags=[model.plural],
             status_code=200)  # , response_model=User, response_model_exclude={"password"}
-async def update(user_id: str, token: str = Depends(ProtectedMethod),
-                 user: str = Security(get_current_user, scopes=["users-update"])):
-    token.auth(model.permissions.update)
+async def update(user: User, user_id: str, token: str = Depends(ProtectedMethod),
+                 users: str = Security(get_current_user, scopes=["users-update"])):
     try:
         updated_user = auth_provider.update_user(user_id=user_id, user=user)
         return {'updated user': updated_user.uid}
@@ -146,7 +141,6 @@ update.__doc__ = f" Update a {model.name} by its id and payload".expandtabs()
 @router.delete('/{user_id}', tags=[model.plural], status_code=202)
 async def delete(user_id: str, token: str = Depends(ProtectedMethod),
                  user: str = Security(get_current_user, scopes=["users-del"])):
-    token.auth(model.permissions.delete)
     try:
         deleted_user = auth_provider.delete_user(user_id=user_id)
         return {"deleted": deleted_user.email}
@@ -195,7 +189,8 @@ async def active_off(user_id: str,
 
 
 @router.patch('/{user_id}/group/{group_id}', tags=[model.plural], status_code=200)
-async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db),
+async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
+                        user_id: uuid.UUID = ..., db: Session = Depends(get_db),
                         user: str = Security(get_current_user, scopes=["users-update"])):
     """Assign User to a Group"""
     checked_uuid = group_id.group_id
@@ -211,7 +206,8 @@ async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckF
 
 
 @router.patch('/{user_id}/group/{group_id}/remove', tags=[model.plural], status_code=200)
-async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db),
+async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
+                                 user_id: uuid.UUID = ..., db: Session = Depends(get_db),
                                  user: str = Security(get_current_user, scopes=["users-update"])):
     """Remove User from a Group"""
     checked_uuid = group_id.group_id
