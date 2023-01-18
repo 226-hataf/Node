@@ -25,6 +25,8 @@
 | identityProviderIdTwitter    |                                                  45bb233c-0901-4236-b5ca-ac46e2e0a5a5                                                  |
 | JWT_SECRET_KEY               |                                                                  ****                                                                  |
 | REDIS_KEY_PREFIX             |                                                                  ****                                                                  |
+| DATA_ENCRYPTION_PUB_KEY      |                                                                  ****                                                                  |
+| DATA_ENCRYPTION_PRIV_KEY     |                                                                  ****                                                                  |
 | ACCESS_TOKEN_EXPIRY_MINUTES  |                                                                  ****                                                                  |
  REFRESH_TOKEN_EXPIRY_MINUTES |                                                                  ****                                                                  |
 CLIENT_TOKEN_EXPIRY_MINUTES |                                                                  ****                                                                  |

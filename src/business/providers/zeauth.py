@@ -2,13 +2,14 @@ from datetime import datetime, timedelta, date
 import os
 import json
 import uuid
+import rsa
+import base64
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
-from business.models.users import User, LoginResponseModel, EncryptDecryptStrSchema
+from business.models.users import User, LoginResponseModel, EncryptDecryptStrSchema, EncryptedContentSchema
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
-
 from core.crud import get_groups_name_of_user_by_id, get_roles_name_of_group
 from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
@@ -342,6 +343,21 @@ class ProviderFusionAuth(Provider):
     def decrypt_str(self, str_for_dec: str):
         decrypted_str = self.str_enc_dec.decrypt_str(enc_message=str_for_dec)
         return EncryptDecryptStrSchema(encrypt_decrypt_str=decrypted_str)
+
+    @staticmethod
+    def get_pub_encrypt_key():
+        pub_key = base64.b64decode(os.environ.get('DATA_ENCRYPTION_PUB_KEY'))
+        public_key = rsa.PublicKey.load_pkcs1(pub_key)
+        return str(public_key)
+
+    def enc_to_decrypt(self, encrypted: EncryptedContentSchema):
+        # request str to byte
+        encrypted = base64.b64decode(encrypted.encrypted)
+        # call DATA_ENCRYPTION_PRIV_KEY and decode
+        private_key_dec = base64.b64decode(os.environ.get('DATA_ENCRYPTION_PRIV_KEY'))
+        # use decoded private key
+        private_key = rsa.PrivateKey.load_pkcs1(private_key_dec)
+        return {"decrypted": rsa.decrypt(encrypted, private_key).decode('utf-8')}
 
     def signup(self, db, user: UserRequest) -> User:
         log.info("zeauth")

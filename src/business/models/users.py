@@ -1,7 +1,7 @@
 import os
 import re
 from typing import Optional, Union, List
-from pydantic import BaseModel, validator, ValidationError
+from pydantic import BaseModel, validator, ValidationError, Field
 from enum import Enum
 
 from pydantic.validators import datetime
@@ -138,6 +138,18 @@ class ConfirmationEmailVerifySchema(BaseModel):
 
 class EncryptDecryptStrSchema(BaseModel):
     encrypt_decrypt_str: str
+
+
+class DecryptedContentSchema(BaseModel):
+    decrypted: str = Field(description="1024 bit decrypted content",
+                           title="Decrypted Content",
+                           example="decrypted content")
+
+
+class EncryptedContentSchema(BaseModel):
+    encrypted: str = Field(description="1024 bit encrypted content",
+                           title="Encrypted Content",
+                           example="My top secret string")
 
 
 class UserActiveOnOff(BaseModel):
