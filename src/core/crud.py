@@ -5,7 +5,9 @@ from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from business.models.schema_clients import ClientCreateSchema, ClientSchema, ClientJWTSchema
 from business.models.schema_groups_role import GroupsUserBase, GroupsRoleBase
+from business.models.schema_main import UUIDCheckForUserIDSchema
 from business.models.schema_roles import RoleBaseSchema
+from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema
 from business.models.schemas_groups import GroupBaseSchema
 from business.models.schemas_groups_users import GroupUserRoleSchema
 from business.providers.base import UserNotVerifiedError
@@ -17,6 +19,7 @@ from pydantic.schema import Enum
 import random
 import string
 from redis_service.redis_service import RedisClient
+
 client = RedisClient()
 
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
@@ -135,6 +138,17 @@ def create_user(db: Session, user):
     return db_user
 
 
+def create_new_user(db: Session, user):
+    email_exist = get_user_by_email(db, user['email'])
+    if email_exist:
+        raise HTTPException(status_code=403, detail="Email already in use !")
+    created_user = models.User(**user)
+    db.add(created_user)
+    db.commit()
+    db.refresh(created_user)
+    return created_user
+
+
 def get_user_login(db: Session, email: str):
     user_login = db.query(models.User).filter(models.User.email == email).first()
     if user_login is None:
@@ -154,6 +168,16 @@ def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
 
+def get_user_by_uuid(db: Session, user_id: UUIDCheckForUserIDSchema):
+    """For single user only"""
+    return db.query(models.User).filter(models.User.id == user_id.user_id).first()
+
+
+def get_users_with_uuids(db: Session, user_ids: list):
+    """For multi users with their uuid's"""
+    return db.query(models.User).filter(models.User.id.in_(user_ids)).all()
+
+
 def user_verified(db: Session, verified: bool, user_id: int):
     db.execute(f"SET zekoder.id = '{user_id}'")
     update = db.query(models.User).get(user_id)
@@ -162,6 +186,93 @@ def user_verified(db: Session, verified: bool, user_id: int):
         db.commit()
     db.refresh(update)
     return update
+
+
+def delete_current_user(db: Session, user_id: UUIDCheckForUserIDSchema):
+    """Deletes current user"""
+    delete_user = get_user_by_uuid(db, user_id)
+    db.delete(delete_user)
+    db.commit()
+    return {"detail": f"User <{delete_user.id}> deleted successfully !"}
+
+
+def update_existing_user(db: Session, user_id: UUIDCheckForUserIDSchema, user: UserUpdateSchema):
+    """Updating existing user"""
+    db.execute(f"SET zekoder.id = '{user_id.user_id}'")
+    update = get_user_by_uuid(db, user_id)
+    if update:
+        update.first_name = user.first_name
+        update.last_name = user.last_name
+        update.verified = user.verified
+        update.user_status = user.user_status
+        update.phone = user.phone
+        db.commit()
+        db.refresh(update)
+    return {"first_name": update.first_name, "last_name": update.last_name, "verified": update.verified,
+            "user_status": update.user_status, "phone": update.phone}
+
+
+def userActiveOnOff(db: Session, user_id: UUIDCheckForUserIDSchema, q):
+    """
+    q parameter represents ON/OFF status. Endpoint sends q parameter ON or OFF
+    we can handle it here and set user_status
+    """
+    db.execute(f"SET zekoder.id = '{user_id.user_id}'")
+    update = get_user_by_uuid(db, user_id)
+    if update:
+        if q == 'ON':
+            update.user_status = True
+        else:
+            update.user_status = False
+        db.commit()
+    db.refresh(update)
+    return {"user_id": update.id, "user_activation": q}
+
+
+def get_users_with_ids(db: Session, user_ids: UsersWithIDsSchema):
+    """Gets users data with fetching Roles and Groups info with their uuid's"""
+    query = db.query(models.User)
+    data = [obj for obj in query.filter(models.User.id.in_(user_ids.users_ids)).all()]
+    for i in data:
+        groups = [group['name'] for group in get_groups_name_of_user_by_id(db, str(i.id))]
+        roles = get_roles_name_of_group(db, groups)
+        roles = [roles for roles, in roles]
+        users = [dict(
+            id=i.id,
+            email=i.email,
+            first_name=i.first_name,
+            last_name=i.last_name,
+            full_name=f"{i.first_name} {i.last_name}",
+            username=i.user_name,
+            verified=i.verified,
+            user_status=i.user_status,
+            phone=i.phone,
+            created_on=i.created_on,
+            last_login_at=i.last_login_at,
+            updated_on=i.updated_on,
+            groups=groups,
+            roles=roles
+        )]
+        yield {"user": users}
+    # execute method, you can use this one too
+    """
+    users = [obj for obj in
+             db.execute("select u.id as id, u.email as email, u.first_name as first_name, "
+                        "u.last_name as last_name, concat(u.first_name,' ',u.last_name) as full_name, "
+                        "u.user_name as username, u.verified as verified, "
+                        "case when u.user_status = 'true' then 'ON' else 'OFF' end as user_status, "
+                        "u.phone as phone, u.created_on as created_on, u.last_login_at as last_login_at, "
+                        "u.updated_on as updated_on, u.updated_by as updated_by, "
+                        "array(select gr.name from groups gr inner join groups__users gru on gru.groups = gr.id "
+                        "where gru.users = u.id group by gr.id) as groups, "
+                        "array(select r.name from roles r inner join groups__roles grl on grl.roles = r.id "
+                        "inner join groups gr on gr.id = grl.groups "
+                        "inner join groups__users gru on gru.groups = gr.id "
+                        "where grl.roles = r.id and gru.users = u.id group by r.id) as roles "
+                        "from users u where u.id in ('b9ae5870-933d-11ed-bfa0-bf475bd063ff', 'deee9916-933c-11ed-9e21-ff7dc39615ee')")
+             ]
+    yield {"user": users}
+    """
 
 
 def reset_user_password(db: Session, password, user_id: int):
@@ -418,6 +529,7 @@ def is_groups_role_not_exists(db: Session, groups_role_create: GroupsRoleBase):
         .first()
     )
 
+
 def is_role_not_exists(db: Session, role_create: RoleBaseSchema):
     return not (
         db.query(models.Role)
@@ -426,6 +538,7 @@ def is_role_not_exists(db: Session, role_create: RoleBaseSchema):
         )
         .first()
     )
+
 
 def create_groups_user(db: Session, groups_user_create: GroupsUserBase):
     groups_user = models.GroupsUser(users=groups_user_create.users, groups=groups_user_create.groups)
@@ -466,7 +579,8 @@ def create_new_client(db: Session, client: ClientCreateSchema):
     client_response = ClientCreateSchema
     client_response.client_id = uuid.uuid4()
     client_response.client_secret = generate_client_secret()
-    return {"client_id": client_response.client_id, "client_secret": client_response.client_secret} # for only to test NOW !!
+    return {"client_id": client_response.client_id,
+            "client_secret": client_response.client_secret}  # for only to test NOW !!
 
 
 def create_client_auth(db: Session, client_auth: ClientSchema):
@@ -483,7 +597,8 @@ def create_client_auth(db: Session, client_auth: ClientSchema):
 
     # These data will come from DB !!!
     payload = ClientJWTSchema
-    payload.expr = (datetime.utcnow() + timedelta(minutes=int(CLIENT_TOKEN_EXPIRY_MINUTES)))  # This is not for redis only for payload
+    payload.expr = (datetime.utcnow() + timedelta(
+        minutes=int(CLIENT_TOKEN_EXPIRY_MINUTES)))  # This is not for redis only for payload
     payload.expr = payload.expr.timestamp()
     payload.client_id = client_auth.client_id
     payload.name = "name from db"
@@ -513,6 +628,4 @@ def remove_client(db: Session, client_id: str):
     TODO: Operational transactions will be completed when the DB is ready
     TODO: Write funct to get clients id
     """
-    return client_id    # for only to test NOW !!
-
-
+    return client_id  # for only to test NOW !!

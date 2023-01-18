@@ -1,17 +1,17 @@
 import os
 import re
-from typing import Optional, Union, List
+import uuid
+from typing import Optional, Union, List, Dict
 from pydantic import BaseModel, validator, ValidationError, Field
 from enum import Enum
-
+from uuid import uuid4, UUID
 from pydantic.validators import datetime
-
 from core import log
 
 
 # from business.models.roles import Roles
-
 # from .permissions import Permission
+
 
 class RolesEnum(str, Enum):
     VIEW_APPLICATIONS = 'view-applications'
@@ -47,7 +47,7 @@ class User(BaseModel):
     last_login_at: Optional[datetime]
     update_at: Optional[datetime]
     permissions: Optional[List[str]]
-
+    
 
 class UserRequest(BaseModel):
     email: str
@@ -94,9 +94,8 @@ class UserRequest(BaseModel):
         else:
             raise ValueError("invalid password format")
 
-
-class Config:
-    orm_mode = True
+    class Config:
+        orm_mode = True
 
 
 class UserResponseModel(BaseModel):
@@ -140,6 +139,7 @@ class EncryptDecryptStrSchema(BaseModel):
     encrypt_decrypt_str: str
 
 
+
 class DecryptedContentSchema(BaseModel):
     decrypted: str = Field(description="1024 bit decrypted content",
                            title="Decrypted Content",
@@ -159,3 +159,4 @@ class UserActiveOnOff(BaseModel):
 class UsersWithIDsResponse(BaseModel):
     total: int
     users: List[User]
+

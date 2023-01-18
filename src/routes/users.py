@@ -1,11 +1,12 @@
 import uuid
-
-from business.models.schema_main import UUIDCheckForGroupIdSchema
+from business.models.schema_main import UUIDCheckForGroupIdSchema, UUIDCheckForUserIDSchema
 from config.db import get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date, datetime
-from business.models.users import UserResponseModel, UsersWithIDsResponse
+from business.models.users import UserResponseModel
+from business.models.schema_users import UserActivationProcessResponseSchema, UsersWithIDsSchema, \
+    UsersWithIDsResponseSchema, UserUpdateSchema, UserResponseSchema, UserCreateSchema
 from business.providers.base import *
 from business.providers import get_provider
 from core import log, crud
@@ -43,19 +44,15 @@ model = ZKModel(**{
 })
 
 
-@router.post('/', tags=[model.plural], status_code=201, response_model=User, response_model_exclude={"password"})
-async def create(user: User, token: str = Depends(ProtectedMethod), db: Session = Depends(get_db)):
+@router.post('/', tags=[model.plural], status_code=201, response_model=UserResponseSchema, description="Create new user")
+async def create_new_user(user: UserCreateSchema, db: Session = Depends(get_db), token: str = Depends(ProtectedMethod)):
+    """Create new user"""
     token.auth(model.permissions.create)
     try:
-        signed_up_user = auth_provider.signup(user=user, db=db)
-        return signed_up_user.dict()
-    except DuplicateEmailError:
-        raise HTTPException(status_code=403, detail=f"'{user.email}' email is already linked to an account")
-    except Exception as e:
-        raise e
-
-
-create.__doc__ = f" Create a new {model.name}".expandtabs()
+        return auth_provider.createNewUser(db, user)
+    except ValueError as e:
+        log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
 
 # list users
@@ -96,98 +93,80 @@ async def list(
 list.__doc__ = f" List all {model.plural}".expandtabs()
 
 
-@router.get('/with_ids', tags=[model.plural], status_code=200, response_model=UsersWithIDsResponse,
-            response_model_exclude={"password"})
-async def get(user_ids: List[str] = Query(...), token: str = Depends(ProtectedMethod)):
+@router.post('/with_ids', tags=[model.plural], status_code=200, response_model=List[UsersWithIDsResponseSchema], description="Get current Users list with uuid's")
+async def gets_current_users(users_ids: UsersWithIDsSchema, token: str = Depends(ProtectedMethod),  db: Session = Depends(get_db)):
+    """Get Users list with user's uuid"""
     token.auth(model.permissions.read)
-
     try:
-        if len(user_ids) >= 51:
-            raise LimitExceededError("limit exceeded!")
-        return auth_provider.get_user(user_ids=user_ids)
-
-    except NotExistingResourceError as e:
-        log.debug(e)
-        raise HTTPException(status_code=404, detail="attempt to get not existing user") from e
-    except LimitExceededError as err:
-        log.error(err)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="limit exceeded!") from err
-    except Exception as e:
+        return auth_provider.usersWithIDs(db, users_ids)
+    except ValueError as e:
         log.error(e)
-        raise HTTPException(status_code=500, detail="unknown error") from e
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
 
-get.__doc__ = f" Get a specific {model.name} by it s id".expandtabs()
-
-
-@router.put('/{user_id}', tags=[model.plural],
-            status_code=200)  # , response_model=User, response_model_exclude={"password"}
-async def update(user_id: str, user: User, token: str = Depends(ProtectedMethod)):
+@router.put('/{user_id}', tags=[model.plural], status_code=200, response_model=UserUpdateSchema, description="Update current user")
+async def updates_current_user(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema),
+                               user: UserUpdateSchema = ...,
+                               db: Session = Depends(get_db), token: str = Depends(ProtectedMethod)):
+    """Update current user"""
     token.auth(model.permissions.update)
+    user_exist = crud.get_user_by_uuid(db, user_id)
+    if not user_exist:
+        raise HTTPException(status_code=404, detail="User not found")
     try:
-        updated_user = auth_provider.update_user(user_id=user_id, user=user)
-        return {'updated user': updated_user.uid}
-    except NotExistingResourceError as e:
-        log.debug(e)
-        raise HTTPException(status_code=404, detail="attempt to update not existing user")
-    except Exception as e:
+        return auth_provider.updateUser(db, user_id, user)
+    except ValueError as e:
         log.error(e)
-        raise HTTPException(status_code=500, detail="unknown error")
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
 
-update.__doc__ = f" Update a {model.name} by its id and payload".expandtabs()
-
-
-@router.delete('/{user_id}', tags=[model.plural], status_code=202)
-async def delete(user_id: str, token: str = Depends(ProtectedMethod)):
+@router.delete('/{user_id}', tags=[model.plural], status_code=202, description="Delete current user")
+async def deletes_current_user(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema),
+                               token: str = Depends(ProtectedMethod),
+                               db: Session = Depends(get_db)):
+    """Deletes current user"""
     token.auth(model.permissions.delete)
+    user_exist = crud.get_user_by_uuid(db, user_id)
+    if not user_exist:
+        raise HTTPException(status_code=404, detail="User not found")
     try:
-        deleted_user = auth_provider.delete_user(user_id=user_id)
-        return {"deleted": deleted_user.email}
-    except NotExistingResourceError as e:
-        log.debug(e)
-        raise HTTPException(status_code=404, detail="attempt to delete not existing user")
-    except Exception as e:
+        return auth_provider.deleteUser(db, user_id)
+    except ValueError as e:
         log.error(e)
-        raise HTTPException(status_code=500, detail="unknown error")
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
 
-delete.__doc__ = f" Delete a {model.name} by its id".expandtabs()
-
-
-@router.put('/{user_id}/on', tags=[model.plural], status_code=201)
-async def active_on(user_id: str):
+@router.put('/{user_id}/on', tags=[model.plural], status_code=201,
+            response_model=UserActivationProcessResponseSchema, description="Activates user status ON")
+async def user_active_on(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema), db: Session = Depends(get_db)):
+    """Activates user status ON"""
+    user_exist = crud.get_user_by_uuid(db, user_id)
+    if not user_exist:
+        raise HTTPException(status_code=404, detail="User not found")
     try:
-        updated_user = auth_provider.user_active_on(user_id=user_id)
-        return {'updated user': updated_user.uid}
-    except NotExistingResourceError as e:
-        log.debug(e)
-        raise HTTPException(status_code=404, detail="attempt to activate not existing user")
-    except Exception as err:
-        error_template = "active_on Exception: An exception of type {0} occurred. error: {1}"
-        log.error(error_template.format(type(err).__name__, str(err)))
-        raise HTTPException(status_code=500, detail="unknown error")
+        return auth_provider.userActivationProcess(db, user_id, q='ON')
+    except ValueError as e:
+        log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
 
-active_on.__doc__ = f" Set {model.name}".expandtabs()
-
-
-@router.put('/{user_id}/off', tags=[model.plural], status_code=201)
-async def active_off(user_id: str):
+@router.put('/{user_id}/off', tags=[model.plural], status_code=201,
+            response_model=UserActivationProcessResponseSchema, description="Deactivates user status OFF")
+async def user_active_off(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema), db: Session = Depends(get_db)):
+    """Deactivates user status OFF"""
+    user_exist = crud.get_user_by_uuid(db, user_id)
+    if not user_exist:
+        raise HTTPException(status_code=404, detail="User not found")
     try:
-        updated_user = auth_provider.user_active_off(user_id=user_id)
-        return {'updated user': updated_user.uid}
-    except NotExistingResourceError as e:
-        log.debug(e)
-        raise HTTPException(status_code=404, detail="attempt to deactivate not existing user")
-    except Exception as err:
-        error_template = "active_off Exception: An exception of type {0} occurred. error: {1}"
-        log.error(error_template.format(type(err).__name__, str(err)))
-        raise HTTPException(status_code=500, detail="unknown error")
+        return auth_provider.userActivationProcess(db, user_id, q='OFF')
+    except ValueError as e:
+        log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
 
 @router.patch('/{user_id}/group/{group_id}', tags=[model.plural], status_code=200)
-async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
+async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
+                        user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
     """Assign User to a Group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
@@ -202,7 +181,8 @@ async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckF
 
 
 @router.patch('/{user_id}/group/{group_id}/remove', tags=[model.plural], status_code=200)
-async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema), user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
+async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
+                                 user_id: uuid.UUID = ..., db: Session = Depends(get_db)):
     """Remove User from a Group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
@@ -214,6 +194,3 @@ async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(U
     except ValueError as e:
         log.error(e)
         raise HTTPException(status_code=500, detail="unknown error, check the logs")
-
-
-active_off.__doc__ = f" Delete a {model.name}".expandtabs()

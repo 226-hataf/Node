@@ -6,6 +6,7 @@ import rsa
 import base64
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
+from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema, UserCreateSchema
 from business.models.users import User, LoginResponseModel, EncryptDecryptStrSchema, EncryptedContentSchema
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
@@ -15,6 +16,7 @@ from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.schema_groups_role import GroupsRoleBase, GroupsUserBase
+from ..models.schema_main import  UUIDCheckForUserIDSchema
 from ..models.schema_roles import RoleBaseSchema
 from ..models.schemas_groups import GroupBaseSchema
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
@@ -344,6 +346,58 @@ class ProviderFusionAuth(Provider):
         decrypted_str = self.str_enc_dec.decrypt_str(enc_message=str_for_dec)
         return EncryptDecryptStrSchema(encrypt_decrypt_str=decrypted_str)
 
+
+    def userActivationProcess(self, db, user_id: UUIDCheckForUserIDSchema, q):
+        """user active on/off process can be done from here"""
+        try:
+            return crud.userActiveOnOff(db, user_id, q=q)
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    def usersWithIDs(self, db, user_ids: UsersWithIDsSchema):
+        """user active on/off process can be done from here"""
+        try:
+            return crud.get_users_with_ids(db, user_ids)
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    def updateUser(self, db, user_id: UUIDCheckForUserIDSchema, user: UserUpdateSchema):
+        """update existing user"""
+        try:
+            return crud.update_existing_user(db, user_id, user)
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    def deleteUser(self, db, user_id: UUIDCheckForUserIDSchema):
+        """update existing user"""
+        try:
+            return crud.delete_current_user(db, user_id)
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    def createNewUser(self, db, user: UserCreateSchema):
+        """create new user"""
+        try:
+            encrypted_password = self.str_enc_dec.encrypt_str(message=user.password)
+            created_user = crud.create_new_user(db, user={
+                "email": user.email,
+                "user_name": user.username,
+                "password": str(encrypted_password),
+                "verified": False,
+                "user_status": True,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "phone": user.phone,
+            })
+            return created_user
+        except Exception as err:
+            log.debug(err)
+            raise err
+
     @staticmethod
     def get_pub_encrypt_key():
         pub_key = base64.b64decode(os.environ.get('DATA_ENCRYPTION_PUB_KEY'))
@@ -358,6 +412,7 @@ class ProviderFusionAuth(Provider):
         # use decoded private key
         private_key = rsa.PrivateKey.load_pkcs1(private_key_dec)
         return {"decrypted": rsa.decrypt(encrypted, private_key).decode('utf-8')}
+
 
     def signup(self, db, user: UserRequest) -> User:
         log.info("zeauth")
@@ -394,7 +449,7 @@ class ProviderFusionAuth(Provider):
 
             reset_key = hash(uuid.uuid4().hex)
             set_redis(reset_key, user_info.username)
-            
+
             reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
             await send_email(
                 recipients=[user_info.username],
