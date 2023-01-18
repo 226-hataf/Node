@@ -70,9 +70,6 @@ class Provider:
     def verify(self, token: str):
         log.error(f'method verify not implemented for {os.environ.get("AUTH_PROVIDER")} provider')
 
-    def user_active_on(self, user_id: str):
-        log.error(f'method user_active_on not implemented for {os.environ.get("AUTH_PROVIDER")} provider')
-
     def user_active_off(self, user_id: str):
         log.error(f'method user_active_off not implemented for {os.environ.get("AUTH_PROVIDER")} provider')
 

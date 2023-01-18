@@ -32,3 +32,18 @@ class UUIDCheckForIDSchema(BaseModel):
         except ValueError as e:
             log.error(e)
             return {"detail": "invalid uuid"}
+
+
+class UUIDCheckForUserIDSchema(BaseModel):
+    user_id: UUID = Field(description="It checks the uuid format in user_id fields with uuid parameters "
+                                      "and returns an error if it does not conform to the uuid format.",
+                          title="UUID Format Checker")
+
+    @validator('user_id')
+    def check_id_format(cls, v):
+        try:
+            if uuid.UUID(str(v)):
+                return v
+        except ValueError as e:
+            log.error(e)
+            return {"detail": "invalid uuid"}
