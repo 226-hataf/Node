@@ -48,3 +48,11 @@ class GroupsUser(Base, TrackTimeMixin):
     id = Column(Integer, primary_key=True, index=True)
     groups = Column(Integer, ForeignKey("groups.id"))
     users = Column(Integer, ForeignKey("users.id"))
+
+
+class Client(Base, TrackTimeMixin):
+    __tablename__ = "clients"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True)
+    client_secret = Column(String, unique=True)
+    owner = Column(Integer, index=True)

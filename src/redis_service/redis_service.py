@@ -82,10 +82,10 @@ class RedisClient:
                 res = self.redi.hset(key, mapping={
                     "map_client_id": f"{data_dict['client_id']}",
                     "map_aud": f"{data_dict['aud']}",
-                    "map_iss": f"{data_dict['iss']}",
                     "map_name": f"{data_dict['name']}",
-                    "map_email": f"{data_dict['email']}",
-                    "map_roles": f"{data_dict['roles']}"
+                    "map_owner": f"{data_dict['owner']}",
+                    "map_iss": f"{data_dict['iss']}",
+                    "map_groups": f"{data_dict['groups']}"
                 })
                 self.redi.expire(key, expr_client)  # set expiry for client for 30 Minutes
                 if type(res) is not int:

@@ -1,8 +1,11 @@
 import re
+import uuid
+from typing import Optional, List
 from pydantic import BaseModel, Field, validator, root_validator
 from uuid import uuid4, UUID
 import random
 import string
+from core import log
 
 
 def generate_client_secret():
@@ -11,7 +14,8 @@ def generate_client_secret():
         random.choices(
             string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation, k=32
         )
-    )
+    ).replace('"', '')  # when generating client_id remove "" for not get error on request body.
+    # for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
 
 
 class ClientSchema(BaseModel):
@@ -44,9 +48,8 @@ class ClientSchema(BaseModel):
 class ClientCreateSchema(BaseModel):
     name: str = Field(description="Name of Service", title="Service Name")
     email: str = Field(description="Email of Service", title="Service Email")
-    roles: list[str] = Field(description="List of valid roles to be granted for the service",
-                             title="Granted Service Roles")
-
+    groups: Optional[List[str]] = Field(description="Users Groups Permissions", title="Users Group",
+                                        example=["admin", "user"])
     # Email format check
     @validator('email')
     def check_email(cls, email):
@@ -58,7 +61,7 @@ class ClientCreateSchema(BaseModel):
     @root_validator(pre=True)
     def check_field(cls, values):
         fields = list(values.keys())
-        if len(set(fields).intersection({"name", "email", "roles"})) > 2:
+        if len(set(fields).intersection({"name", "email", "groups"})) > 2:
             # Request body cannot be empty and,
             # And must be sent all together in the request body.
             return values
@@ -66,7 +69,7 @@ class ClientCreateSchema(BaseModel):
             raise ValueError('All fields must be set in body')
 
     # Check if fields are empty or value=string or empty list !
-    @validator("name", "email", "roles")
+    @validator("name", "email", "groups")
     def options_non_empty(cls, v):
         if v == '':
             assert v != '', 'Empty value not excepted ! '
@@ -83,14 +86,18 @@ class ClientCreateSchema(BaseModel):
         orm_mode = True
 
 
-class ClientJWTSchema(ClientCreateSchema):
+class ClientJWTSchema(BaseModel):
     client_id: UUID = Field(default_factory=uuid4, description="ID of the generated client", title="Client ID")
-    expr: int = Field(description="Generated JWT has fixed 30M lifetime and stored in Redis", title="Expiry time in Minutes")
+    expr: int = Field(description="Generated JWT has fixed 30M lifetime and stored in Redis",
+                      title="Expiry time in Minutes")
+    name: str = Field(description="Name of Service", title="Service Name")
+    owner: UUID = Field(default_factory=uuid4, description="ID of the client owner", title="Client Owner ID")
     iss: str = Field(description="JWT generated with issuer", title="The issuer")
+    groups: List[str] = Field(description="Client Groups", title="Client Group")
     client_token: str = Field(description="JWT token includes client info", title="JWT Token")
 
     # Check if fields are empty
-    @validator("expr", "iss", "client_token", "client_id")
+    @validator("client_id", "expr", "name", "owner", "iss", "client_token")
     def options_non_empty(cls, v):
         if v == '':
             assert v != '', 'Empty value not excepted ! '
@@ -98,3 +105,22 @@ class ClientJWTSchema(ClientCreateSchema):
 
     class Config:
         orm_mode = True
+
+
+class UUIDCheckForClientIdSchema(BaseModel):
+    client_id: UUID = Field(description="It checks the uuid format in client_id fields with uuid parameters "
+                                       "and returns an error if it does not conform to the uuid format.",
+                           title="UUID Format Checker")
+
+    @validator('client_id')
+    def check_id_format(cls, v):
+        try:
+            if uuid.UUID(str(v)):
+                return v
+        except ValueError as e:
+            log.error(e)
+            return {"detail": "invalid uuid"}
+
+    class Config:
+        orm_mode = True
+

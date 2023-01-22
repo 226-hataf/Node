@@ -3,7 +3,7 @@ import uuid
 import jwt
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
-from business.models.schema_clients import ClientCreateSchema, ClientSchema, ClientJWTSchema
+from business.models.schema_clients import ClientCreateSchema, ClientSchema, ClientJWTSchema, UUIDCheckForClientIdSchema
 from business.models.schema_groups_role import GroupsUserBase, GroupsRoleBase
 from business.models.schema_main import UUIDCheckForUserIDSchema
 from business.models.schema_roles import RoleBaseSchema
@@ -42,6 +42,14 @@ def get_groups(db: Session, skip: int = 0, limit: int = 100):
 
 def get_group_by_name(db: Session, name: str):
     return db.query(models.Group).filter(models.Group.name == name).first()
+
+
+def get_groups_by_name_list(db: Session, groups: list):
+    groups_list_uuids = [obj.id for obj in
+                         db.query(models.Group)
+                         .filter(models.Group.name.in_([gr for gr in groups]))
+                         .all()]
+    return groups_list_uuids
 
 
 def get_group_by_id(db: Session, id: str):
@@ -565,67 +573,141 @@ def generate_client_secret():
             string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation,
             k=32
         )
-    )
+    ).replace('"', '')  # when generating client_id remove "" for not get error on request body.
+# for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+
+
+def get_client_by_uuid_and_secret(db: Session, client_id: uuid, client_secret: str):
+    """Check client exists or not ? with client_id and client_secret"""
+    client_info = db.query(models.Client) \
+        .filter(models.Client.id == client_id,
+                models.Client.client_secret == client_secret) \
+        .first()
+    return client_info
+
+
+def get_client_by_uuid(db: Session, client_id: UUIDCheckForClientIdSchema):
+    """Gets client's id by uuid"""
+    client_info = db.query(models.Client).filter(models.Client.id == client_id.client_id).first()
+    return client_info
+
+
+def check_client_exists_with_email(db: Session, email: str):
+    """checks email from users table, if exist than gets this email's owner uuid and
+    search for this uuid in client table as an owner id, if it exists than
+    that means client already exist
+    """
+    get_uuid_from_email = db.query(models.User).filter(models.User.email == email).first()
+    if get_uuid_from_email:
+        client_exist = db.query(models.Client).filter(models.Client.owner == get_uuid_from_email.id).first()
+        return client_exist
+    return None
 
 
 def create_new_client(db: Session, client: ClientCreateSchema):
-    if client:
-        # Do database operations
-        pass
+    # first check email
+    email_exist = get_user_by_email(db, client.email)
+    # if exists add client info to client table and add groups to groups__users table
+    if email_exist:
+        add_to_client_table = models.Client(
+            name=client.name,
+            client_secret=generate_client_secret(),
+            owner=email_exist.id
+        )
+        db.add(add_to_client_table)
+        db.commit()
+        db.refresh(add_to_client_table)
+        # add groups to groups_users with owner
+        groups_list_check = get_groups_by_name_list(db, client.groups)
+        if groups_list_check:
+            db.bulk_insert_mappings(
+                models.GroupsUser,
+                [dict(groups=group_id, users=email_exist.id, ) for group_id in groups_list_check],
+            )
+            db.commit()
+        return {"client_id": add_to_client_table.id, "client_secret": add_to_client_table.client_secret}
     else:
-        raise HTTPException(status_code=403, detail="Client already exist!")
-    # if create is success return these value
-    # these values are new clients, client_id and client_secret info's generated from system
-    client_response = ClientCreateSchema
-    client_response.client_id = uuid.uuid4()
-    client_response.client_secret = generate_client_secret()
-    return {"client_id": client_response.client_id,
-            "client_secret": client_response.client_secret}  # for only to test NOW !!
+        # if not exists
+        # add client info to users table first, then get it's uuid
+        add_client_to_users_table = models.User(
+            email=client.email,
+            user_name=client.email,
+            password="",
+            first_name=client.name
+        )
+        db.add(add_client_to_users_table)
+        db.commit()
+        db.refresh(add_client_to_users_table)
+        # now add to client info to client table with owner uuid (from users table)
+        add_to_client_table = models.Client(
+            name=client.name,
+            client_secret=generate_client_secret(),
+            owner=add_client_to_users_table.id
+        )
+        db.add(add_to_client_table)
+        db.commit()
+        db.refresh(add_to_client_table)
+        # now add groups to groups_users with its owner
+        groups_list_check = get_groups_by_name_list(db, client.groups)
+        if groups_list_check:
+            db.bulk_insert_mappings(
+                models.GroupsUser,
+                [dict(groups=group_id, users=add_client_to_users_table.id, ) for group_id in groups_list_check],
+            )
+            db.commit()
+        return {"client_id": add_to_client_table.id, "client_secret": add_to_client_table.client_secret}
 
 
 def create_client_auth(db: Session, client_auth: ClientSchema):
-    """
-    TODO: Operational transactions will be completed when the DB is ready
-    TODO: JWT, Redis is DONE
-    TODO: Client_id will id, but dont forget to assign this id as client_id,
-    TODO: jwt decode is fetching from client_id, dont forget this point
-    """
     CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
-    if client_auth:
-        # do database operations
-        pass
-
-    # These data will come from DB !!!
-    payload = ClientJWTSchema
-    payload.expr = (datetime.utcnow() + timedelta(
-        minutes=int(CLIENT_TOKEN_EXPIRY_MINUTES)))  # This is not for redis only for payload
-    payload.expr = payload.expr.timestamp()
-    payload.client_id = client_auth.client_id
-    payload.name = "name from db"
-    payload.roles = ["roles1", "roles2"]
-    payload.email = "test@test.com"
-    payload.iss = "zeauth.[solution domain]"
-
-    payload = dict(
-        client_id=str(payload.client_id),
-        aud=AUDIENCE,  # this will need when to decode jwt
-        expr=int(payload.expr),
-        iss=payload.iss,
-        name=payload.name,
-        email=payload.email,
-        roles=payload.roles
-    )
-    # JWT operations
-    client_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-    payload['client_token'] = client_token
-    # Write payload to Redis with expiry 30 Minutes
-    client.set_client_token(payload)
-    return payload  # for only to test NOW !!
+    client_exists = get_client_by_uuid_and_secret(db, client_auth.client_id, client_auth.client_secret)
+    if client_exists:
+        payload = ClientJWTSchema
+        payload.client_id = str(client_exists.id)
+        payload.expr = (datetime.utcnow() + timedelta(
+            minutes=int(CLIENT_TOKEN_EXPIRY_MINUTES)))  # This is not for redis only for payload
+        payload.expr = payload.expr.timestamp()
+        payload.name = client_exists.name
+        payload.owner = str(client_exists.owner)
+        payload.iss = "zeauth.[solution domain]"  # ask for this !!
+        payload.groups = [group['name'] for group in get_groups_name_of_user_by_id(db, str(client_exists.owner))]
+        payload = dict(
+            client_id=payload.client_id,
+            aud=AUDIENCE,  # this will need when to decode jwt
+            expr=int(payload.expr),
+            name=payload.name,
+            owner=payload.owner,
+            iss=payload.iss,
+            groups=payload.groups
+        )
+        # JWT operations
+        client_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
+        payload['client_token'] = client_token
+        # Write payload to Redis with expiry 30 Minutes
+        client.set_client_token(payload)
+        return payload  # for only to test NOW !!
+    return None
 
 
-def remove_client(db: Session, client_id: str):
-    """
-    TODO: Operational transactions will be completed when the DB is ready
-    TODO: Write funct to get clients id
-    """
-    return client_id  # for only to test NOW !!
+def remove_client(db: Session, client_id: UUIDCheckForClientIdSchema):
+    """Delete current client from client table"""
+    delete_client = get_client_by_uuid(db, client_id)
+    db.delete(delete_client)
+    db.commit()
+    # delete current client record from users table
+    # if this record created by client and password is empty then we can delete it
+    # otherwise client owner in the user table could be admin, user, super-admin ex.!
+    # that means password could not be empty, we should not delete this records
+    delete_client_from_users_table = db.query(models.User) \
+        .filter(and_(models.User.id == delete_client.owner,
+                     models.User.password == '')) \
+        .first()
+    if delete_client_from_users_table:
+        db.delete(delete_client_from_users_table)
+        db.commit()
+    # delete client record from groups_users table
+    db.query(models.GroupsUser) \
+        .filter(models.GroupsUser.users == delete_client.owner) \
+        .delete()
+    db.commit()
+    return delete_client.id
