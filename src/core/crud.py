@@ -425,12 +425,12 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
             # Check ! do we have a record in our users table, for requested user uuid's ?
             users_in_usersTable = [obj.id for obj in
                                    query_user
-                                       .filter(models.User.id.in_(group_user_role.users))]
+                                   .filter(models.User.id.in_(group_user_role.users))]
             # check users in the group
             users_in_groupUserTable = [obj.users for obj in
                                        query_groupUser
-                                           .filter(and_(models.GroupsUser.users.in_(users_in_usersTable)),
-                                                   (models.GroupsUser.groups == group_id))]
+                                       .filter(and_(models.GroupsUser.users.in_(users_in_usersTable)),
+                                               (models.GroupsUser.groups == group_id))]
             # If users exist in UserTable and not in the groupTable, so assign them to the group
             assign_users_to_group = [obj for obj in users_in_usersTable if obj not in set(users_in_groupUserTable)]
 
@@ -452,12 +452,12 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
             # Check ! do we have a record in our roles table, for requested roles uuid's ?
             roles_in_rolesTable = [obj.id for obj in
                                    query_role
-                                       .filter(models.Role.id.in_(group_user_role.roles))]
+                                   .filter(models.Role.id.in_(group_user_role.roles))]
             # check roles in the group
             roles_in_groupRolesTable = [obj.roles for obj in
                                         query_groupsRole
-                                            .filter(and_(models.GroupsRole.roles.in_(roles_in_rolesTable)),
-                                                    (models.GroupsRole.groups == group_id))]
+                                        .filter(and_(models.GroupsRole.roles.in_(roles_in_rolesTable)),
+                                                (models.GroupsRole.groups == group_id))]
             # If roles exist in RolesTable and not in the groupRolesTable, so assign roles to the group
             assign_roles_to_group = [obj for obj in roles_in_rolesTable if obj not in set(roles_in_groupRolesTable)]
 
@@ -484,7 +484,7 @@ def remove_multi_users_or_roles_from_group(db: Session, group_id: str, group_use
             # check if available roles in GroupsRole table to delete
             available_users_to_delete = [obj.id for obj in
                                          query_groupUser
-                                             .filter(and_(
+                                         .filter(and_(
                                              models.GroupsUser.users.in_(group_user_role.users),
                                              models.GroupsUser.groups == group_id))
                                          ]
@@ -503,7 +503,7 @@ def remove_multi_users_or_roles_from_group(db: Session, group_id: str, group_use
             # check if available roles in GroupsRole table to delete
             available_roles_to_delete = [obj.id for obj in
                                          query_groupsRole
-                                             .filter(and_(
+                                         .filter(and_(
                                              models.GroupsRole.roles.in_(group_user_role.roles),
                                              models.GroupsRole.groups == group_id))
                                          ]
@@ -533,11 +533,11 @@ def create_groups_role(db: Session, groups_role_create: GroupsRoleBase):
 def is_groups_role_not_exists(db: Session, groups_role_create: GroupsRoleBase):
     return not (
         groups_role := db.query(models.GroupsRole)
-            .filter(
+        .filter(
             models.GroupsRole.roles == groups_role_create.roles,
             models.GroupsRole.groups == groups_role_create.groups,
         )
-            .first()
+        .first()
     )
 
 
@@ -562,11 +562,11 @@ def create_groups_user(db: Session, groups_user_create: GroupsUserBase):
 def is_groups_user_not_exists(db: Session, groups_user_create: GroupsUserBase):
     return not (
         groups_user := db.query(models.GroupsRole)
-            .filter(
+        .filter(
             models.GroupsRole.roles == groups_user_create.groups,
             models.GroupsRole.groups == groups_user_create.users,
         )
-            .first()
+        .first()
     )
 
 
@@ -576,11 +576,8 @@ def generate_client_secret():
             string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation,
             k=32
         )
-    ).replace('"', '')  # when generating client_id remove "" for not get error on request body.
-# for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+    ).replace('"', '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
 
-
-<<<<<<< HEAD
 def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
     return db.query(
         models.GroupsUser, models.GroupsRole, models.Role
@@ -595,60 +592,6 @@ def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
     ).all()
 
 
-def create_new_client(db: Session, client: ClientCreateSchema):
-    if client:
-        # Do database operations
-        pass
-    else:
-        raise HTTPException(status_code=403, detail="Client already exist!")
-    # if create is success return these value
-    # these values are new clients, client_id and client_secret info's generated from system
-    client_response = ClientCreateSchema
-    client_response.client_id = uuid.uuid4()
-    client_response.client_secret = generate_client_secret()
-    return {"client_id": client_response.client_id,
-            "client_secret": client_response.client_secret}  # for only to test NOW !!
-
-
-def create_client_auth(db: Session, client_auth: ClientSchema):
-    """
-    TODO: Operational transactions will be completed when the DB is ready
-    TODO: JWT, Redis is DONE
-    TODO: Client_id will id, but dont forget to assign this id as client_id,
-    TODO: jwt decode is fetching from client_id, dont forget this point
-    """
-    CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
-    if client_auth:
-        # do database operations
-        pass
-
-    # These data will come from DB !!!
-    payload = ClientJWTSchema
-    payload.expr = (datetime.utcnow() + timedelta(
-        minutes=int(CLIENT_TOKEN_EXPIRY_MINUTES)))  # This is not for redis only for payload
-    payload.expr = payload.expr.timestamp()
-    payload.client_id = client_auth.client_id
-    payload.name = "name from db"
-    payload.roles = ["roles1", "roles2"]
-    payload.email = "test@test.com"
-    payload.iss = "zeauth.[solution domain]"
-
-    payload = dict(
-        client_id=str(payload.client_id),
-        aud=AUDIENCE,  # this will need when to decode jwt
-        expr=int(payload.expr),
-        iss=payload.iss,
-        name=payload.name,
-        email=payload.email,
-        roles=payload.roles
-    )
-    # JWT operations
-    client_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-    payload['client_token'] = client_token
-    # Write payload to Redis with expiry 30 Minutes
-    client.set_client_token(payload)
-    return payload  # for only to test NOW !!
-=======
 def get_client_by_uuid_and_secret(db: Session, client_id: uuid, client_secret: str):
     """Check client exists or not ? with client_id and client_secret"""
     client_info = db.query(models.Client) \
@@ -662,7 +605,6 @@ def get_client_by_uuid(db: Session, client_id: UUIDCheckForClientIdSchema):
     """Gets client's id by uuid"""
     client_info = db.query(models.Client).filter(models.Client.id == client_id.client_id).first()
     return client_info
->>>>>>> cf30d5e53a0304e1eaea4c14199bcd05e109ae4d
 
 
 def check_client_exists_with_email(db: Session, email: str):
@@ -670,12 +612,6 @@ def check_client_exists_with_email(db: Session, email: str):
     search for this uuid in client table as an owner id, if it exists than
     that means client already exist
     """
-<<<<<<< HEAD
-    TODO: Operational transactions will be completed when the DB is ready
-    TODO: Write funct to get clients id
-    """
-    return client_id  # for only to test NOW !!
-=======
     get_uuid_from_email = db.query(models.User).filter(models.User.email == email).first()
     if get_uuid_from_email:
         client_exist = db.query(models.Client).filter(models.Client.owner == get_uuid_from_email.id).first()
@@ -790,4 +726,3 @@ def remove_client(db: Session, client_id: UUIDCheckForClientIdSchema):
         .delete()
     db.commit()
     return delete_client.id
->>>>>>> cf30d5e53a0304e1eaea4c14199bcd05e109ae4d
