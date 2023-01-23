@@ -9,19 +9,23 @@ redi = redis.Redis(
     password=os.environ.get('REDIS_PASSWORD', None)
 
 )
-
+AUDIENCE = 'ZeAuth'
 ONE_HOUR_IN_SECONDS = 3600
 
 REDIS_KEY_PREFIX = os.environ.get('REDIS_KEY_PREFIX')
+REDIS_CLIENT_KEY_PREFIX = os.environ.get('REDIS_CLIENT_KEY_PREFIX')
 ACCESS_TOKEN_EXPIRY_MINUTES = os.environ.get('ACCESS_TOKEN_EXPIRY_MINUTES')
 CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
 expr = 60 * int(ACCESS_TOKEN_EXPIRY_MINUTES)
 expr_client = 30 * int(CLIENT_TOKEN_EXPIRY_MINUTES)
-
+# for user
 REFRESH_TOKEN_EXPIRY_MINUTES = os.environ.get("REFRESH_TOKEN_EXPIRY_MINUTES")
-expr_in_refresh_payload = (datetime.utcnow() + timedelta(
-    minutes=int(REFRESH_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
+expr_in_refresh_payload = (datetime.utcnow() + timedelta(minutes=int(REFRESH_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
 expr_in_refresh_payload = expr_in_refresh_payload.timestamp()
+# for client
+REFRESH_CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get("REFRESH_CLIENT_TOKEN_EXPIRY_MINUTES")
+expr_in_client_refresh_payload = (datetime.utcnow() + timedelta(minutes=int(REFRESH_CLIENT_TOKEN_EXPIRY_MINUTES)))  # Don't add redis expr here, use like this.
+expr_in_client_refresh_payload = expr_in_client_refresh_payload.timestamp()
 
 
 def set_redis(key, value, expiry_hours=24):
@@ -40,7 +44,7 @@ class RedisClient:
             password=os.environ.get('REDIS_PASSWORD', None)
         )
 
-    def set_refresh_token(self, payload: dict):
+    def set_user_token(self, payload: dict):
         ip_address = "85.65.125.458"  # this should be change later
         data_dict = {k: v for k, v in payload.items()}
         log.debug(data_dict)
@@ -65,7 +69,7 @@ class RedisClient:
                 })
                 self.redi.expire(key, expr)
                 if type(res) is not int:
-                    log.debug(f"cannot create access token <{key}> to redis")
+                    log.debug(f"cannot create user access token <{key}> to redis")
                 else:
                     log.debug(f"token successfully created <{key}> to redis")
             else:
@@ -76,10 +80,12 @@ class RedisClient:
 
     def set_client_token(self, payload: dict):
         data_dict = {k: v for k, v in payload.items()}
+        log.debug(data_dict)
         try:
             if data_dict:
-                key = data_dict['client_id']
+                key = f"{REDIS_CLIENT_KEY_PREFIX}-{data_dict['refreshToken']}"
                 res = self.redi.hset(key, mapping={
+                    "map_client_refreshToken": f"{data_dict['refreshToken']}",
                     "map_client_id": f"{data_dict['client_id']}",
                     "map_aud": f"{data_dict['aud']}",
                     "map_name": f"{data_dict['name']}",
@@ -89,9 +95,9 @@ class RedisClient:
                 })
                 self.redi.expire(key, expr_client)  # set expiry for client for 30 Minutes
                 if type(res) is not int:
-                    log.debug(f"cannot create client token <{key}> to redis")
+                    log.debug(f"cannot create client access token <{key}> to redis")
                 else:
-                    log.debug(f"Client token successfully created <{key}> to redis")
+                    log.debug(f"Client access token successfully created <{key}> to redis")
             else:
                 log.debug(f"No data included while Redis run")
         except Exception as e:
@@ -120,7 +126,7 @@ class RedisClient:
             log.error(e)
             raise e
 
-    def hgetall_redis_refresh_payload(self, key: str):
+    def hgetall_redis_user_payload(self, key: str):
         try:
             data = self.redi.hgetall(key)
             data_dict = {k.decode(): v.decode() for k, v in data.items()}
@@ -139,6 +145,28 @@ class RedisClient:
                     last_name=data_dict["map_last_name"],
                     full_name=data_dict["map_full_name"],
                     roles=data_dict["map_roles"],
+                    groups=data_dict["map_groups"]
+                )
+                return payload
+            else:
+                return {"No data"}
+        except Exception as e:
+            log.error(e)
+            raise e
+
+    def hgetall_redis_client_payload(self, key: str):
+        try:
+            data = self.redi.hgetall(key)
+            data_dict = {k.decode(): v.decode() for k, v in data.items()}
+            if data_dict:
+                log.debug(f"refresh: {data_dict} ")
+                payload = dict(
+                    client_id=data_dict["map_client_id"],
+                    aud=AUDIENCE,
+                    expr=int(expr_in_client_refresh_payload),
+                    name=data_dict["map_name"],
+                    owner=data_dict["map_owner"],
+                    iss=data_dict["map_iss"],
                     groups=data_dict["map_groups"]
                 )
                 return payload
