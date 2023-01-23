@@ -129,7 +129,7 @@ class RedisClient:
                 payload = dict(
                     aud="ZeAuth",
                     expr=int(expr_in_refresh_payload),
-                    iss=os.environ.get("FUSIONAUTH_URL"),
+                    iss=os.environ.get("ZEAUTH_URL"),
                     sub=data_dict["map_sub"],
                     email=data_dict["map_email"],
                     username=data_dict["map_username"],

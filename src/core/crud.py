@@ -22,6 +22,7 @@ from redis_service.redis_service import RedisClient
 
 client = RedisClient()
 
+ZEAUTH_URL = os.environ.get('ZEAUTH_URL')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
 
@@ -669,7 +670,7 @@ def create_client_auth(db: Session, client_auth: ClientSchema):
         payload.expr = payload.expr.timestamp()
         payload.name = client_exists.name
         payload.owner = str(client_exists.owner)
-        payload.iss = "zeauth.[solution domain]"  # ask for this !!
+        payload.iss = os.environ.get('ZEAUTH_URL')
         payload.groups = [group['name'] for group in get_groups_name_of_user_by_id(db, str(client_exists.owner))]
         payload = dict(
             client_id=payload.client_id,
