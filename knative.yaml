@@ -23,7 +23,7 @@ spec:
             value: "ac5329b8-9cd7-49ce-b69c-74b697003c6b"
           - name: FUSIONAUTH_APIKEY
             value: "33678980-8dbf-4b5c-8f87-d7f258c6a5a1"
-          - name: FUSIONAUTH_URL
+          - name: ZEAUTH_URL
             value: "https://accounts.dev.zekoder.net"
           - name: FRONTEND_REDIRECT_URL
             value: "https://zekoder.netlify.app/auth/verifysociallogin"

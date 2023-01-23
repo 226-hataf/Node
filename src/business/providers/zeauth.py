@@ -25,7 +25,7 @@ from config.db import get_db
 
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
-FUSIONAUTH_URL = os.environ.get('FUSIONAUTH_URL')
+ZEAUTH_URL = os.environ.get('ZEAUTH_URL')
 STR_ENCRYPT_DECRYPT_KEY = os.environ.get('STR_ENCRYPT_DECRYPT_KEY')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
@@ -53,7 +53,7 @@ class ProviderFusionAuth(Provider):
         super().__init__()
 
     def setup_fusionauth(self):
-        self.fusionauth_client = FusionAuthClient(FUSIONAUTH_APIKEY, FUSIONAUTH_URL)
+        self.fusionauth_client = FusionAuthClient(FUSIONAUTH_APIKEY, ZEAUTH_URL)
 
     def get_group_name(self, id: str):
         self.setup_fusionauth()
@@ -205,7 +205,7 @@ class ProviderFusionAuth(Provider):
         payload = dict(
             aud=AUDIENCE,
             expr=int(expr_in_payload),
-            iss=os.environ.get('FUSIONAUTH_URL'),
+            iss=os.environ.get('ZEAUTH_URL'),
             sub=user_id,
             email=email,
             username=email,
@@ -283,7 +283,7 @@ class ProviderFusionAuth(Provider):
         payload = dict(
             aud=AUDIENCE,
             expr=int(expr_in_payload),
-            iss=os.environ.get('FUSIONAUTH_URL'),
+            iss=os.environ.get('ZEAUTH_URL'),
             sub=str(user.id),
             email=user.email,
             username=user.user_name,
