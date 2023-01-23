@@ -9,7 +9,7 @@
 | AUTH_PROVIDER                |                                                               FUSIONAUTH                                                               |
 | FUSIONAUTH_APIKEY            |                                                                  ****                                                                  |
 | applicationId                |                                                                  ****                                                                  |
-| FUSIONAUTH_URL               |                                                    https://accounts.dev.zekoder.net                                                    |
+| ZEAUTH_URL               |                                                    https://accounts.dev.zekoder.net                                                    |
 | FRONTEND_REDIRECT_URL        |                                           https://zekoder.netlify.app/auth/verifysociallogin                                           |
 | GOOGLE_REDIRECT_URL          |                                                                  ****                                                                  |
 | TWITTER_REDIRECT_URL         |                                                                  ****                                                                  |

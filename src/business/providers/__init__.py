@@ -1,5 +1,4 @@
 import os
-from .firebase import ProviderFirebase
 from .zeauth import ProviderFusionAuth
 
 
@@ -8,7 +7,5 @@ def get_provider():
 
     if provider.upper() == 'FUSIONAUTH':
         return ProviderFusionAuth()
-    elif provider.upper() == 'FIREBASE':
-        return ProviderFirebase()
     else:
         raise Exception(f"Unknown provider <{provider}>")
