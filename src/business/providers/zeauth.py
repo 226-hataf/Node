@@ -2,18 +2,21 @@ from datetime import datetime, timedelta, date
 import os
 import json
 import uuid
+import rsa
+import base64
 from business.providers.base import *
 from fusionauth.fusionauth_client import FusionAuthClient
-from business.models.users import User, LoginResponseModel, EncryptDecryptStrSchema
+from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema, UserCreateSchema
+from business.models.users import User, LoginResponseModel, EncryptDecryptStrSchema, EncryptedContentSchema
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
-
 from core.crud import get_groups_name_of_user_by_id, get_roles_name_of_group
 from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.schema_groups_role import GroupsRoleBase, GroupsUserBase
+from ..models.schema_main import  UUIDCheckForUserIDSchema
 from ..models.schema_roles import RoleBaseSchema
 from ..models.schemas_groups import GroupBaseSchema
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
@@ -22,7 +25,7 @@ from config.db import get_db
 
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
-FUSIONAUTH_URL = os.environ.get('FUSIONAUTH_URL')
+ZEAUTH_URL = os.environ.get('ZEAUTH_URL')
 STR_ENCRYPT_DECRYPT_KEY = os.environ.get('STR_ENCRYPT_DECRYPT_KEY')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
@@ -50,7 +53,7 @@ class ProviderFusionAuth(Provider):
         super().__init__()
 
     def setup_fusionauth(self):
-        self.fusionauth_client = FusionAuthClient(FUSIONAUTH_APIKEY, FUSIONAUTH_URL)
+        self.fusionauth_client = FusionAuthClient(FUSIONAUTH_APIKEY, ZEAUTH_URL)
 
     def get_group_name(self, id: str):
         self.setup_fusionauth()
@@ -202,7 +205,7 @@ class ProviderFusionAuth(Provider):
         payload = dict(
             aud=AUDIENCE,
             expr=int(expr_in_payload),
-            iss=os.environ.get('FUSIONAUTH_URL'),
+            iss=os.environ.get('ZEAUTH_URL'),
             sub=user_id,
             email=email,
             username=email,
@@ -280,7 +283,7 @@ class ProviderFusionAuth(Provider):
         payload = dict(
             aud=AUDIENCE,
             expr=int(expr_in_payload),
-            iss=os.environ.get('FUSIONAUTH_URL'),
+            iss=os.environ.get('ZEAUTH_URL'),
             sub=str(user.id),
             email=user.email,
             username=user.user_name,
@@ -342,6 +345,74 @@ class ProviderFusionAuth(Provider):
     def decrypt_str(self, str_for_dec: str):
         decrypted_str = self.str_enc_dec.decrypt_str(enc_message=str_for_dec)
         return EncryptDecryptStrSchema(encrypt_decrypt_str=decrypted_str)
+
+
+    def userActivationProcess(self, db, user_id: UUIDCheckForUserIDSchema, q):
+        """user active on/off process can be done from here"""
+        try:
+            return crud.userActiveOnOff(db, user_id, q=q)
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    def usersWithIDs(self, db, user_ids: UsersWithIDsSchema):
+        """user active on/off process can be done from here"""
+        try:
+            return crud.get_users_with_ids(db, user_ids)
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    def updateUser(self, db, user_id: UUIDCheckForUserIDSchema, user: UserUpdateSchema):
+        """update existing user"""
+        try:
+            return crud.update_existing_user(db, user_id, user)
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    def deleteUser(self, db, user_id: UUIDCheckForUserIDSchema):
+        """update existing user"""
+        try:
+            return crud.delete_current_user(db, user_id)
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    def createNewUser(self, db, user: UserCreateSchema):
+        """create new user"""
+        try:
+            encrypted_password = self.str_enc_dec.encrypt_str(message=user.password)
+            created_user = crud.create_new_user(db, user={
+                "email": user.email,
+                "user_name": user.username,
+                "password": str(encrypted_password),
+                "verified": False,
+                "user_status": True,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "phone": user.phone,
+            })
+            return created_user
+        except Exception as err:
+            log.debug(err)
+            raise err
+
+    @staticmethod
+    def get_pub_encrypt_key():
+        pub_key = base64.b64decode(os.environ.get('DATA_ENCRYPTION_PUB_KEY'))
+        public_key = rsa.PublicKey.load_pkcs1(pub_key)
+        return str(public_key)
+
+    def enc_to_decrypt(self, encrypted: EncryptedContentSchema):
+        # request str to byte
+        encrypted = base64.b64decode(encrypted.encrypted)
+        # call DATA_ENCRYPTION_PRIV_KEY and decode
+        private_key_dec = base64.b64decode(os.environ.get('DATA_ENCRYPTION_PRIV_KEY'))
+        # use decoded private key
+        private_key = rsa.PrivateKey.load_pkcs1(private_key_dec)
+        return {"decrypted": rsa.decrypt(encrypted, private_key).decode('utf-8')}
+
 
     def signup(self, db, user: UserRequest) -> User:
         log.info("zeauth")
@@ -545,6 +616,7 @@ class ProviderFusionAuth(Provider):
     def zeauth_bootstrap(self):
         db = get_db().__next__()
         log.info("zeauth_bootstrap...")
+
         if ProviderFusionAuth.admin_user_created:
             return
         try:
@@ -573,9 +645,9 @@ class ProviderFusionAuth(Provider):
                     role_name = f"{APP_NAME}-{resource}-{action}"
                     try:
                         role_description = f"{APP_NAME} action {action} for {resource} "
-                        db_role = crud.create_role(db,
-                                                   role_create=RoleBaseSchema(name=role_name,
-                                                                              description=role_description))
+                        role_create = RoleBaseSchema(name=role_name, description=role_description)
+                        if crud.is_role_not_exists(db, role_create):
+                            db_role = crud.create_role(db, role_create)
                         log.info(f"role: {role_name} created..")
                     except IntegrityError as err:
                         log.info(f"role {role_name} already created")
@@ -584,6 +656,14 @@ class ProviderFusionAuth(Provider):
                         log.error("unable to bootstrap")
                         log.error(err)
                         return None
+            role_name = f"{APP_NAME}-users-signup"
+            role_description = f"{APP_NAME} action signup for users"
+            role_create = RoleBaseSchema(
+                name=role_name,
+                description=role_description
+            )
+            if crud.is_role_not_exists(db, role_create):
+                db_role = crud.create_role(db, role_create)
 
             # creating default groups
             groups = {}

@@ -5,9 +5,11 @@ from typing import Any
 import jwt
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
-from business.models.schema_clients import ClientCreateSchema, ClientSchema, ClientJWTSchema
+from business.models.schema_clients import ClientCreateSchema, ClientSchema, ClientJWTSchema, UUIDCheckForClientIdSchema
 from business.models.schema_groups_role import GroupsUserBase, GroupsRoleBase
+from business.models.schema_main import UUIDCheckForUserIDSchema
 from business.models.schema_roles import RoleBaseSchema
+from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema
 from business.models.schemas_groups import GroupBaseSchema
 from business.models.schemas_groups_users import GroupUserRoleSchema
 from business.providers.base import UserNotVerifiedError
@@ -22,6 +24,7 @@ from redis_service.redis_service import RedisClient
 
 client = RedisClient()
 
+ZEAUTH_URL = os.environ.get('ZEAUTH_URL')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
 
@@ -42,6 +45,14 @@ def get_groups(db: Session, skip: int = 0, limit: int = 100):
 
 def get_group_by_name(db: Session, name: str):
     return db.query(models.Group).filter(models.Group.name == name).first()
+
+
+def get_groups_by_name_list(db: Session, groups: list):
+    groups_list_uuids = [obj.id for obj in
+                         db.query(models.Group)
+                         .filter(models.Group.name.in_([gr for gr in groups]))
+                         .all()]
+    return groups_list_uuids
 
 
 def get_group_by_id(db: Session, id: str):
@@ -138,6 +149,17 @@ def create_user(db: Session, user):
     return db_user
 
 
+def create_new_user(db: Session, user):
+    email_exist = get_user_by_email(db, user['email'])
+    if email_exist:
+        raise HTTPException(status_code=403, detail="Email already in use !")
+    created_user = models.User(**user)
+    db.add(created_user)
+    db.commit()
+    db.refresh(created_user)
+    return created_user
+
+
 def get_user_login(db: Session, email: str):
     user_login = db.query(models.User).filter(models.User.email == email).first()
     if user_login is None:
@@ -157,6 +179,16 @@ def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
 
+def get_user_by_uuid(db: Session, user_id: UUIDCheckForUserIDSchema):
+    """For single user only"""
+    return db.query(models.User).filter(models.User.id == user_id.user_id).first()
+
+
+def get_users_with_uuids(db: Session, user_ids: list):
+    """For multi users with their uuid's"""
+    return db.query(models.User).filter(models.User.id.in_(user_ids)).all()
+
+
 def user_verified(db: Session, verified: bool, user_id: int):
     db.execute(f"SET zekoder.id = '{user_id}'")
     update = db.query(models.User).get(user_id)
@@ -165,6 +197,93 @@ def user_verified(db: Session, verified: bool, user_id: int):
         db.commit()
     db.refresh(update)
     return update
+
+
+def delete_current_user(db: Session, user_id: UUIDCheckForUserIDSchema):
+    """Deletes current user"""
+    delete_user = get_user_by_uuid(db, user_id)
+    db.delete(delete_user)
+    db.commit()
+    return {"detail": f"User <{delete_user.id}> deleted successfully !"}
+
+
+def update_existing_user(db: Session, user_id: UUIDCheckForUserIDSchema, user: UserUpdateSchema):
+    """Updating existing user"""
+    db.execute(f"SET zekoder.id = '{user_id.user_id}'")
+    update = get_user_by_uuid(db, user_id)
+    if update:
+        update.first_name = user.first_name
+        update.last_name = user.last_name
+        update.verified = user.verified
+        update.user_status = user.user_status
+        update.phone = user.phone
+        db.commit()
+        db.refresh(update)
+    return {"first_name": update.first_name, "last_name": update.last_name, "verified": update.verified,
+            "user_status": update.user_status, "phone": update.phone}
+
+
+def userActiveOnOff(db: Session, user_id: UUIDCheckForUserIDSchema, q):
+    """
+    q parameter represents ON/OFF status. Endpoint sends q parameter ON or OFF
+    we can handle it here and set user_status
+    """
+    db.execute(f"SET zekoder.id = '{user_id.user_id}'")
+    update = get_user_by_uuid(db, user_id)
+    if update:
+        if q == 'ON':
+            update.user_status = True
+        else:
+            update.user_status = False
+        db.commit()
+    db.refresh(update)
+    return {"user_id": update.id, "user_activation": q}
+
+
+def get_users_with_ids(db: Session, user_ids: UsersWithIDsSchema):
+    """Gets users data with fetching Roles and Groups info with their uuid's"""
+    query = db.query(models.User)
+    data = [obj for obj in query.filter(models.User.id.in_(user_ids.users_ids)).all()]
+    for i in data:
+        groups = [group['name'] for group in get_groups_name_of_user_by_id(db, str(i.id))]
+        roles = get_roles_name_of_group(db, groups)
+        roles = [roles for roles, in roles]
+        users = [dict(
+            id=i.id,
+            email=i.email,
+            first_name=i.first_name,
+            last_name=i.last_name,
+            full_name=f"{i.first_name} {i.last_name}",
+            username=i.user_name,
+            verified=i.verified,
+            user_status=i.user_status,
+            phone=i.phone,
+            created_on=i.created_on,
+            last_login_at=i.last_login_at,
+            updated_on=i.updated_on,
+            groups=groups,
+            roles=roles
+        )]
+        yield {"user": users}
+    # execute method, you can use this one too
+    """
+    users = [obj for obj in
+             db.execute("select u.id as id, u.email as email, u.first_name as first_name, "
+                        "u.last_name as last_name, concat(u.first_name,' ',u.last_name) as full_name, "
+                        "u.user_name as username, u.verified as verified, "
+                        "case when u.user_status = 'true' then 'ON' else 'OFF' end as user_status, "
+                        "u.phone as phone, u.created_on as created_on, u.last_login_at as last_login_at, "
+                        "u.updated_on as updated_on, u.updated_by as updated_by, "
+                        "array(select gr.name from groups gr inner join groups__users gru on gru.groups = gr.id "
+                        "where gru.users = u.id group by gr.id) as groups, "
+                        "array(select r.name from roles r inner join groups__roles grl on grl.roles = r.id "
+                        "inner join groups gr on gr.id = grl.groups "
+                        "inner join groups__users gru on gru.groups = gr.id "
+                        "where grl.roles = r.id and gru.users = u.id group by r.id) as roles "
+                        "from users u where u.id in ('b9ae5870-933d-11ed-bfa0-bf475bd063ff', 'deee9916-933c-11ed-9e21-ff7dc39615ee')")
+             ]
+    yield {"user": users}
+    """
 
 
 def reset_user_password(db: Session, password, user_id: int):
@@ -422,6 +541,16 @@ def is_groups_role_not_exists(db: Session, groups_role_create: GroupsRoleBase):
     )
 
 
+def is_role_not_exists(db: Session, role_create: RoleBaseSchema):
+    return not (
+        db.query(models.Role)
+        .filter(
+            models.Role.name == role_create.name
+        )
+        .first()
+    )
+
+
 def create_groups_user(db: Session, groups_user_create: GroupsUserBase):
     groups_user = models.GroupsUser(users=groups_user_create.users, groups=groups_user_create.groups)
     db.add(groups_user)
@@ -447,9 +576,11 @@ def generate_client_secret():
             string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation,
             k=32
         )
-    )
+    ).replace('"', '')  # when generating client_id remove "" for not get error on request body.
+# for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
 
 
+<<<<<<< HEAD
 def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
     return db.query(
         models.GroupsUser, models.GroupsRole, models.Role
@@ -517,11 +648,146 @@ def create_client_auth(db: Session, client_auth: ClientSchema):
     # Write payload to Redis with expiry 30 Minutes
     client.set_client_token(payload)
     return payload  # for only to test NOW !!
+=======
+def get_client_by_uuid_and_secret(db: Session, client_id: uuid, client_secret: str):
+    """Check client exists or not ? with client_id and client_secret"""
+    client_info = db.query(models.Client) \
+        .filter(models.Client.id == client_id,
+                models.Client.client_secret == client_secret) \
+        .first()
+    return client_info
 
 
-def remove_client(db: Session, client_id: str):
+def get_client_by_uuid(db: Session, client_id: UUIDCheckForClientIdSchema):
+    """Gets client's id by uuid"""
+    client_info = db.query(models.Client).filter(models.Client.id == client_id.client_id).first()
+    return client_info
+>>>>>>> cf30d5e53a0304e1eaea4c14199bcd05e109ae4d
+
+
+def check_client_exists_with_email(db: Session, email: str):
+    """checks email from users table, if exist than gets this email's owner uuid and
+    search for this uuid in client table as an owner id, if it exists than
+    that means client already exist
     """
+<<<<<<< HEAD
     TODO: Operational transactions will be completed when the DB is ready
     TODO: Write funct to get clients id
     """
     return client_id  # for only to test NOW !!
+=======
+    get_uuid_from_email = db.query(models.User).filter(models.User.email == email).first()
+    if get_uuid_from_email:
+        client_exist = db.query(models.Client).filter(models.Client.owner == get_uuid_from_email.id).first()
+        return client_exist
+    return None
+
+
+def create_new_client(db: Session, client: ClientCreateSchema):
+    # first check email
+    email_exist = get_user_by_email(db, client.email)
+    # if exists add client info to client table and add groups to groups__users table
+    if email_exist:
+        add_to_client_table = models.Client(
+            name=client.name,
+            client_secret=generate_client_secret(),
+            owner=email_exist.id
+        )
+        db.add(add_to_client_table)
+        db.commit()
+        db.refresh(add_to_client_table)
+        # add groups to groups_users with owner
+        groups_list_check = get_groups_by_name_list(db, client.groups)
+        if groups_list_check:
+            db.bulk_insert_mappings(
+                models.GroupsUser,
+                [dict(groups=group_id, users=email_exist.id, ) for group_id in groups_list_check],
+            )
+            db.commit()
+        return {"client_id": add_to_client_table.id, "client_secret": add_to_client_table.client_secret}
+    else:
+        # if not exists
+        # add client info to users table first, then get it's uuid
+        add_client_to_users_table = models.User(
+            email=client.email,
+            user_name=client.email,
+            password="",
+            first_name=client.name
+        )
+        db.add(add_client_to_users_table)
+        db.commit()
+        db.refresh(add_client_to_users_table)
+        # now add to client info to client table with owner uuid (from users table)
+        add_to_client_table = models.Client(
+            name=client.name,
+            client_secret=generate_client_secret(),
+            owner=add_client_to_users_table.id
+        )
+        db.add(add_to_client_table)
+        db.commit()
+        db.refresh(add_to_client_table)
+        # now add groups to groups_users with its owner
+        groups_list_check = get_groups_by_name_list(db, client.groups)
+        if groups_list_check:
+            db.bulk_insert_mappings(
+                models.GroupsUser,
+                [dict(groups=group_id, users=add_client_to_users_table.id, ) for group_id in groups_list_check],
+            )
+            db.commit()
+        return {"client_id": add_to_client_table.id, "client_secret": add_to_client_table.client_secret}
+
+
+def create_client_auth(db: Session, client_auth: ClientSchema):
+    CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
+    client_exists = get_client_by_uuid_and_secret(db, client_auth.client_id, client_auth.client_secret)
+    if client_exists:
+        payload = ClientJWTSchema
+        payload.client_id = str(client_exists.id)
+        payload.expr = (datetime.utcnow() + timedelta(
+            minutes=int(CLIENT_TOKEN_EXPIRY_MINUTES)))  # This is not for redis only for payload
+        payload.expr = payload.expr.timestamp()
+        payload.name = client_exists.name
+        payload.owner = str(client_exists.owner)
+        payload.iss = os.environ.get('ZEAUTH_URL')
+        payload.groups = [group['name'] for group in get_groups_name_of_user_by_id(db, str(client_exists.owner))]
+        payload = dict(
+            client_id=payload.client_id,
+            aud=AUDIENCE,  # this will need when to decode jwt
+            expr=int(payload.expr),
+            name=payload.name,
+            owner=payload.owner,
+            iss=payload.iss,
+            groups=payload.groups
+        )
+        # JWT operations
+        client_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
+        payload['client_token'] = client_token
+        # Write payload to Redis with expiry 30 Minutes
+        client.set_client_token(payload)
+        return payload  # for only to test NOW !!
+    return None
+
+
+def remove_client(db: Session, client_id: UUIDCheckForClientIdSchema):
+    """Delete current client from client table"""
+    delete_client = get_client_by_uuid(db, client_id)
+    db.delete(delete_client)
+    db.commit()
+    # delete current client record from users table
+    # if this record created by client and password is empty then we can delete it
+    # otherwise client owner in the user table could be admin, user, super-admin ex.!
+    # that means password could not be empty, we should not delete this records
+    delete_client_from_users_table = db.query(models.User) \
+        .filter(and_(models.User.id == delete_client.owner,
+                     models.User.password == '')) \
+        .first()
+    if delete_client_from_users_table:
+        db.delete(delete_client_from_users_table)
+        db.commit()
+    # delete client record from groups_users table
+    db.query(models.GroupsUser) \
+        .filter(models.GroupsUser.users == delete_client.owner) \
+        .delete()
+    db.commit()
+    return delete_client.id
+>>>>>>> cf30d5e53a0304e1eaea4c14199bcd05e109ae4d

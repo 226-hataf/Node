@@ -7,7 +7,8 @@ from fastapi import HTTPException
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema, ResetPasswordSchema, \
-    ResetPasswordVerifySchema, ConfirmationEmailVerifySchema, EncryptDecryptStrSchema
+    ResetPasswordVerifySchema, ConfirmationEmailVerifySchema, EncryptDecryptStrSchema, DecryptedContentSchema, \
+    EncryptedContentSchema
 import uvicorn
 from business.providers.base import *
 from business.providers import get_provider
@@ -16,6 +17,7 @@ from core import log
 from fastapi.responses import JSONResponse
 from fastapi import Depends
 from sqlalchemy.orm import Session
+
 
 metadata = [
     {
@@ -168,6 +170,26 @@ def encrypt_str(str_for_enc: str):
 def decrypt_str(str_for_dec: str):
     try:
         return auth_provider.decrypt_str(str_for_dec)
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
+
+
+@app.get("/key", status_code=200, description="The asymmetric public key")
+async def get_pub_key():
+    """Get public key"""
+    try:
+        return auth_provider.get_pub_encrypt_key()
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
+
+
+@app.post("/keys/decrypt", status_code=200, response_model=DecryptedContentSchema, description="Encrypt to decrypt")
+def encrypt_to_decrypt(encrypted: EncryptedContentSchema):
+    """Decrypts encrypted content"""
+    try:
+        return auth_provider.enc_to_decrypt(encrypted)
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
