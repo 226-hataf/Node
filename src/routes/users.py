@@ -63,7 +63,6 @@ async def create_new_user(user: UserCreateSchema, db: Session = Depends(get_db),
             response_model_exclude_none=True,
             )
 async def list(
-        token: str = Depends(ProtectedMethod),
         date_of_creation: date = Query(default=None),
         sort_by: SortByEnum = SortByEnum.DESE,
         sort_column: SortColumnEnum = Query(default=SortColumnEnum.CREATED_AT),
