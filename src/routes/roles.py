@@ -5,6 +5,7 @@ from business.models import dependencies
 from business.models.schema_main import UUIDCheckForIDSchema
 from business.models.schema_roles import RoleBaseSchema, RoleSchema
 from business.models.schemas_groups import GroupBaseSchema
+from business.models.users import UserResponseModel
 from business.providers import get_provider
 from business.providers.base import *
 from config.db import get_db
@@ -35,7 +36,7 @@ model = ZKModel(**{
 @router.post('/', tags=[model.plural], status_code=201, response_model=RoleSchema, description="Create a Role")
 async def create(
         role_create: RoleBaseSchema, db: Session = Depends(get_db),
-        user: str = Security(get_current_user, scopes=["roles-create"])
+        user: UserResponseModel = Security(get_current_user, scopes=["roles-create"])
     ):
     """Create a role"""
     # check if role name exist, do not create group request
@@ -48,7 +49,7 @@ async def create(
 # list all Roles
 @router.get('/', tags=[model.plural], status_code=200, response_model=list[RoleSchema], description="List all Roles", )
 async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db),
-               user: str = Security(get_current_user, scopes=["roles-list"])):
+               user: UserResponseModel = Security(get_current_user, scopes=["roles-list"])):
     """List all Roles"""
     try:
         roles = crud.get_roles(db, skip=skip, limit=limit)
@@ -61,7 +62,7 @@ async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db),
 # get a role
 @router.get('/{role_name}', tags=[model.plural], status_code=200, response_model=RoleSchema, description="Get a Role")
 async def role(role_name: str,
-               user: str = Security(get_current_user, scopes=["roles-get"]),
+               user: UserResponseModel = Security(get_current_user, scopes=["roles-get"]),
                db: Session = Depends(get_db)):
     """Get a Role"""
     role_get = crud.get_role_by_name(db, role_name)
@@ -73,7 +74,7 @@ async def role(role_name: str,
 # Update role
 @router.put('/{id}', tags=[model.plural], status_code=200, description="Update a Role")
 async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), roles: GroupBaseSchema = ...,
-                 user: str = Security(get_current_user, scopes=["roles-update"]),
+                 user: UserResponseModel = Security(get_current_user, scopes=["roles-update"]),
                  db: Session = Depends(get_db)):
     """Update a Role"""
     checked_uuid = id.id
@@ -91,7 +92,7 @@ async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), roles
 # Delete role
 @router.delete('/{role_name}', tags=[model.plural], status_code=202, description="Delete a Role")
 async def delete(role_name: str, db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["roles-del"])):
+                 user: UserResponseModel = Security(get_current_user, scopes=["roles-del"])):
     """Delete a Role"""
     role_exist = crud.get_role_by_name(db, role_name)
     if not role_exist:

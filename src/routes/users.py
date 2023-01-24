@@ -48,7 +48,7 @@ model = ZKModel(**{
 @router.post('/', tags=[model.plural], status_code=201, response_model=UserResponseSchema,
              description="Create new user")
 async def create_new_user(user: UserCreateSchema, db: Session = Depends(get_db),
-                          users: str = Security(get_current_user, scopes=["users-create"])):
+                          users: UserResponseModel = Security(get_current_user, scopes=["users-create"])):
     """Create new user"""
     try:
         return auth_provider.createNewUser(db, user)
@@ -70,7 +70,7 @@ async def list(
         user_status: bool = Query(default=None),
         commons: CommonDependencies = Depends(CommonDependencies),
         db: Session = Depends(get_db),
-        user: str = Security(get_current_user, scopes=["users-list"])
+        user: UserResponseModel = Security(get_current_user, scopes=["users-list"])
 ):
     try:
         user_list, next_page, page_size, total_count = auth_provider.list_users(
@@ -97,7 +97,7 @@ list.__doc__ = f" List all {model.plural}".expandtabs()
 @router.post('/with_ids', tags=[model.plural], status_code=200, response_model=List[UsersWithIDsResponseSchema],
              response_model_exclude={"password"}, description="Get current Users list with uuid's")
 async def gets_current_users(users_ids: UsersWithIDsSchema, db: Session = Depends(get_db),
-                             user: str = Security(get_current_user, scopes=["users-get"])):
+                             user: UserResponseModel = Security(get_current_user, scopes=["users-get"])):
     """Get Users list with user's uuid"""
     try:
         return auth_provider.usersWithIDs(db, users_ids)
@@ -110,7 +110,7 @@ async def gets_current_users(users_ids: UsersWithIDsSchema, db: Session = Depend
             description="Update current user")
 async def updates_current_user(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema),
                                user: UserUpdateSchema = ..., db: Session = Depends(get_db),
-                               users: str = Security(get_current_user, scopes=["users-update"])):
+                               users: UserResponseModel = Security(get_current_user, scopes=["users-update"])):
     """Update current user"""
     user_exist = crud.get_user_by_uuid(db, user_id)
     if not user_exist:
@@ -124,7 +124,7 @@ async def updates_current_user(user_id: UUIDCheckForUserIDSchema = Depends(UUIDC
 
 @router.delete('/{user_id}', tags=[model.plural], status_code=202, description="Delete current user")
 async def deletes_current_user(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema),
-                               user: str = Security(get_current_user, scopes=["users-del"]),
+                               user: UserResponseModel = Security(get_current_user, scopes=["users-del"]),
                                db: Session = Depends(get_db)):
     """Deletes current user"""
     user_exist = crud.get_user_by_uuid(db, user_id)
@@ -140,7 +140,7 @@ async def deletes_current_user(user_id: UUIDCheckForUserIDSchema = Depends(UUIDC
 @router.put('/{user_id}/on', tags=[model.plural], status_code=201,
             response_model=UserActivationProcessResponseSchema, description="Activates user status ON")
 async def user_active_on(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema),
-                         user: str = Security(get_current_user, scopes=["users-update"]),
+                         user: UserResponseModel = Security(get_current_user, scopes=["users-update"]),
                          db: Session = Depends(get_db)):
     """Activates user status ON"""
     user_exist = crud.get_user_by_uuid(db, user_id)
@@ -157,7 +157,7 @@ async def user_active_on(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckFo
 @router.put('/{user_id}/off', tags=[model.plural], status_code=201,
             response_model=UserActivationProcessResponseSchema, description="Deactivates user status OFF")
 async def user_active_off(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema),
-                          user: str = Security(get_current_user, scopes=["users-update"]),
+                          user: UserResponseModel = Security(get_current_user, scopes=["users-update"]),
                           db: Session = Depends(get_db)):
     """Deactivates user status OFF"""
     user_exist = crud.get_user_by_uuid(db, user_id)
@@ -173,7 +173,7 @@ async def user_active_off(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckF
 @router.patch('/{user_id}/group/{group_id}', tags=[model.plural], status_code=200)
 async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
                         user_id: uuid.UUID = ..., db: Session = Depends(get_db),
-                        user: str = Security(get_current_user, scopes=["users-update"])):
+                        user: UserResponseModel = Security(get_current_user, scopes=["users-update"])):
     """Assign User to a Group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
@@ -190,7 +190,7 @@ async def user_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckF
 @router.patch('/{user_id}/group/{group_id}/remove', tags=[model.plural], status_code=200)
 async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
                                  user_id: uuid.UUID = ..., db: Session = Depends(get_db),
-                                 user: str = Security(get_current_user, scopes=["users-update"])):
+                                 user: UserResponseModel = Security(get_current_user, scopes=["users-update"])):
     """Remove User from a Group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))

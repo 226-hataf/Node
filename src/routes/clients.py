@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.orm import Session
+
+from business.models.users import UserResponseModel
 from config.db import get_db
 from dotenv import load_dotenv
 from src.business.models.dependencies import get_current_user
@@ -29,7 +31,7 @@ model = ZKModel(**{
 # Create Client
 @router.post('/', tags=[model.plural], status_code=201, response_model=ClientSchema, description="Create a Client")
 async def create(client: ClientCreateSchema, db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["clients-create"])):
+                 user: UserResponseModel = Security(get_current_user, scopes=["clients-create"])):
     """
     TODO: To create a new client account the user must has role zekoder-zeauth-admin, we must add this !
     """
@@ -70,7 +72,7 @@ async def auth(client_auth: ClientSchema, db: Session = Depends(get_db)):
 @router.delete('/{client_id}', tags=[model.plural], status_code=202, description="Delete Client Account")
 async def delete(client_id: UUIDCheckForClientIdSchema = Depends(UUIDCheckForClientIdSchema),
                  db: Session = Depends(get_db),
-                 user: str = Security(get_current_user, scopes=["clients-del"])):
+                 user: UserResponseModel = Security(get_current_user, scopes=["clients-del"])):
     """Delete current Client"""
     delete_client = get_client_by_uuid(db, client_id)
     if not delete_client:
