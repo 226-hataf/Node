@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from business.models.users import UserResponseModel
 from config.db import get_db
 from dotenv import load_dotenv
-from src.business.models.dependencies import get_current_user
+from business.models.dependencies import get_current_user
 from business.models.schema_clients import ClientCreateSchema, ClientJWTSchema, ClientSchema, UUIDCheckForClientIdSchema
 from core.crud import get_client_by_uuid_and_secret, get_client_by_uuid, get_groups_by_name_list, \
     check_client_exists_with_email

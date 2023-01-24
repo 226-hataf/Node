@@ -14,7 +14,7 @@ from core.db_models import models
 import uuid
 from core.types import ZKModel
 
-from src.business.models.dependencies import get_current_user
+from business.models.dependencies import get_current_user
 
 router = APIRouter()
 auth_provider: Provider = get_provider()

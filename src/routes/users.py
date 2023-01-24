@@ -13,7 +13,7 @@ from core import log, crud
 from core.crud import assign_user_to_group, deassign_user_from_group
 from core.types import ZKModel
 from business.models.dependencies import CommonDependencies, ProtectedMethod
-from src.business.models.dependencies import get_current_user
+from business.models.dependencies import get_current_user
 from fastapi import Query
 from pydantic.schema import Enum
 

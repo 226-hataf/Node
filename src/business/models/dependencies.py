@@ -9,7 +9,7 @@ from config.db import get_db
 from core import log, crud
 from core.db_models import models
 
-from src.business import User
+from business import User
 
 auth_schema = HTTPBearer()
 auth_provider: Provider = get_provider()

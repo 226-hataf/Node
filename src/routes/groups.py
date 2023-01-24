@@ -9,7 +9,7 @@ from business.providers.base import *
 from core import log
 from core.crud import assign_multi_users_or_roles_to_group, remove_multi_users_or_roles_from_group
 from business.models.schemas_groups import GroupSchema, GroupBaseSchema
-from src.business.models.dependencies import get_current_user
+from business.models.dependencies import get_current_user
 
 from core import crud
 from config.db import get_db
