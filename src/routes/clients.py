@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.orm import Session
+
+from business.models.users import UserResponseModel
 from config.db import get_db
 from dotenv import load_dotenv
+from src.business.models.dependencies import get_current_user
 from business.models.schema_clients import ClientCreateSchema, ClientJWTSchema, ClientSchema, UUIDCheckForClientIdSchema
 from core.crud import get_client_by_uuid_and_secret, get_client_by_uuid, get_groups_by_name_list, \
     check_client_exists_with_email
@@ -27,7 +30,8 @@ model = ZKModel(**{
 
 # Create Client
 @router.post('/', tags=[model.plural], status_code=201, response_model=ClientSchema, description="Create a Client")
-async def create(client: ClientCreateSchema, db: Session = Depends(get_db)):
+async def create(client: ClientCreateSchema, db: Session = Depends(get_db),
+                 user: UserResponseModel = Security(get_current_user, scopes=["clients-create"])):
     """
     TODO: To create a new client account the user must has role zekoder-zeauth-admin, we must add this !
     """
@@ -66,7 +70,9 @@ async def auth(client_auth: ClientSchema, db: Session = Depends(get_db)):
 
 
 @router.delete('/{client_id}', tags=[model.plural], status_code=202, description="Delete Client Account")
-async def delete(client_id: UUIDCheckForClientIdSchema = Depends(UUIDCheckForClientIdSchema), db: Session = Depends(get_db)):
+async def delete(client_id: UUIDCheckForClientIdSchema = Depends(UUIDCheckForClientIdSchema),
+                 db: Session = Depends(get_db),
+                 user: UserResponseModel = Security(get_current_user, scopes=["clients-del"])):
     """Delete current Client"""
     delete_client = get_client_by_uuid(db, client_id)
     if not delete_client:
@@ -77,4 +83,3 @@ async def delete(client_id: UUIDCheckForClientIdSchema = Depends(UUIDCheckForCli
     except Exception as e:
         log.error(e)
         raise HTTPException(status_code=500, detail="unknown error, check the logs")
-

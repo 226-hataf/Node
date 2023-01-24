@@ -639,7 +639,6 @@ class ProviderFusionAuth(Provider):
             log.error(ex)
             return None
         try:
-
             # creating default roles
             for resource in ROLE_RESOURCE:
                 for action in ROLE_ACTIONS:
@@ -681,25 +680,49 @@ class ProviderFusionAuth(Provider):
                     log.error("unable to bootstrap")
                     log.error(err)
                     return None
-
             # groups roles
             admin_group = crud.get_group_by_name(db, name='admin')
             db_roles = crud.get_roles(db)
+            super_user_group = crud.get_group_by_name(db, name='super-user')
+
+            roles_for_super_user = ['zekoder-zeauth-users-create', 'zekoder-zeauth-users-list',
+                                    'zekoder-zeauth-users-get', 'zekoder-zeauth-roles-get',
+                                    'zekoder-zeauth-roles-list', 'zekoder-zeauth-groups-list',
+                                    'zekoder-zeauth-groups-get']
 
             for role in db_roles:
-                try:
-                    if crud.is_groups_role_not_exists(db, GroupsRoleBase(roles=role.id, groups=admin_group.id)):
-                        group_role = crud.create_groups_role(db, GroupsRoleBase(roles=role.id, groups=admin_group.id))
-                        log.info(f"groups role: {group_role.id} created..")
-                    else:
+                if role.name in roles_for_super_user:
+                    try:
+                        if not crud.is_groups_role_not_exists(db,
+                                                          GroupsRoleBase(roles=role.id, groups=super_user_group.id)):
+                            group_role = crud.create_groups_role(db,
+                                                                 GroupsRoleBase(roles=role.id,
+                                                                                groups=super_user_group.id))
+                            log.info(f"groups role: {group_role.id} created..")
+                        else:
+                            log.info("groups role already created")
+                    except IntegrityError as err:
                         log.info("groups role already created")
-                except IntegrityError as err:
-                    log.info("groups role already created")
-                    db.rollback()
-                except Exception as err:
-                    log.error("unable to bootstrap")
-                    log.error(err)
-                    return None
+                        db.rollback()
+                    except Exception as err:
+                        log.error("unable to bootstrap")
+                        log.error(err)
+                        return None
+                if admin_group:
+                    try:
+                        if crud.is_groups_role_not_exists(db, GroupsRoleBase(roles=role.id, groups=admin_group.id)):
+                            group_role = crud.create_groups_role(db,
+                                                                 GroupsRoleBase(roles=role.id, groups=admin_group.id))
+                            log.info(f"groups role: {group_role.id} created..")
+                        else:
+                            log.info("groups role already created")
+                    except IntegrityError as err:
+                        log.info("groups role already created")
+                        db.rollback()
+                    except Exception as err:
+                        log.error("unable to bootstrap")
+                        log.error(err)
+                        return None
 
             login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
             admin_user = self.login(login, db)

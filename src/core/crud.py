@@ -1,5 +1,7 @@
 import os
 import uuid
+from typing import Any
+
 import jwt
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
@@ -574,8 +576,20 @@ def generate_client_secret():
             string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation,
             k=32
         )
-    ).replace('"', '')  # when generating client_id remove "" for not get error on request body.
-# for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+    ).replace('"', '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+
+def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
+    return db.query(
+        models.GroupsUser, models.GroupsRole, models.Role
+    ).filter(
+        models.GroupsUser.users == user,
+    ).filter(
+        models.GroupsRole.groups == models.GroupsUser.groups
+    ).filter(
+        models.GroupsRole.roles == models.Role.id
+    ).filter(
+        models.Role.name == role_name
+    ).all()
 
 
 def get_client_by_uuid_and_secret(db: Session, client_id: uuid, client_secret: str):

@@ -1,15 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.orm import Session
 from business.models.dependencies import ProtectedMethod
+from business.models import dependencies
 from business.models.schema_main import UUIDCheckForIDSchema
 from business.models.schema_roles import RoleBaseSchema, RoleSchema
 from business.models.schemas_groups import GroupBaseSchema
+from business.models.users import UserResponseModel
 from business.providers import get_provider
 from business.providers.base import *
 from config.db import get_db
 from core import log, crud
+from core.db_models import models
 import uuid
 from core.types import ZKModel
+
+from src.business.models.dependencies import get_current_user
 
 router = APIRouter()
 auth_provider: Provider = get_provider()
@@ -29,7 +34,10 @@ model = ZKModel(**{
 
 # Create Role
 @router.post('/', tags=[model.plural], status_code=201, response_model=RoleSchema, description="Create a Role")
-async def create(role_create: RoleBaseSchema, db: Session = Depends(get_db)):
+async def create(
+        role_create: RoleBaseSchema, db: Session = Depends(get_db),
+        user: UserResponseModel = Security(get_current_user, scopes=["roles-create"])
+    ):
     """Create a role"""
     # check if role name exist, do not create group request
     role_exist = crud.get_role_by_name(db, role_create.name)
@@ -39,8 +47,9 @@ async def create(role_create: RoleBaseSchema, db: Session = Depends(get_db)):
 
 
 # list all Roles
-@router.get('/', tags=[model.plural], status_code=200, response_model=list[RoleSchema], description="List all Roles")
-async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+@router.get('/', tags=[model.plural], status_code=200, response_model=list[RoleSchema], description="List all Roles", )
+async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db),
+               user: UserResponseModel = Security(get_current_user, scopes=["roles-list"])):
     """List all Roles"""
     try:
         roles = crud.get_roles(db, skip=skip, limit=limit)
@@ -52,7 +61,9 @@ async def list(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
 
 # get a role
 @router.get('/{role_name}', tags=[model.plural], status_code=200, response_model=RoleSchema, description="Get a Role")
-async def role(role_name: str, db: Session = Depends(get_db)):
+async def role(role_name: str,
+               user: UserResponseModel = Security(get_current_user, scopes=["roles-get"]),
+               db: Session = Depends(get_db)):
     """Get a Role"""
     role_get = crud.get_role_by_name(db, role_name)
     if role_get is None:
@@ -63,10 +74,9 @@ async def role(role_name: str, db: Session = Depends(get_db)):
 # Update role
 @router.put('/{id}', tags=[model.plural], status_code=200, description="Update a Role")
 async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), roles: GroupBaseSchema = ...,
-                 token: str = Depends(ProtectedMethod),
+                 user: UserResponseModel = Security(get_current_user, scopes=["roles-update"]),
                  db: Session = Depends(get_db)):
     """Update a Role"""
-    token.auth(model.permissions.update)
     checked_uuid = id.id
     role_exist = crud.get_role_by_id(db, str(checked_uuid))
     if not role_exist:
@@ -81,7 +91,8 @@ async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), roles
 
 # Delete role
 @router.delete('/{role_name}', tags=[model.plural], status_code=202, description="Delete a Role")
-async def delete(role_name: str, db: Session = Depends(get_db)):
+async def delete(role_name: str, db: Session = Depends(get_db),
+                 user: UserResponseModel = Security(get_current_user, scopes=["roles-del"])):
     """Delete a Role"""
     role_exist = crud.get_role_by_name(db, role_name)
     if not role_exist:
