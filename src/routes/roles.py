@@ -63,10 +63,10 @@ async def role(role_name: str, db: Session = Depends(get_db)):
 # Update role
 @router.put('/{id}', tags=[model.plural], status_code=200, description="Update a Role")
 async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), roles: GroupBaseSchema = ...,
-                 token: str = Depends(ProtectedMethod),
+                 #token: str = Depends(ProtectedMethod),
                  db: Session = Depends(get_db)):
     """Update a Role"""
-    token.auth(model.permissions.update)
+    #token.auth(model.permissions.update)
     checked_uuid = id.id
     role_exist = crud.get_role_by_id(db, str(checked_uuid))
     if not role_exist:

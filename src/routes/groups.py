@@ -66,9 +66,10 @@ async def group(group_name: str, db: Session = Depends(get_db)):
 # Update
 @router.put('/{id}', tags=[model.plural], status_code=200, description="Update a group")
 async def update(id: UUIDCheckForIDSchema = Depends(UUIDCheckForIDSchema), groups: GroupBaseSchema = ...,
-                 token: str = Depends(ProtectedMethod), db: Session = Depends(get_db)):
+                 #token: str = Depends(ProtectedMethod),
+                 db: Session = Depends(get_db)):
     """ Update a group"""
-    token.auth(model.permissions.update)
+    #token.auth(model.permissions.update)
     checked_uuid = id.id
     group_exist = crud.get_group_by_id(db=db, id=str(checked_uuid))
     if not group_exist:

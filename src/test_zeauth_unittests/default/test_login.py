@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from httpx import AsyncClient
 from api import app
@@ -31,16 +33,10 @@ class TestLogin:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
     @pytest.mark.asyncio
-    async def test_login_user_not_verified(self, monkeypatch):  # user login not verified
+    async def test_login_user_not_verified(self,):  # user login not verified
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
 
-            json_request = {"email": "user@test.com", "password": "Us@Test&34"}
-
-            async def mock_post(db, email):
-                return False
-
-            monkeypatch.setattr(crud, "get_user_login", mock_post)
-
+            json_request = {"email": "super-user@test.com", "password": "Sp@Test&34"}
             response = await ac.post("/login", json=json_request)
 
         assert response.status_code == HTTP_401_UNAUTHORIZED
