@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
-from config.db import get_db
 load_dotenv()
+from config.db import get_db
 import os
 import importlib
 from fastapi import HTTPException
