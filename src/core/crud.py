@@ -676,6 +676,10 @@ def create_new_client(db: Session, client: ClientCreateSchema):
 def create_client_auth(db: Session, client_auth: ClientSchema):
     CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
     client_exists = get_client_by_uuid_and_secret(db, client_auth.client_id, client_auth.client_secret)
+    # Generate refresh token;
+    generated_refresh_token = uuid.uuid4()
+    generated_refresh_token = str(generated_refresh_token).replace('-', '')
+
     if client_exists:
         payload = ClientJWTSchema
         payload.client_id = str(client_exists.id)
@@ -698,6 +702,7 @@ def create_client_auth(db: Session, client_auth: ClientSchema):
         # JWT operations
         client_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
         payload['client_token'] = client_token
+        payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
         # Write payload to Redis with expiry 30 Minutes
         client.set_client_token(payload)
         return payload  # for only to test NOW !!
