@@ -633,11 +633,11 @@ class ProviderFusionAuth(Provider):
             log.info("user already created")
             db.rollback()
             ProviderFusionAuth.admin_user_created = True
-            return None
+            # return None
         except Exception as ex:
             log.error("unable to bootstrap")
             log.error(ex)
-            return None
+            # return None
         try:
             # creating default roles
             for resource in ROLE_RESOURCE:
@@ -655,7 +655,7 @@ class ProviderFusionAuth(Provider):
                     except Exception as err:
                         log.error("unable to bootstrap")
                         log.error(err)
-                        return None
+                        # return None
             role_name = f"{APP_NAME}-users-signup"
             role_description = f"{APP_NAME} action signup for users"
             role_create = RoleBaseSchema(
@@ -679,8 +679,7 @@ class ProviderFusionAuth(Provider):
                 except Exception as err:
                     log.error("unable to bootstrap")
                     log.error(err)
-                    return None
-
+                    # return None
             # groups roles
             admin_group = crud.get_group_by_name(db, name='admin')
             db_roles = crud.get_roles(db)
