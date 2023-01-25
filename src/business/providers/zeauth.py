@@ -121,7 +121,7 @@ class ProviderFusionAuth(Provider):
         return User(
             id=str(user.id),
             email=user.email,
-            username=user.user_name,
+            username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
             verified=user.verified,
             user_status=user.user_status,
             first_name=user.first_name,
@@ -286,7 +286,7 @@ class ProviderFusionAuth(Provider):
             iss=os.environ.get('ZEAUTH_URL'),
             sub=str(user.id),
             email=user.email,
-            username=user.user_name,
+            username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
             verified=user.verified,
             user_status=True,
             avatar_url='',
@@ -307,7 +307,7 @@ class ProviderFusionAuth(Provider):
             user=User(
                 id=str(user.id),
                 email=user.email,
-                username=user.user_name,
+                username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
                 verified=user.verified,
                 user_status=user.user_status,
                 created_at=user.created_on,
@@ -385,7 +385,7 @@ class ProviderFusionAuth(Provider):
             encrypted_password = self.str_enc_dec.encrypt_str(message=user.password)
             created_user = crud.create_new_user(db, user={
                 "email": user.email,
-                "user_name": user.username,
+                "user_name": user.email if (user.username == "" or user.username != user.email) else user.username,
                 "password": str(encrypted_password),
                 "verified": False,
                 "user_status": True,
@@ -413,7 +413,6 @@ class ProviderFusionAuth(Provider):
         private_key = rsa.PrivateKey.load_pkcs1(private_key_dec)
         return {"decrypted": rsa.decrypt(encrypted, private_key).decode('utf-8')}
 
-
     def signup(self, db, user: UserRequest) -> User:
         log.info("zeauth")
         try:
@@ -422,7 +421,7 @@ class ProviderFusionAuth(Provider):
 
             user_resp = crud.create_user(db, user={
                 "email": user.email,
-                "user_name": user.username,
+                "user_name": user.email if (user.username == "" or user.username != user.email) else user.username,
                 "password": str(encrypted_password),
                 "verified": False,
                 "user_status": True,
