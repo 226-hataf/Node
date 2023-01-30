@@ -122,7 +122,8 @@ async def users_or_roles_to_group(group_id: UUIDCheckForGroupIdSchema = Depends(
               description="Remove users or roles from a group")
 async def remove_users_or_roles_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(UUIDCheckForGroupIdSchema),
                                            group_user_role: GroupUserRoleSchema = ..., db: Session = Depends(get_db),
-                                           user: UserResponseModel = Security(get_current_user, scopes=["groups-update"])):
+                                           user: UserResponseModel = Security(get_current_user, scopes=["groups-update"])
+                                           ):
     """Remove users or roles from a group"""
     checked_uuid = group_id.group_id
     group_exist = crud.get_group_by_id(db, id=str(checked_uuid))

@@ -179,6 +179,10 @@ def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
 
+def get_multi_users_by_emails(db: Session, emails: list):
+    return [obj.id for obj in db.query(models.User).filter(models.User.email.in_(emails))]
+
+
 def get_user_by_uuid(db: Session, user_id: UUIDCheckForUserIDSchema):
     """For single user only"""
     return db.query(models.User).filter(models.User.id == user_id.user_id).first()

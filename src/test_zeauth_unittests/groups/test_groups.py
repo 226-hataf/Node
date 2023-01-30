@@ -3,14 +3,14 @@ from httpx import AsyncClient
 from api import app
 from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY, \
     HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_403_FORBIDDEN, HTTP_202_ACCEPTED, HTTP_405_METHOD_NOT_ALLOWED
-
-from config import db
 from config.db import get_db
-from core.db_models import models
-from sqlalchemy.orm import Session
+from core.crud import get_user_by_email, get_multi_users_by_emails
+
 
 class TestGroups:
     non_exist_group_id = "a0d3aaee-77fc-457b-ba7f-321cc116388b"
+    not_exist_user_or_role_id = "e6f4f61b-dfbe-4296-8fe5-266f9970929e"
+    group_id_non_uuid_format = "890779dc-85d6"
     group_name = "user"
     group_name_non_exist = "tester"
     group_name_create = "fake-group"
@@ -68,10 +68,6 @@ class TestGroups:
 
     @pytest.mark.asyncio
     async def test_groups_update_a_group(self):
-        """
-        TODO: Next do this !
-        TODO: This test is passed but you have to implement override method to token.auth(model.permissions.update)
-        """
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
             group_name = TestGroups.group_name_create
             response = await ac.get(f'/groups/{group_name}')
@@ -85,10 +81,6 @@ class TestGroups:
 
     @pytest.mark.asyncio
     async def test_groups_update_non_exist_group(self):
-        """
-        TODO: Next do this !
-        TODO: This test is passed but you have to implement override method to token.auth(model.permissions.update)
-        """
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
             id = TestGroups.non_exist_group_id
             json_data = {
@@ -217,14 +209,319 @@ class TestGroups:
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
             db = get_db().__next__()
             emails = ["user@test.com", "admin@test.com"]
+
             group_name = TestGroups.group_name
             response = await ac.get(f'/groups/{group_name}')
             group_id = response.json()["id"]
 
-            user1, user2 = [obj.id for obj in db.query(models.User).filter(models.User.email.in_(emails))]
+            user1, user2 = get_multi_users_by_emails(db, emails)
             json_data = {"users": [f"{str(user1)}", f"{str(user2)}"]}
             response = await ac.patch(f'/groups/{group_id}', json=json_data)
         assert response.status_code == HTTP_200_OK
+
+    @pytest.mark.asyncio
+    async def test_groups_assign_users_to_group_users_already_in_group(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            user1, user2 = get_multi_users_by_emails(db, emails)
+            json_data = {"users": [f"{str(user1)}", f"{str(user2)}"]}
+            response = await ac.patch(f'/groups/{group_id}', json=json_data)
+        assert response.status_code == HTTP_403_FORBIDDEN
+        assert response.json() == {"detail": "Available users are already in the group"}
+
+    @pytest.mark.asyncio
+    async def test_groups_assign_users_to_group_id_non_uuid_format_request(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+            group_id = TestGroups.group_id_non_uuid_format
+
+            user1, user2 = get_multi_users_by_emails(db, emails)
+            json_data = {"users": [f"{str(user1)}", f"{str(user2)}"]}
+            response = await ac.patch(f'/groups/{group_id}', json=json_data)
+            json_response = response.json()
+        assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+        assert [x["msg"] for x in json_response["detail"]] == ['value is not a valid uuid']
+        assert [x["type"] for x in json_response["detail"]] == ['type_error.uuid']
+
+    @pytest.mark.asyncio
+    async def test_groups_assign_users_to_group_group_id_empty_request(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+            group_id = ""
+
+            user1, user2 = get_multi_users_by_emails(db, emails)
+            json_data = {"users": [f"{str(user1)}", f"{str(user2)}"]}
+            response = await ac.patch(f'/groups/{group_id}', json=json_data)
+        assert response.status_code == HTTP_405_METHOD_NOT_ALLOWED
+        assert response.json() == {"detail": "Method Not Allowed"}
+
+    @pytest.mark.asyncio
+    async def test_groups_assign_users_to_group_user_id_empty_request(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            json_data = {"users": [""]}
+            response = await ac.patch(f'/groups/{group_id}', json=json_data)
+            json_response = response.json()
+        assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+        assert [x["msg"] for x in json_response["detail"]] == ['value is not a valid uuid']
+        assert [x["type"] for x in json_response["detail"]] == ['type_error.uuid']
+
+    @pytest.mark.asyncio
+    async def test_groups_assign_users_and_roles_to_a_group_together_error(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            params = {'skip': '0', 'limit': '2'}  # for two roles in a list
+            response = await ac.get("/roles/", params=params)
+            roles1, roles2 = [rol["id"] for rol in response.json()]
+
+            user1, user2 = get_multi_users_by_emails(db, emails)
+
+            json_data = {
+                "users": [f"{str(user1)}", f"{str(user2)}"],
+                "roles": [f"{roles1}", f"{roles2}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Neither users nor roles are set in body']
+
+    @pytest.mark.asyncio
+    async def test_groups_assign_no_users_and_no_roles_to_a_group_request(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            json_data = {}
+            response = await ac.patch(f'/groups/{group_id}', json=json_data)
+            json_response = response.json()
+        assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+        assert [x["msg"] for x in json_response["detail"]] == ['Neither users nor roles are set in body']
+
+    @pytest.mark.asyncio
+    async def test_groups_assign_users_and_roles_at_the_same_time_with_non_roles(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            email = "user@test.com"
+
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            user1 = get_user_by_email(db, email)
+
+            json_data = {
+                "users": [f"{str(user1)}"],
+                "roles": [""]
+            }
+            response = await ac.patch(f'/groups/{group_id}', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Neither users nor roles are set in body']
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_users_from_groups_users_success(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            user1, user2 = get_multi_users_by_emails(db, emails)
+
+            json_data = {
+                "users": [f"{str(user1)}", f"{str(user2)}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            assert response.status_code == HTTP_200_OK
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_roles_from_groups_roles_success(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            params = {'skip': '0', 'limit': '2'}  # for two roles in a list
+            response = await ac.get("/roles/", params=params)
+            roles1, roles2 = [rol["id"] for rol in response.json()]
+
+            json_data = {
+                "roles": [f"{str(roles1)}", f"{str(roles2)}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            assert response.status_code == HTTP_200_OK
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_roles_from_groups_roles_group_id_not_found(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            group_id = TestGroups.non_exist_group_id
+
+            params = {'skip': '0', 'limit': '2'}  # for two roles in a list
+            response = await ac.get("/roles/", params=params)
+            roles1, roles2 = [rol["id"] for rol in response.json()]
+
+            json_data = {
+                "roles": [f"{str(roles1)}", f"{str(roles2)}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_404_NOT_FOUND
+            assert json_response == {"detail": "Group not found"}
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_users_from_groups_users_group_id_not_found(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+
+            group_id = TestGroups.non_exist_group_id
+            user1, user2 = get_multi_users_by_emails(db, emails)
+
+            json_data = {
+                "roles": [f"{str(user1)}", f"{str(user2)}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_404_NOT_FOUND
+            assert json_response == {"detail": "Group not found"}
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_users_from_groups_users_user_id_not_found(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            user1 = TestGroups.not_exist_user_or_role_id
+
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            json_data = {
+                "users": [f"{str(user1)}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_404_NOT_FOUND
+            assert json_response == {"detail": "Users not exist"}
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_roles_from_groups_roles_role_id_not_exist(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            roles1 = TestGroups.not_exist_user_or_role_id
+
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            json_data = {
+                "roles": [f"{str(roles1)}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_404_NOT_FOUND
+            assert json_response == {"detail": "Roles not exist"}
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_users_and_roles_at_the_same_time_from_a_group(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            params = {'skip': '0', 'limit': '2'}  # for two roles in a list
+            response = await ac.get("/roles/", params=params)
+            roles1, roles2 = [rol["id"] for rol in response.json()]
+
+            user1, user2 = get_multi_users_by_emails(db, emails)
+
+            json_data = {
+                "users": [f"{str(user1)}", f"{str(user2)}"],
+                "roles": [f"{roles1}", f"{roles2}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Neither users nor roles are set in body']
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_no_users_or_roles_request(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            group_name = TestGroups.group_name
+            response = await ac.get(f'/groups/{group_name}')
+            group_id = response.json()["id"]
+
+            json_data = {}
+
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Neither users nor roles are set in body']
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_users_or_roles_from_a_empty_group_id_request(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+
+            group_id = ""
+
+            params = {'skip': '0', 'limit': '2'}  # for two roles in a list
+            response = await ac.get("/roles/", params=params)
+            roles1, roles2 = [rol["id"] for rol in response.json()]
+
+            user1, user2 = get_multi_users_by_emails(db, emails)
+
+            json_data = {
+                "users": [f"{str(user1)}", f"{str(user2)}"],
+                "roles": [f"{roles1}", f"{roles2}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_404_NOT_FOUND
+            assert json_response == {"detail": "Not Found"}
+
+    @pytest.mark.asyncio
+    async def test_groups_remove_users_from_non_uuid_format_group_id_request(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            emails = ["user@test.com", "admin@test.com"]
+
+            group_id = TestGroups.group_id_non_uuid_format
+
+            user1, user2 = get_multi_users_by_emails(db, emails)
+
+            json_data = {
+                "users": [f"{str(user1)}", f"{str(user2)}"]
+            }
+            response = await ac.patch(f'/groups/{group_id}/remove', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['value is not a valid uuid']
+            assert [x["type"] for x in json_response["detail"]] == ['type_error.uuid']
+
+
+
 
 
 

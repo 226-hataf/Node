@@ -1,8 +1,10 @@
 import os
+from api import app
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
+from business.models.dependencies import get_current_user
+from fastapi import Security
 
 class Settings:
     POSTGRES_USER: str = os.environ.get("POSTGRES_USER")
@@ -30,6 +32,9 @@ def override_get_db():
         db.close()
 
 
+async def mock_user_roles():
+    return Security(get_current_user)
 
+app.dependency_overrides[get_current_user] = mock_user_roles
 
 
