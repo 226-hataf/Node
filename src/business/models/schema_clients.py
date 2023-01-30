@@ -50,8 +50,8 @@ class ClientCreateSchema(BaseModel):
     email: str = Field(description="Email of Service", title="Service Email")
     groups: Optional[List[str]] = Field(description="Users Groups Permissions", title="Users Group",
                                         example=["admin", "user"])
-    # Email format check
-    @validator('email')
+
+    @validator('email')  # Email format check
     def check_email(cls, email):
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             raise ValueError("invalid email format")
@@ -95,9 +95,10 @@ class ClientJWTSchema(BaseModel):
     iss: str = Field(description="JWT generated with issuer", title="The issuer")
     groups: List[str] = Field(description="Client Groups", title="Client Group")
     client_token: str = Field(description="JWT token includes client info", title="JWT Token")
+    refreshToken: str = Field(description="Refresh token includes client info", title="Refresh Token")
 
     # Check if fields are empty
-    @validator("client_id", "expr", "name", "owner", "iss", "client_token")
+    @validator("client_id", "expr", "name", "owner", "iss", "client_token", "refreshToken")
     def options_non_empty(cls, v):
         if v == '':
             assert v != '', 'Empty value not excepted ! '

@@ -4,6 +4,7 @@ from config.social_config import GoogleLogin, FacebookLogin, TwitterLogin
 from core import log
 from starlette.responses import RedirectResponse
 from business.providers.zeauth import ProviderFusionAuth
+
 from core.types import ZKModel
 from dotenv import load_dotenv
 import json

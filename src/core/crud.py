@@ -1,5 +1,7 @@
 import os
 import uuid
+from typing import Any
+
 import jwt
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
@@ -574,8 +576,20 @@ def generate_client_secret():
             string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation,
             k=32
         )
-    ).replace('"', '')  # when generating client_id remove "" for not get error on request body.
-# for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+    ).replace('"', '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+
+def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
+    return db.query(
+        models.GroupsUser, models.GroupsRole, models.Role
+    ).filter(
+        models.GroupsUser.users == user,
+    ).filter(
+        models.GroupsRole.groups == models.GroupsUser.groups
+    ).filter(
+        models.GroupsRole.roles == models.Role.id
+    ).filter(
+        models.Role.name == role_name
+    ).all()
 
 
 def get_client_by_uuid_and_secret(db: Session, client_id: uuid, client_secret: str):
@@ -662,6 +676,10 @@ def create_new_client(db: Session, client: ClientCreateSchema):
 def create_client_auth(db: Session, client_auth: ClientSchema):
     CLIENT_TOKEN_EXPIRY_MINUTES = os.environ.get('CLIENT_TOKEN_EXPIRY_MINUTES')
     client_exists = get_client_by_uuid_and_secret(db, client_auth.client_id, client_auth.client_secret)
+    # Generate refresh token;
+    generated_refresh_token = uuid.uuid4()
+    generated_refresh_token = str(generated_refresh_token).replace('-', '')
+
     if client_exists:
         payload = ClientJWTSchema
         payload.client_id = str(client_exists.id)
@@ -684,6 +702,7 @@ def create_client_auth(db: Session, client_auth: ClientSchema):
         # JWT operations
         client_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
         payload['client_token'] = client_token
+        payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
         # Write payload to Redis with expiry 30 Minutes
         client.set_client_token(payload)
         return payload  # for only to test NOW !!

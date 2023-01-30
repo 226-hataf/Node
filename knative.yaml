@@ -107,9 +107,13 @@ spec:
             value: "zekoder"
           - name: REDIS_KEY_PREFIX
             value: "zekoder"
+          - name: REDIS_CLIENT_KEY_PREFIX
+            value: "zekoder-client"
           - name: ACCESS_TOKEN_EXPIRY_MINUTES
             value: "60"
           - name: REFRESH_TOKEN_EXPIRY_MINUTES
+            value: "60"
+          - name: REFRESH_CLIENT_TOKEN_EXPIRY_MINUTES
             value: "60"
           - name: CLIENT_TOKEN_EXPIRY_MINUTES
             value: "30"

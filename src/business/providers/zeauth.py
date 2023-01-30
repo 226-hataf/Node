@@ -121,7 +121,7 @@ class ProviderFusionAuth(Provider):
         return User(
             id=str(user.id),
             email=user.email,
-            username=user.user_name,
+            username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
             verified=user.verified,
             user_status=user.user_status,
             first_name=user.first_name,
@@ -224,7 +224,7 @@ class ProviderFusionAuth(Provider):
         try:
             access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
             payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
-            client.set_refresh_token(payload)  # write data to Redis
+            client.set_user_token(payload)  # write data to Redis
 
             return LoginResponseModel(
                 user=User(
@@ -286,7 +286,7 @@ class ProviderFusionAuth(Provider):
             iss=os.environ.get('ZEAUTH_URL'),
             sub=str(user.id),
             email=user.email,
-            username=user.user_name,
+            username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
             verified=user.verified,
             user_status=True,
             avatar_url='',
@@ -301,13 +301,13 @@ class ProviderFusionAuth(Provider):
         )
         access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
         payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
-        client.set_refresh_token(payload)  # write data to Redis
+        client.set_user_token(payload)  # write data to Redis
 
         return LoginResponseModel(
             user=User(
                 id=str(user.id),
                 email=user.email,
-                username=user.user_name,
+                username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
                 verified=user.verified,
                 user_status=user.user_status,
                 created_at=user.created_on,
@@ -385,7 +385,7 @@ class ProviderFusionAuth(Provider):
             encrypted_password = self.str_enc_dec.encrypt_str(message=user.password)
             created_user = crud.create_new_user(db, user={
                 "email": user.email,
-                "user_name": user.username,
+                "user_name": user.email if (user.username == "" or user.username != user.email) else user.username,
                 "password": str(encrypted_password),
                 "verified": False,
                 "user_status": True,
@@ -413,7 +413,6 @@ class ProviderFusionAuth(Provider):
         private_key = rsa.PrivateKey.load_pkcs1(private_key_dec)
         return {"decrypted": rsa.decrypt(encrypted, private_key).decode('utf-8')}
 
-
     def signup(self, db, user: UserRequest) -> User:
         log.info("zeauth")
         try:
@@ -422,7 +421,7 @@ class ProviderFusionAuth(Provider):
 
             user_resp = crud.create_user(db, user={
                 "email": user.email,
-                "user_name": user.username,
+                "user_name": user.email if (user.username == "" or user.username != user.email) else user.username,
                 "password": str(encrypted_password),
                 "verified": False,
                 "user_status": True,
@@ -588,23 +587,33 @@ class ProviderFusionAuth(Provider):
 
     def refreshtoken(self, token: str):
         REDIS_KEY_PREFIX = os.environ.get('REDIS_KEY_PREFIX')
+        REDIS_CLIENT_KEY_PREFIX = os.environ.get('REDIS_CLIENT_KEY_PREFIX')
 
         generated_refresh_token = uuid.uuid4()
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
-
         try:
-            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}",
-                                        "map_refresh_token"):  # Search for the key if it is exists
-                payload = client.hgetall_redis_refresh_payload(
-                    f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
-                if payload:
+            # for user
+            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):  # Search for the key if it is exists
+                payload_user = client.hgetall_redis_user_payload(f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
+                if payload_user:
                     # new access_token generated from valid refresh_token request
-                    new_access_token = jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-                    payload['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
-                    client.set_refresh_token(payload)  # write data to Redis
-                    client.del_refresh_token(
-                        f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
-                    return {'accessToken': new_access_token, 'refreshToken': payload['refreshToken']}
+                    new_access_token_user = jwt.encode(payload_user, JWT_SECRET_KEY, algorithm="HS256")
+                    payload_user['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
+                    client.set_user_token(payload_user)  # write data to Redis
+                    client.del_refresh_token(f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
+                    return {'accessToken': new_access_token_user, 'refreshToken': payload_user['refreshToken']}
+                else:
+                    return {'No Redis Data exists !'}
+            # for client
+            elif client.get_refresh_token(f"{REDIS_CLIENT_KEY_PREFIX}-{token}", "map_client_refreshToken"):
+                payload_client = client.hgetall_redis_client_payload(f"{REDIS_CLIENT_KEY_PREFIX}-{token}")
+                if payload_client:
+                    # new access_token generated from valid refresh_token request
+                    new_access_token_client = jwt.encode(payload_client, JWT_SECRET_KEY, algorithm="HS256")
+                    payload_client['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
+                    client.set_client_token(payload_client)  # write data to Redis
+                    client.del_refresh_token(f"{REDIS_CLIENT_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
+                    return {'accessToken': new_access_token_client, 'refreshToken': payload_client['refreshToken']}
                 else:
                     return {'No Redis Data exists !'}
             else:
@@ -639,7 +648,6 @@ class ProviderFusionAuth(Provider):
             log.error(ex)
             return None
         try:
-
             # creating default roles
             for resource in ROLE_RESOURCE:
                 for action in ROLE_ACTIONS:
@@ -681,25 +689,49 @@ class ProviderFusionAuth(Provider):
                     log.error("unable to bootstrap")
                     log.error(err)
                     return None
-
             # groups roles
             admin_group = crud.get_group_by_name(db, name='admin')
             db_roles = crud.get_roles(db)
+            super_user_group = crud.get_group_by_name(db, name='super-user')
+
+            roles_for_super_user = ['zekoder-zeauth-users-create', 'zekoder-zeauth-users-list',
+                                    'zekoder-zeauth-users-get', 'zekoder-zeauth-roles-get',
+                                    'zekoder-zeauth-roles-list', 'zekoder-zeauth-groups-list',
+                                    'zekoder-zeauth-groups-get']
 
             for role in db_roles:
-                try:
-                    if crud.is_groups_role_not_exists(db, GroupsRoleBase(roles=role.id, groups=admin_group.id)):
-                        group_role = crud.create_groups_role(db, GroupsRoleBase(roles=role.id, groups=admin_group.id))
-                        log.info(f"groups role: {group_role.id} created..")
-                    else:
+                if role.name in roles_for_super_user:
+                    try:
+                        if not crud.is_groups_role_not_exists(db,
+                                                          GroupsRoleBase(roles=role.id, groups=super_user_group.id)):
+                            group_role = crud.create_groups_role(db,
+                                                                 GroupsRoleBase(roles=role.id,
+                                                                                groups=super_user_group.id))
+                            log.info(f"groups role: {group_role.id} created..")
+                        else:
+                            log.info("groups role already created")
+                    except IntegrityError as err:
                         log.info("groups role already created")
-                except IntegrityError as err:
-                    log.info("groups role already created")
-                    db.rollback()
-                except Exception as err:
-                    log.error("unable to bootstrap")
-                    log.error(err)
-                    return None
+                        db.rollback()
+                    except Exception as err:
+                        log.error("unable to bootstrap")
+                        log.error(err)
+                        return None
+                if admin_group:
+                    try:
+                        if crud.is_groups_role_not_exists(db, GroupsRoleBase(roles=role.id, groups=admin_group.id)):
+                            group_role = crud.create_groups_role(db,
+                                                                 GroupsRoleBase(roles=role.id, groups=admin_group.id))
+                            log.info(f"groups role: {group_role.id} created..")
+                        else:
+                            log.info("groups role already created")
+                    except IntegrityError as err:
+                        log.info("groups role already created")
+                        db.rollback()
+                    except Exception as err:
+                        log.error("unable to bootstrap")
+                        log.error(err)
+                        return None
 
             login = UserLoginSchema(email=DEFAULT_ADMIN_EMAIL, password=DEFAULT_ADMIN_PASSWORD)
             admin_user = self.login(login, db)
