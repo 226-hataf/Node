@@ -611,6 +611,11 @@ def get_client_by_uuid(db: Session, client_id: UUIDCheckForClientIdSchema):
     return client_info
 
 
+def get_client_by_name(db: Session, name: str):
+    client_info = db.query(models.Client).filter(models.Client.name == name).first()
+    return client_info
+
+
 def check_client_exists_with_email(db: Session, email: str):
     """checks email from users table, if exist than gets this email's owner uuid and
     search for this uuid in client table as an owner id, if it exists than
@@ -718,6 +723,11 @@ def remove_client(db: Session, client_id: UUIDCheckForClientIdSchema):
     delete_client = get_client_by_uuid(db, client_id)
     db.delete(delete_client)
     db.commit()
+    # delete client record from groups_users table
+    db.query(models.GroupsUser) \
+        .filter(models.GroupsUser.users == delete_client.owner) \
+        .delete()
+    db.commit()
     # delete current client record from users table
     # if this record created by client and password is empty then we can delete it
     # otherwise client owner in the user table could be admin, user, super-admin ex.!
@@ -726,12 +736,8 @@ def remove_client(db: Session, client_id: UUIDCheckForClientIdSchema):
         .filter(and_(models.User.id == delete_client.owner,
                      models.User.password == '')) \
         .first()
+
     if delete_client_from_users_table:
         db.delete(delete_client_from_users_table)
         db.commit()
-    # delete client record from groups_users table
-    db.query(models.GroupsUser) \
-        .filter(models.GroupsUser.users == delete_client.owner) \
-        .delete()
-    db.commit()
     return delete_client.id
