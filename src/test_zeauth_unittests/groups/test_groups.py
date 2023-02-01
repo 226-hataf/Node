@@ -6,13 +6,14 @@ from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY, \
 from config.db import get_db
 from core.crud import get_user_by_email, get_multi_users_by_emails
 from business.models.dependencies import get_current_user
-from fastapi import Security
+from test_zeauth_unittests.conftest_db import override_get_db
 
 
 async def mock_user_roles():
-    return Security(get_current_user, scopes=[""])
+    return None
 
 app.dependency_overrides[get_current_user] = mock_user_roles
+app.dependency_overrides[get_db] = override_get_db  # override main DB to Test DB
 
 
 class TestGroups:
@@ -527,18 +528,3 @@ class TestGroups:
             assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
             assert [x["msg"] for x in json_response["detail"]] == ['value is not a valid uuid']
             assert [x["type"] for x in json_response["detail"]] == ['type_error.uuid']
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

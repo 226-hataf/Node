@@ -6,11 +6,10 @@ from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY, \
 from config.db import get_db
 from core.crud import get_user_by_email, get_multi_users_by_emails
 from business.models.dependencies import get_current_user
-from fastapi import Security
 
 
 async def mock_user_roles():
-    return Security(get_current_user, scopes=[""])
+    return None
 
 app.dependency_overrides[get_current_user] = mock_user_roles
 
@@ -20,6 +19,19 @@ class TestUsers:
     not_exists_group_id = "8077c4ab-5fe7-4e14-b85d-e0f49b41cf5d"
     not_exists_user_id = "8077c4ab-5fe7-4e14-b85d-e0f49b41cf5d"
     invalid_user_id = "12345"
+
+    @pytest.mark.asyncio
+    async def test_user_list_users(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+
+            params = {
+                "sort_by": "desc",
+                "sort_column": "user_name",
+                "page": 1,
+                "size": 20
+            }
+            response = await ac.get("/users/", params=params)
+            assert response.status_code == HTTP_200_OK
 
     @pytest.mark.asyncio
     async def test_user_to_group_success(self):
@@ -445,6 +457,3 @@ class TestUsers:
             json_response = response.json()
             assert response.status_code == HTTP_202_ACCEPTED
             assert json_response == {'detail': f"User <{user_id.id}> deleted successfully !"}
-
-
-

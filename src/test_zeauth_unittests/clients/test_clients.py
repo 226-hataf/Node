@@ -1,18 +1,19 @@
 import pytest
 from httpx import AsyncClient
 from api import app
-from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY, \
-    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_403_FORBIDDEN, HTTP_202_ACCEPTED, HTTP_405_METHOD_NOT_ALLOWED
+from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY, \
+    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_202_ACCEPTED
 from config.db import get_db
 from core.crud import check_client_exists_with_email, get_client_by_name
+from test_zeauth_unittests.conftest_db import override_get_db
 from business.models.dependencies import get_current_user
-from fastapi import Security
 
 
 async def mock_user_roles():
-    return Security(get_current_user, scopes=[""])
+    return None
 
 app.dependency_overrides[get_current_user] = mock_user_roles
+app.dependency_overrides[get_db] = override_get_db  # override main DB to Test DB
 
 
 class TestClients:
@@ -164,9 +165,3 @@ class TestClients:
             response = await ac.delete(f"/clients/{client_id}")
             assert response.status_code == HTTP_404_NOT_FOUND
             assert response.json() == {"detail": "Client Id not found"}
-
-
-
-
-
-

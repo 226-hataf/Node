@@ -5,12 +5,15 @@ from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY, \
     HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_403_FORBIDDEN, HTTP_202_ACCEPTED, HTTP_405_METHOD_NOT_ALLOWED
 from business.models.dependencies import get_current_user
 from fastapi import Security
+from test_zeauth_unittests.conftest_db import override_get_db
+from config.db import get_db
 
 
 async def mock_user_roles():
-    return Security(get_current_user, scopes=[""])
+    return None
 
 app.dependency_overrides[get_current_user] = mock_user_roles
+app.dependency_overrides[get_db] = override_get_db  # override main DB to Test DB
 
 
 class TestRoles:
@@ -119,8 +122,3 @@ class TestRoles:
             response = await ac.delete(f'/roles/{role_name}')
             assert response.status_code == HTTP_405_METHOD_NOT_ALLOWED
             assert response.json() == {"detail": "Method Not Allowed"}
-
-
-
-
-

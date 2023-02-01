@@ -55,6 +55,8 @@ class ProviderFusionAuth(Provider):
     def setup_fusionauth(self):
         self.fusionauth_client = FusionAuthClient(FUSIONAUTH_APIKEY, ZEAUTH_URL)
 
+    # No need that anymore
+    """
     def get_group_name(self, id: str):
         self.setup_fusionauth()
         try:
@@ -67,6 +69,7 @@ class ProviderFusionAuth(Provider):
         except Exception as e:
             log.error(e)
             raise e
+    """
 
     def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: date,
                    date_of_last_login: date, sort_by, sort_column, db):
@@ -83,6 +86,8 @@ class ProviderFusionAuth(Provider):
 
         return users, next_page, page_size, total_count
 
+    # No need that anymore
+    """ 
     def _cast_user_model(self, response: dict):
         full_name = response.get('firstName')
         if response.get('lastName'):
@@ -116,6 +121,7 @@ class ProviderFusionAuth(Provider):
             groups=groups,
             full_name=full_name
         )
+    """
 
     def _cast_user(self, user):
         return User(
@@ -523,6 +529,8 @@ class ProviderFusionAuth(Provider):
             log.error(f"Exception: {err}")
             raise err
 
+    # No need
+    """
     def get_user(self, user_ids: List[str]):
         self.setup_fusionauth()
         try:
@@ -539,6 +547,7 @@ class ProviderFusionAuth(Provider):
             error_template = "get_user Exception: An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
             raise err
+    """
 
     def verify(self, token: str):
         try:
