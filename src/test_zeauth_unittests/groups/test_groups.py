@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 from api import app
-from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY, \
+from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_422_UNPROCESSABLE_ENTITY, \
     HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_403_FORBIDDEN, HTTP_202_ACCEPTED, HTTP_405_METHOD_NOT_ALLOWED
 from config.db import get_db
 from core.crud import get_user_by_email, get_multi_users_by_emails
@@ -24,12 +24,21 @@ class TestGroups:
     group_name_non_exist = "tester"
     group_name_create = "fake-group"
 
+
     @pytest.mark.asyncio
     async def test_groups_list_success(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
             params = {'skip': '0', 'limit': '3'}  # for three groups in a list
             response = await ac.get("/groups/", params=params)
             assert response.status_code == HTTP_200_OK
+
+    @pytest.mark.asyncio
+    async def test_groups_list_500(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            params = {'skip': '-1', 'limit': '-1'}  # for three groups in a list with error
+            response = await ac.get("/groups/", params=params)
+            assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+            assert response.json()["detail"] == "unknown error"
 
     @pytest.mark.asyncio
     async def test_groups_list_validation_error(self):
@@ -99,6 +108,56 @@ class TestGroups:
             response = await ac.put(f'/groups/{id}', json=json_data)
             assert response.status_code == HTTP_404_NOT_FOUND
             assert response.json() == {"detail": "Group not found"}
+
+    @pytest.mark.asyncio
+    async def test_groups_update_group_name_empty(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            id = TestGroups.non_exist_group_id
+            json_data = {
+                "name": "",
+                "description": "updated test description"
+            }
+            response = await ac.put(f'/groups/{id}', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Group name can not be empty ! ']
+
+    @pytest.mark.asyncio
+    async def test_groups_update_group_name_not_acceptable(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            id = TestGroups.non_exist_group_id
+            json_data = {
+                "name": "string",
+                "description": "updated test description"
+            }
+            response = await ac.put(f'/groups/{id}', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['This group name is not acceptable ']
+
+    @pytest.mark.asyncio
+    async def test_groups_create_group_name_not_acceptable(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "name": "string",
+                "description": "new group"
+            }
+            response = await ac.post("/groups/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['This group name is not acceptable ']
+
+    @pytest.mark.asyncio
+    async def test_groups_create_group_with_empty_name(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "name": "",
+                "description": "new group"
+            }
+            response = await ac.post("/groups/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Group name can not be empty ! ']
 
     @pytest.mark.asyncio
     async def test_groups_delete_group(self):
@@ -528,3 +587,4 @@ class TestGroups:
             assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
             assert [x["msg"] for x in json_response["detail"]] == ['value is not a valid uuid']
             assert [x["type"] for x in json_response["detail"]] == ['type_error.uuid']
+

@@ -11,12 +11,8 @@ class UUIDCheckForGroupIdSchema(BaseModel):
 
     @validator('group_id')
     def check_id_format(cls, v):
-        try:
-            if uuid.UUID(str(v)):
-                return v
-        except ValueError as e:
-            log.error(e)
-            return {"detail": "invalid uuid"}
+        if uuid.UUID(str(v)):
+            return v
 
 
 class UUIDCheckForIDSchema(BaseModel):
@@ -26,12 +22,8 @@ class UUIDCheckForIDSchema(BaseModel):
 
     @validator('id')
     def check_id_format(cls, v):
-        try:
-            if uuid.UUID(str(v)):
-                return v
-        except ValueError as e:
-            log.error(e)
-            return {"detail": "invalid uuid"}
+        if uuid.UUID(str(v)):
+            return v
 
 
 class UUIDCheckForUserIDSchema(BaseModel):
@@ -41,9 +33,5 @@ class UUIDCheckForUserIDSchema(BaseModel):
 
     @validator('user_id')
     def check_id_format(cls, v):
-        try:
-            if uuid.UUID(str(v)):
-                return v
-        except ValueError as e:
-            log.error(e)
-            return {"detail": "invalid uuid"}
+        if uuid.UUID(str(v)):
+            return v

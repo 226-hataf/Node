@@ -4,7 +4,6 @@ from api import app
 from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY, \
     HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_403_FORBIDDEN, HTTP_202_ACCEPTED, HTTP_405_METHOD_NOT_ALLOWED
 from business.models.dependencies import get_current_user
-from fastapi import Security
 from test_zeauth_unittests.conftest_db import override_get_db
 from config.db import get_db
 
@@ -22,7 +21,7 @@ class TestRoles:
     role_name_non_exist = "test-role-non-exist"
     role_name_create = "test-role-new-success"
     role_description = "New Role Description"
-
+    
     @pytest.mark.asyncio
     async def test_roles_list_success(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
@@ -122,3 +121,77 @@ class TestRoles:
             response = await ac.delete(f'/roles/{role_name}')
             assert response.status_code == HTTP_405_METHOD_NOT_ALLOWED
             assert response.json() == {"detail": "Method Not Allowed"}
+
+    @pytest.mark.asyncio
+    async def test_roles_role_name_empty(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "name": "",
+                "description": f"{TestRoles.role_description}"
+            }
+            response = await ac.post("/roles/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Role name can not be empty !']
+
+    @pytest.mark.asyncio
+    async def test_roles_role_name_special_and_spaces_character(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "name": "+ +",
+                "description": f"{TestRoles.role_description}"
+            }
+            response = await ac.post("/roles/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == [
+                'Role name cannot contain special characters or spaces !']
+
+    @pytest.mark.asyncio
+    async def test_roles_role_name_string_not_accepted(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "name": "string",
+                "description": f"{TestRoles.role_description}"
+            }
+            response = await ac.post("/roles/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Role name is not acceptable !']
+
+    @pytest.mark.asyncio
+    async def test_roles_role_name_pattern_format_error(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "name": "roles-role",
+                "description": f"{TestRoles.role_description}"
+            }
+            response = await ac.post("/roles/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ["Role's name pattern should be "
+                                                                   "[provider short name]-[app short name]-[resource name]-[permission name]"]
+
+    @pytest.mark.asyncio
+    async def test_roles_role_name_contain_uppercase(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "name": "Roles-role-role-role",
+                "description": f"{TestRoles.role_description}"
+            }
+            response = await ac.post("/roles/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Role name cannot contain uppercase !']
+
+    @pytest.mark.asyncio
+    async def test_roles_role_name_latin_characters(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "name": "üiles-üle-role-role",
+                "description": f"{TestRoles.role_description}"
+            }
+            response = await ac.post("/roles/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Role name cannot contain latin characters !']

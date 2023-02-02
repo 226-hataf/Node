@@ -21,17 +21,36 @@ class TestUsers:
     invalid_user_id = "12345"
 
     @pytest.mark.asyncio
-    async def test_user_list_users(self):
+    async def test_user_list_users_sort_users(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
 
             params = {
+                "date_of_creation": "2023-01-01",
                 "sort_by": "desc",
+                "user_status": "true",
                 "sort_column": "user_name",
+                "date_of_last_login": "2023-02-21",
                 "page": 1,
                 "size": 20
             }
             response = await ac.get("/users/", params=params)
             assert response.status_code == HTTP_200_OK
+
+    @pytest.mark.asyncio
+    async def test_user_list_users_sort_created_at(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            params = {
+                "date_of_creation": "2023-01-01",
+                "sort_by": "desc",
+                "user_status": "true",
+                "sort_column": "created_at",
+                "date_of_last_login": "2023-02-21",
+                "page": 1,
+                "size": 20
+            }
+            response = await ac.get("/users/", params=params)
+            assert response.status_code == HTTP_200_OK
+
 
     @pytest.mark.asyncio
     async def test_user_to_group_success(self):
@@ -196,7 +215,6 @@ class TestUsers:
     @pytest.mark.asyncio
     async def test_user_non_exist_user_activate_off(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
-            q = 'OFF'
             user_id = TestUsers.not_exists_user_id
 
             response = await ac.put(f"/users/{user_id}/off")
@@ -207,7 +225,6 @@ class TestUsers:
     @pytest.mark.asyncio
     async def test_user_activate_off_invalid_user_id(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
-            q = 'OFF'
             user_id = TestUsers.invalid_user_id
 
             response = await ac.put(f"/users/{user_id}/off")
@@ -232,7 +249,6 @@ class TestUsers:
     @pytest.mark.asyncio
     async def test_user_non_exist_user_activate_on(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
-            q = 'ON'
             user_id = TestUsers.not_exists_user_id
 
             response = await ac.put(f"/users/{user_id}/on")
@@ -243,14 +259,13 @@ class TestUsers:
     @pytest.mark.asyncio
     async def test_user_activate_on_invalid_user_id(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
-            q = 'ON'
             user_id = TestUsers.invalid_user_id
 
             response = await ac.put(f"/users/{user_id}/on")
             json_response = response.json()
             assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
             assert [x["msg"] for x in json_response["detail"]] == ['value is not a valid uuid']
-
+    
     @pytest.mark.asyncio
     async def test_user_get_exist_users_with_ids(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
@@ -284,6 +299,18 @@ class TestUsers:
             json_response = response.json()
             assert response.status_code == HTTP_200_OK
             assert json_response == []
+
+    @pytest.mark.asyncio
+    async def test_user_empty_list_errors(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+
+            json_data = {
+                'users_ids': [ ]
+            }
+            response = await ac.post('/users/with_ids', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Empty list not excepted ! ']
 
     @pytest.mark.asyncio
     async def test_user_get_users_with_invalid_user_id_format(self):
@@ -457,3 +484,4 @@ class TestUsers:
             json_response = response.json()
             assert response.status_code == HTTP_202_ACCEPTED
             assert json_response == {'detail': f"User <{user_id.id}> deleted successfully !"}
+

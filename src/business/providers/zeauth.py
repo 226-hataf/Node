@@ -5,7 +5,6 @@ import uuid
 import rsa
 import base64
 from business.providers.base import *
-from fusionauth.fusionauth_client import FusionAuthClient
 from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema, UserCreateSchema
 from business.models.users import User, LoginResponseModel, EncryptDecryptStrSchema, EncryptedContentSchema
 from sqlalchemy.exc import IntegrityError
@@ -48,28 +47,10 @@ class ProviderFusionAuth(Provider):
 
     def __init__(self) -> None:
         self.fusionauth_client = None
-        self.setup_fusionauth()
         self.str_enc_dec = StringEncryptDecrypt(STR_ENCRYPT_DECRYPT_KEY)
         super().__init__()
 
-    def setup_fusionauth(self):
-        self.fusionauth_client = FusionAuthClient(FUSIONAUTH_APIKEY, ZEAUTH_URL)
 
-    # No need that anymore
-    """
-    def get_group_name(self, id: str):
-        self.setup_fusionauth()
-        try:
-            response = self.fusionauth_client.retrieve_group(id)
-            if response.was_successful():
-                group_name = response.success_response['group']['name']
-                return group_name
-            else:
-                return response.error_response
-        except Exception as e:
-            log.error(e)
-            raise e
-    """
 
     def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: date,
                    date_of_last_login: date, sort_by, sort_column, db):
@@ -85,43 +66,6 @@ class ProviderFusionAuth(Provider):
         users = [self._cast_user(user) for user in users]
 
         return users, next_page, page_size, total_count
-
-    # No need that anymore
-    """ 
-    def _cast_user_model(self, response: dict):
-        full_name = response.get('firstName')
-        if response.get('lastName'):
-            full_name = f"{full_name} {response.get('lastName')}"
-
-        last_login_at = datetime.fromtimestamp(response['lastLoginInstant'] / 1000)
-        last_update_at = datetime.fromtimestamp(response['lastUpdateInstant'] / 1000)
-        created_at = datetime.fromtimestamp(response['insertInstant'] / 1000)
-
-        roles = []
-        groups = []
-        if len(response['registrations']) != 0:
-            roles = response['registrations'][0]['roles']
-        if len(response['user']['memberships']) != 0:
-            for x in response['user']['memberships']:
-                group_name = self.get_group_name(x['groupId'])
-                groups.append(group_name)
-
-        return User(
-            id=response['id'],
-            email=response['email'],
-            username=response['email'],
-            verified=response['verified'],
-            user_status=response['active'],
-            created_at=str(created_at).split(".")[0],
-            last_login_at=str(last_login_at).split(".")[0],
-            last_update_at=str(last_update_at).split(".")[0],
-            first_name=response.get('firstName'),
-            last_name=response.get('lastName'),
-            roles=roles,
-            groups=groups,
-            full_name=full_name
-        )
-    """
 
     def _cast_user(self, user):
         return User(
@@ -528,26 +472,6 @@ class ProviderFusionAuth(Provider):
         except Exception as err:
             log.error(f"Exception: {err}")
             raise err
-
-    # No need
-    """
-    def get_user(self, user_ids: List[str]):
-        self.setup_fusionauth()
-        try:
-            user_info = self.fusionauth_client.search_users_by_ids(user_ids)
-            if user_info.status == 200:
-                users_list = user_info.success_response['users']
-                return {
-                    "total": user_info.success_response['total'],
-                    "users": [self._cast_user_model(user) for user in users_list]
-                }
-            else:
-                raise NotExistingResourceError()
-        except Exception as err:
-            error_template = "get_user Exception: An exception of type {0} occurred. error: {1}"
-            log.error(error_template.format(type(err).__name__, str(err)))
-            raise err
-    """
 
     def verify(self, token: str):
         try:
