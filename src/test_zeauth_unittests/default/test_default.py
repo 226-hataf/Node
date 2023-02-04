@@ -144,6 +144,16 @@ class TestDefault:
             assert response.status_code == HTTP_200_OK
 
     @pytest.mark.asyncio
+    async def test_default_resend_confirmation_email_user_not_found(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            username = "non_exist@test.com"
+
+            json_data = {"username": f"{username}"}
+
+            response = await ac.post("/resend_confirmation_email", json=json_data)
+            assert response.status_code == HTTP_404_NOT_FOUND
+
+    @pytest.mark.asyncio
     async def test_default_delete_test_user_success(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
             db = get_db().__next__()
@@ -244,7 +254,17 @@ class TestDefault:
 
             response = await ac.post("/refresh_token", params=params)
             assert response.status_code == HTTP_200_OK
-    
+
+    @pytest.mark.asyncio
+    async def test_default_refresh_token_cannot_created(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            token = "qwe123"
+            params = {"token": f"{token}"}
+
+            response = await ac.post("/refresh_token", params=params)
+            assert response.status_code == HTTP_403_FORBIDDEN
+            assert response.json() == {"detail": "Your refresh_token cannot be created !"}
+
     @pytest.mark.asyncio
     async def test_default_refresh_token_for_client_account_success(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:

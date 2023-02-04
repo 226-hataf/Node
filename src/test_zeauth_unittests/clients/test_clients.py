@@ -24,7 +24,7 @@ class TestClients:
     not_exist_client_secret = "kd08a*a/d3%6dps#*-t"
     group_name = "user"
     fake_group = "fake_group"
-
+    
     @pytest.mark.asyncio
     async def test_clients_create_new_client_with_repeated_group_names(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
@@ -59,6 +59,69 @@ class TestClients:
             response = await ac.post("/clients/", json=json_data)
             assert response.status_code == HTTP_404_NOT_FOUND
             assert response.json() == {"detail": "Group/s not found !"}
+
+    @pytest.mark.asyncio
+    async def test_clients_create_new_client_all_field_must_be_set(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+
+            json_data = {
+                "name": f"{TestClients.client_name}",
+                "email": "user@test.com"
+
+            }
+            response = await ac.post("/clients/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['All fields must be set in body']
+
+    @pytest.mark.asyncio
+    async def test_clients_create_new_client_empty_list_not_excepted(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+
+            json_data = {
+                "name": f"{TestClients.client_name}",
+                "email": "user@test.com",
+                "groups": [
+                    ""
+                ]
+            }
+            response = await ac.post("/clients/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Empty list not excepted ! ']
+
+    @pytest.mark.asyncio
+    async def test_clients_create_new_client_value_string_not_excepted(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+
+            json_data = {
+                "name": f"{TestClients.client_name}",
+                "email": "user@test.com",
+                "groups": [
+                    "string"
+                ]
+            }
+            response = await ac.post("/clients/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Value string not excepted ! ']
+
+    @pytest.mark.asyncio
+    async def test_clients_create_new_client_empty_value_not_excepted(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            group_name = TestClients.group_name
+
+            json_data = {
+                "name": "",
+                "email": "user@test.com",
+                "groups": [
+                    f"{group_name}"
+                ]
+            }
+            response = await ac.post("/clients/", json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Empty value not excepted ! ']
 
     @pytest.mark.asyncio
     async def test_clients_create_new_client_with_exist_email_in_users_table(self):
