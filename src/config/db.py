@@ -5,12 +5,12 @@ import os
 
 
 class Settings:
-    POSTGRES_USER: str = os.environ.get("POSTGRES_USER")
-    POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
-    POSTGRES_SERVER: str = os.environ.get("POSTGRES_SERVER")
-    POSTGRES_PORT: str = os.environ.get("POSTGRES_PORT", 5432)
-    POSTGRES_DB: str = os.environ.get("POSTGRES_DB")
-    DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    DB_USERNAME: str = os.environ.get("DB_USERNAME")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD")
+    DB_HOST: str = os.environ.get("DB_HOST")
+    DB_PORT: str = os.environ.get("DB_PORT", 5432)
+    DB_NAME: str = os.environ.get("DB_NAME")
+    DATABASE_URL = f"postgresql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 
 SQLALCHEMY_DATABASE_URL = Settings().DATABASE_URL

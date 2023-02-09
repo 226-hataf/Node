@@ -38,7 +38,7 @@ DEFAULT_GROUPS = [
 ]
 APP_NAME = 'zekoder-zeauth'
 ROLE_ACTIONS = ["create", "list", "get", "update", "del"]
-ROLE_RESOURCE = ["users", "roles", "groups"]
+ROLE_RESOURCE = ["users", "roles", "groups", "clients"]
 
 
 class ProviderFusionAuth(Provider):

@@ -95,15 +95,15 @@ spec:
             value: "/B?D(G+KbPeShVmYq3t6w9z$C&F)H@Mc"
           - name: STR_ENCRYPT_DECRYPT_KEY
             value: "ANpYasKKpHA3D9JNTNtntJhL03W3ttzC8YT2OuyQa7A="
-          - name: POSTGRES_USER
+          - name: DB_USERNAME
             value: "postgres"
-          - name: POSTGRES_PASSWORD
+          - name: DB_PASSWORD
             value: "N6nyFiMkPb"
-          - name: POSTGRES_SERVER
+          - name: DB_HOST
             value: "35.184.231.146"
-          - name: POSTGRES_PORT
+          - name: DB_PORT
             value: "5432"
-          - name: POSTGRES_DB
+          - name: DB_NAME
             value: "zekoder"
           - name: REDIS_KEY_PREFIX
             value: "zekoder"
