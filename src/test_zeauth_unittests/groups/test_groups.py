@@ -24,7 +24,6 @@ class TestGroups:
     group_name_non_exist = "tester"
     group_name_create = "fake-group"
 
-
     @pytest.mark.asyncio
     async def test_groups_list_success(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
@@ -587,4 +586,3 @@ class TestGroups:
             assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
             assert [x["msg"] for x in json_response["detail"]] == ['value is not a valid uuid']
             assert [x["type"] for x in json_response["detail"]] == ['type_error.uuid']
-

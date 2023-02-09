@@ -51,7 +51,6 @@ class TestUsers:
             response = await ac.get("/users/", params=params)
             assert response.status_code == HTTP_200_OK
 
-
     @pytest.mark.asyncio
     async def test_user_to_group_success(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
@@ -355,6 +354,38 @@ class TestUsers:
             assert json_response == {"detail": "User not found"}
 
     @pytest.mark.asyncio
+    async def test_user_update_current_user_empty_value_not_accepted(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            email = "user@test.com"
+
+            user_id = get_user_by_email(db, email)
+
+            json_data = {
+                "first_name": ""
+            }
+            response = await ac.put(f'/users/{str(user_id.id)}', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Empty value not excepted ! ']
+
+    @pytest.mark.asyncio
+    async def test_user_update_current_user_request_body_can_not_be_empty(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            email = "user@test.com"
+
+            user_id = get_user_by_email(db, email)
+
+            json_data = {
+
+            }
+            response = await ac.put(f'/users/{str(user_id.id)}', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Request body can not be empty !']
+
+    @pytest.mark.asyncio
     async def test_user_delete_non_exist_user(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
             user_id = TestUsers.not_exists_user_id
@@ -473,6 +504,25 @@ class TestUsers:
             assert [x["msg"] for x in json_response["detail"]] == ['invalid password format']
 
     @pytest.mark.asyncio
+    async def test_user_create_with_invalid_password_format2(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            json_data = {
+                "email": "test2@test.com",
+                "username": "",
+                "password": "AsAsAs00",
+                "first_name": "",
+                "last_name": "",
+                "verified": "true",
+                "user_status": "true",
+                "phone": ""
+            }
+
+            response = await ac.post('/users/', json=json_data)
+            json_response = response.json()
+            assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+            assert [x["msg"] for x in json_response["detail"]] == ['Password needs at least one special character']
+
+    @pytest.mark.asyncio
     async def test_user_delete_success(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
             db = get_db().__next__()
@@ -484,4 +534,3 @@ class TestUsers:
             json_response = response.json()
             assert response.status_code == HTTP_202_ACCEPTED
             assert json_response == {'detail': f"User <{user_id.id}> deleted successfully !"}
-
