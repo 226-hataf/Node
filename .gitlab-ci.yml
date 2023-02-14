@@ -41,7 +41,6 @@ build dev:
   - gcloud config set project $PROJECT
   - export APP_NAME=$PROVIDER-$APP-$BRANCH
   - export IMAGE_NAME=$REGISTERY/$PROJECT/$PROVIDER/$APP:dev
-  - sed -i.bak -e "s+IMAGE+$IMAGE_NAME+" -e "s/SERVICE/$APP_NAME/" knative.yaml
 
   script:
   # build via cloud build
