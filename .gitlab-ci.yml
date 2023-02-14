@@ -46,9 +46,6 @@ build dev:
   script:
   # build via cloud build
   - gcloud builds submit --tag $IMAGE_NAME
-  # deploy to cloud run
-  - gcloud run services replace --platform managed --region=$REGION knative.yaml
-  - gcloud run services set-iam-policy --quiet --region=$REGION $APP_NAME policy.yaml
 
 sonarcloud-check:
   image:
