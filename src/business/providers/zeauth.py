@@ -293,6 +293,7 @@ class ProviderFusionAuth(Provider):
             first_name=user.first_name,
             last_name=user.last_name,
             full_name=full_name,
+            permissions=roles,
             roles=roles,
             groups=groups,
             created_at=int(created_at.timestamp()),
@@ -316,6 +317,7 @@ class ProviderFusionAuth(Provider):
                 first_name=user.first_name,
                 last_name=user.last_name,
                 roles=roles,
+                permissions=roles,
                 groups=groups,
                 full_name=full_name
             ),
@@ -576,7 +578,8 @@ class ProviderFusionAuth(Provider):
                     phone=user.get('phone'),
                     last_login_at=user.get('last_login_at'),
                     created_at=user.get('created_at'),
-                    update_at=user.get('last_update_at')
+                    update_at=user.get('last_update_at'),
+                    permissions=user.get('permissions')
                 )
 
         except Exception as err:
