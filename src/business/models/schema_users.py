@@ -22,11 +22,8 @@ class UsersWithIDsSchema(ZeBaseModel):
 
     @validator("users_ids")
     def options_non_empty(cls, v):
-        if v == '':
-            assert v != ' ', 'Empty value not excepted ! '
         if v == [] or v == ['']:
             assert v != [], 'Empty list not excepted ! '
-            assert v != [''], 'Empty list not excepted ! '
         return v
 
 
