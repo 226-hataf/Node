@@ -565,7 +565,7 @@ class ProviderFusionAuth(Provider):
 
             else:
                 return User(
-                    id=str(user.get('sub')),
+                    id=str(user.get('id')),
                     roles=user.get('roles'),
                     groups=user.get('groups'),
                     email=user.get('email'),
