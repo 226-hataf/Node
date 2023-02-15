@@ -40,21 +40,31 @@ class SortColumnEnum(str, Enum):
 
 
 def get_groups_users(db: Session, group_id: str):
-    return db.query(models.GroupsUser.users).filter(models.GroupsUser.groups == group_id).all()
+    query = db.query(models.GroupsUser.users, models.User.first_name)
+    users = query \
+        .join(models.User) \
+        .filter(models.GroupsUser.groups == group_id) \
+        .all()
+    print(users)
+    if users is None:
+        return None
+    return users
 
 
 def get_groups(db: Session, skip: int = 0, limit: int = 100):
     query = db.query(models.Group)
     groups = query.offset(skip).limit(limit).all()
     for gr in groups:
-        users = [users['users'] for users in get_groups_users(db, gr.id)]
+        users_id = [users['users'] for users in get_groups_users(db, gr.id)]
+        users_name = [users['first_name'] for users in get_groups_users(db, gr.id)]
         groups_list = dict(
             name=gr.name,
             description=gr.description,
             id=gr.id,
             created_on=gr.created_on,
             updated_on=gr.updated_on,
-            users_in_group=users
+            users_id_in_group=users_id,
+            users_name_in_group=users_name
         )
         yield groups_list
 
@@ -62,14 +72,16 @@ def get_groups(db: Session, skip: int = 0, limit: int = 100):
 def get_group_by_name(db: Session, name: str):
     query = db.query(models.Group)
     groups = query.filter(models.Group.name == name).first()
-    users = [users['users'] for users in get_groups_users(db, groups.id)]
+    users_id = [users['users'] for users in get_groups_users(db, groups.id)]
+    users_name = [users['first_name'] for users in get_groups_users(db, groups.id)]
     return dict(
         name=groups.name,
         description=groups.description,
         id=groups.id,
         created_on=groups.created_on,
         updated_on=groups.updated_on,
-        users_in_group=users
+        users_id_in_group=users_id,
+        users_name_in_group=users_name
     )
 
 
@@ -553,7 +565,8 @@ def generate_client_secret():
             string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation,
             k=32
         )
-    ).replace('"', '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+    ).replace('"',
+              '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
 
 
 def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
