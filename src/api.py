@@ -113,9 +113,6 @@ async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema, db
 def verify_email(token: ConfirmationEmailVerifySchema, db: Session = Depends(get_db)):
     try:
         return auth_provider.verify_email(db, token)
-    except UserNotFoundError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
     except IncorrectResetKeyError as err:
         log.error(err)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(err)) from err
@@ -218,7 +215,7 @@ async def refresh_token(token: str):
         return result
     except InvalidTokenError as e:
         log.error(e)
-        raise HTTPException(status_code=403, detail=f"Your refresh_token cannot be created !")
+        raise HTTPException(status_code=403, detail="Your refresh_token cannot be created !")
 
 
 # load all routes dynamically

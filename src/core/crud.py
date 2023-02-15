@@ -179,14 +179,13 @@ def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
 
+def get_multi_users_by_emails(db: Session, emails: list):
+    return [obj.id for obj in db.query(models.User).filter(models.User.email.in_(emails))]
+
+
 def get_user_by_uuid(db: Session, user_id: UUIDCheckForUserIDSchema):
     """For single user only"""
     return db.query(models.User).filter(models.User.id == user_id.user_id).first()
-
-
-def get_users_with_uuids(db: Session, user_ids: list):
-    """For multi users with their uuid's"""
-    return db.query(models.User).filter(models.User.id.in_(user_ids)).all()
 
 
 def user_verified(db: Session, verified: bool, user_id: int):
@@ -331,48 +330,6 @@ def get_users(db: Session, search, user_status: bool, date_of_creation: date, da
     return query.all(), count
 
 
-def update_user_group(db: Session, user_id: str, groups: list):
-    query_groupUser = db.query(models.GroupsUser)
-    query_group = db.query(models.Group)
-    # First delete the assigned group of the user,
-    query_groupUser \
-        .filter(models.GroupsUser.users == user_id) \
-        .delete()
-    # then assign requested group/s to the user
-    for obj in \
-            query_group \
-                    .filter(models.Group.name.in_(groups)):
-        group = models.GroupsUser(groups=obj.id, users=user_id)
-        db.add(group)
-        db.commit()
-        db.refresh(group)
-        yield group
-
-
-def group_name_exists(db: Session, groups: list):
-    query_group = db.query(models.Group)
-    # check the request group names is exists in the Group table, if not throw 404
-    # also with this method, if request repeated group name, then it will not allow to use
-    # repeated group name, so the update_user_group func. will not run in routes/assignment.py
-    result = query_group \
-        .filter(models.Group.name.in_(groups)) \
-        .count()
-    if len(groups) == result:
-        return True
-    else:
-        raise HTTPException(status_code=404, detail="Group name not exist or repeated ! Check again..")
-
-
-def get_groups_of_user_by_id(db: Session, user_id: str):
-    # Get all groups assigned to a user
-    query = db.query(models.GroupsUser.users, models.Group.name)
-
-    return query \
-        .join(models.Group) \
-        .filter(models.GroupsUser.users == user_id) \
-        .all()
-
-
 def assign_user_to_group(db: Session, group_id: str, user_id: uuid.UUID):
     query_user = db.query(models.User)
     query_group_user = db.query(models.GroupsUser)
@@ -397,10 +354,6 @@ def deassign_user_from_group(db: Session, group_id: str, user_id: uuid.UUID):
     query_user = db.query(models.User)
     query_group_user = db.query(models.GroupsUser)
 
-    group_exist = get_group_by_id(db, group_id)
-    if not group_exist:
-        raise HTTPException(status_code=404, detail="Group not found")
-
     user_id_exist_in_users_table = query_user.filter(models.User.id == user_id).first()
     if user_id_exist_in_users_table:
         user_exist_in_group = query_group_user \
@@ -410,8 +363,6 @@ def deassign_user_from_group(db: Session, group_id: str, user_id: uuid.UUID):
             db.delete(user_exist_in_group)
             db.commit()
             yield user_exist_in_group
-        else:
-            raise HTTPException(status_code=404, detail="User not exist")
     else:
         raise HTTPException(status_code=404, detail="User not exist")
 
@@ -578,6 +529,7 @@ def generate_client_secret():
         )
     ).replace('"', '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
 
+
 def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
     return db.query(
         models.GroupsUser, models.GroupsRole, models.Role
@@ -604,6 +556,11 @@ def get_client_by_uuid_and_secret(db: Session, client_id: uuid, client_secret: s
 def get_client_by_uuid(db: Session, client_id: UUIDCheckForClientIdSchema):
     """Gets client's id by uuid"""
     client_info = db.query(models.Client).filter(models.Client.id == client_id.client_id).first()
+    return client_info
+
+
+def get_client_by_name(db: Session, name: str):
+    client_info = db.query(models.Client).filter(models.Client.name == name).first()
     return client_info
 
 
@@ -714,6 +671,11 @@ def remove_client(db: Session, client_id: UUIDCheckForClientIdSchema):
     delete_client = get_client_by_uuid(db, client_id)
     db.delete(delete_client)
     db.commit()
+    # delete client record from groups_users table
+    db.query(models.GroupsUser) \
+        .filter(models.GroupsUser.users == delete_client.owner) \
+        .delete()
+    db.commit()
     # delete current client record from users table
     # if this record created by client and password is empty then we can delete it
     # otherwise client owner in the user table could be admin, user, super-admin ex.!
@@ -722,12 +684,8 @@ def remove_client(db: Session, client_id: UUIDCheckForClientIdSchema):
         .filter(and_(models.User.id == delete_client.owner,
                      models.User.password == '')) \
         .first()
+
     if delete_client_from_users_table:
         db.delete(delete_client_from_users_table)
         db.commit()
-    # delete client record from groups_users table
-    db.query(models.GroupsUser) \
-        .filter(models.GroupsUser.users == delete_client.owner) \
-        .delete()
-    db.commit()
     return delete_client.id

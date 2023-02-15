@@ -19,11 +19,5 @@ class GroupUserRoleSchema(BaseModel):  # Always use Schema at end of Schema clas
         else:
             raise ValueError('Neither users nor roles are set in body')
 
-    @validator("users", "roles")
-    def options_non_empty(cls, v):
-        if v == '':
-            assert v != '', 'Empty value not excepted ! '
-        return v
-
     class Config:
         orm_mode = True
