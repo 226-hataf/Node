@@ -8,7 +8,7 @@ from business.providers import get_provider
 from business.providers.base import *
 from core import log
 from core.crud import assign_multi_users_or_roles_to_group, remove_multi_users_or_roles_from_group
-from business.models.schemas_groups import GroupSchema, GroupBaseSchema
+from business.models.schemas_groups import GroupSchema, GroupBaseSchema, GroupSchemaCreate
 from business.models.dependencies import get_current_user
 from core import crud
 from config.db import get_db
@@ -32,7 +32,7 @@ model = ZKModel(**{
 
 
 # Create Group
-@router.post('/', tags=[model.plural], status_code=201, response_model=GroupSchema, description="Create a group")
+@router.post('/', tags=[model.plural], status_code=201, response_model=GroupSchemaCreate, description="Create a group")
 async def create(group_create: GroupBaseSchema, db: Session = Depends(get_db),
                  user: UserResponseModel = Security(get_current_user, scopes=["groups-create"])):
     """Create a group"""

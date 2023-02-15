@@ -39,12 +39,38 @@ class SortColumnEnum(str, Enum):
     USER_NAME = 'user_name'
 
 
+def get_groups_users(db: Session, group_id: str):
+    return db.query(models.GroupsUser.users).filter(models.GroupsUser.groups == group_id).all()
+
+
 def get_groups(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Group).offset(skip).limit(limit).all()
+    query = db.query(models.Group)
+    groups = query.offset(skip).limit(limit).all()
+    for gr in groups:
+        users = [users['users'] for users in get_groups_users(db, gr.id)]
+        groups_list = dict(
+            name=gr.name,
+            description=gr.description,
+            id=gr.id,
+            created_on=gr.created_on,
+            updated_on=gr.updated_on,
+            users_in_group=users
+        )
+        yield groups_list
 
 
 def get_group_by_name(db: Session, name: str):
-    return db.query(models.Group).filter(models.Group.name == name).first()
+    query = db.query(models.Group)
+    groups = query.filter(models.Group.name == name).first()
+    users = [users['users'] for users in get_groups_users(db, groups.id)]
+    return dict(
+        name=groups.name,
+        description=groups.description,
+        id=groups.id,
+        created_on=groups.created_on,
+        updated_on=groups.updated_on,
+        users_in_group=users
+    )
 
 
 def get_groups_by_name_list(db: Session, groups: list):
