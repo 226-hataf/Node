@@ -234,6 +234,7 @@ class ProviderFusionAuth(Provider):
             aud=AUDIENCE,
             expr=int(expr_in_payload),
             iss=os.environ.get('ZEAUTH_URL'),
+            id=str(user.id),
             sub=str(user.id),
             email=user.email,
             username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
