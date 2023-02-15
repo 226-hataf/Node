@@ -21,6 +21,16 @@ class GroupSchema(GroupBaseSchema):
     id: UUID = Field(default_factory=uuid4, description="uuid's of Group", title="Group id's")
     created_on: Optional[datetime] = Field(default=None, description="Group created date", title="Group created date")
     updated_on: Optional[datetime] = Field(default=None, description="Group update date", title="Group update date")
+    users_in_group: Optional[list[UUID]] = Field(description="User's uuid's in a group", title="User's uuid's")
+
+    class Config:
+        orm_mode = True
+
+
+class GroupSchemaCreate(GroupBaseSchema):
+    id: UUID = Field(default_factory=uuid4, description="uuid's of Group", title="Group id's")
+    created_on: Optional[datetime] = Field(default=None, description="Group created date", title="Group created date")
+    updated_on: Optional[datetime] = Field(default=None, description="Group update date", title="Group update date")
 
     class Config:
         orm_mode = True
