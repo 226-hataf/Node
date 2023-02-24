@@ -11,7 +11,7 @@ from business.models.schema_main import UUIDCheckForUserIDSchema
 from business.models.schema_roles import RoleBaseSchema
 from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema
 from business.models.schemas_groups import GroupBaseSchema
-from business.models.schemas_groups_users import GroupUserRoleSchema
+from business.models.schemas_groups_users import GroupUserRoleSchema, UserToGroupsSchema
 from business.providers.base import UserNotVerifiedError
 from core import log
 from core.db_models import models
@@ -404,6 +404,40 @@ def deassign_user_from_group(db: Session, group_id: str, user_id: uuid.UUID):
     else:
         raise HTTPException(status_code=404, detail="User not exist")
 
+
+def assign_multi_groups_to_user(db: Session, user_id: str, groups: UserToGroupsSchema):
+    try:
+        if groups.groups:
+
+            query_groups = db.query(models.Group)
+            query_user = db.query(models.User)
+            query_groupUser = db.query(models.GroupsUser)
+            # Check ! do we have a record in our groups table, for requested groups uuid's ?
+            groups_in_groupsTable = [obj.id for obj in
+                                   query_groups
+                                   .filter(models.Group.id.in_(groups.groups))]
+            # check user in the group
+            users_in_groupUserTable = [obj.groups for obj in
+                                       query_groupUser
+                                       .filter(and_(models.GroupsUser.groups.in_(groups_in_groupsTable)),
+                                               (models.GroupsUser.users == user_id))]
+            # If users exist in UserTable and not in the groupTable, so assign them to the group
+            assign_user_to_groups = [obj for obj in groups_in_groupsTable if obj not in set(users_in_groupUserTable)]
+
+            if assign_user_to_groups:  # These users not in the group, so you can assign them to this group
+                db.bulk_insert_mappings(
+                    models.GroupsUser,
+                    [dict(users=user_id, groups=groups, ) for groups in assign_user_to_groups],
+                )
+                db.commit()
+                return groups.groups
+            else:
+                raise HTTPException(status_code=403, detail="Available Groups are already related to this User")
+
+
+    except ValueError as e:
+        log.error(e)
+        return {"detail": "invalid uuid"}
 
 def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_role: GroupUserRoleSchema):
     try:

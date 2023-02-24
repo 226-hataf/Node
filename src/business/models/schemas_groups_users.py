@@ -21,3 +21,21 @@ class GroupUserRoleSchema(BaseModel):  # Always use Schema at end of Schema clas
 
     class Config:
         orm_mode = True
+
+
+class UserToGroupsSchema(BaseModel):  # Always use Schema at end of Schema classes
+    groups: Optional[list[UUID]] = Field(description="User to multiple Groups",
+                                        title="Groups uuid's")
+
+    @root_validator(pre=True)
+    def check_field(cls, values):
+        fields = list(values.keys())
+        if len(set(fields).intersection({"groups"})) == 1:
+            # Request body cannot be empty and,
+            # Only one of these (users or roles) can be sent in the request body.
+            return values
+        else:
+            raise ValueError('Neither groups are set in body')
+
+    class Config:
+        orm_mode = True

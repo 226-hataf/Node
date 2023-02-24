@@ -1,5 +1,6 @@
 import uuid
 from business.models.schema_main import UUIDCheckForGroupIdSchema, UUIDCheckForUserIDSchema
+from business.models.schemas_groups_users import GroupUserRoleSchema, UserToGroupsSchema
 from config.db import get_db
 from fastapi import APIRouter, Depends, HTTPException, status, Security
 from sqlalchemy.orm import Session
@@ -10,7 +11,8 @@ from business.models.schema_users import UserActivationProcessResponseSchema, Us
 from business.providers.base import *
 from business.providers import get_provider
 from core import log, crud
-from core.crud import assign_user_to_group, deassign_user_from_group
+from core.crud import assign_user_to_group, deassign_user_from_group, assign_multi_users_or_roles_to_group, \
+    assign_multi_groups_to_user
 from core.types import ZKModel
 from business.models.dependencies import CommonDependencies, ProtectedMethod
 from business.models.dependencies import get_current_user
@@ -199,6 +201,21 @@ async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(U
     try:
         data = deassign_user_from_group(db, str(checked_uuid), user_id)
         return data
+    except ValueError as e:
+        log.error(e)
+        raise HTTPException(status_code=500, detail="unknown error, check the logs")
+
+@router.patch('/{user_id}/to_groups', tags=[model.plural], status_code=200, description="Assign user to multiple groups")
+async def users_to_multiple_groups(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema),
+                                  groups: UserToGroupsSchema = ..., db: Session = Depends(get_db),
+                                  user: UserResponseModel = Security(get_current_user, scopes=["users-update"])):
+    """Assign User to multiple Groups"""
+    user_exist = crud.get_user_by_uuid(db=db, user_id=user_id)
+    if not user_exist:
+        raise HTTPException(status_code=404, detail="User not found")
+    try:
+        assigned_ids = assign_multi_groups_to_user(db, str(user_id.user_id), groups)
+        return assigned_ids
     except ValueError as e:
         log.error(e)
         raise HTTPException(status_code=500, detail="unknown error, check the logs")
