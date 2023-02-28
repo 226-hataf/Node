@@ -205,10 +205,12 @@ async def remove_user_from_group(group_id: UUIDCheckForGroupIdSchema = Depends(U
         log.error(e)
         raise HTTPException(status_code=500, detail="unknown error, check the logs")
 
-@router.patch('/{user_id}/to_groups', tags=[model.plural], status_code=200, description="Assign user to multiple groups")
+
+@router.patch('/{user_id}/to_groups', tags=[model.plural], status_code=200,
+              description="Assign user to multiple groups")
 async def users_to_multiple_groups(user_id: UUIDCheckForUserIDSchema = Depends(UUIDCheckForUserIDSchema),
-                                  groups: UserToGroupsSchema = ..., db: Session = Depends(get_db),
-                                  user: UserResponseModel = Security(get_current_user, scopes=["users-update"])):
+                                   groups: UserToGroupsSchema = ..., db: Session = Depends(get_db),
+                                   user: UserResponseModel = Security(get_current_user, scopes=["users-update"])):
     """Assign User to multiple Groups"""
     user_exist = crud.get_user_by_uuid(db=db, user_id=user_id)
     if not user_exist:

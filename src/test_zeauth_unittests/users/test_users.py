@@ -4,7 +4,7 @@ from api import app
 from starlette.status import HTTP_200_OK, HTTP_422_UNPROCESSABLE_ENTITY, \
     HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_403_FORBIDDEN, HTTP_202_ACCEPTED, HTTP_405_METHOD_NOT_ALLOWED
 from config.db import get_db
-from core.crud import get_user_by_email, get_multi_users_by_emails
+from core.crud import get_user_by_email, get_multi_users_by_emails, get_multi_groups_by_group_names
 from business.models.dependencies import get_current_user
 
 
@@ -51,6 +51,27 @@ class TestUsers:
             response = await ac.get("/users/", params=params)
             assert response.status_code == HTTP_200_OK
 
+    @pytest.mark.asyncio
+    async def test_user_to_multiple_groups_success(self):
+        async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
+            db = get_db().__next__()
+            email = "user@test.com"
+            user_id = get_user_by_email(db, email)
+
+            group_names = ["admin", "user"]
+
+            group1, group2 = get_multi_groups_by_group_names(db, group_names)
+
+            json_data = {
+                'groups': [
+                    f"{group1}", f"{group2}"
+                ]
+            }
+
+            response = await ac.patch(f'/users/{str(user_id.id)}/to_groups', json=json_data)
+            assert response.status_code == HTTP_200_OK
+
+    
     @pytest.mark.asyncio
     async def test_user_to_group_success(self):
         async with AsyncClient(app=app, base_url="http://localhost:8080/") as ac:
