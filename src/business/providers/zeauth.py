@@ -22,6 +22,8 @@ from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySch
 import jwt
 from config.db import get_db
 
+RESEND_CONFIRMATION_EMAIL_URL = os.environ.get('RESEND_CONFIRMATION_EMAIL_URL')
+RESET_PASSWORD_URL = os.environ.get('RESET_PASSWORD_URL')
 FUSIONAUTH_APIKEY = os.environ.get('FUSIONAUTH_APIKEY')
 APPLICATION_ID = os.environ.get('applicationId')
 ZEAUTH_URL = os.environ.get('ZEAUTH_URL')
@@ -402,7 +404,7 @@ class ProviderFusionAuth(Provider):
             reset_key = hash(uuid.uuid4().hex)
             set_redis(reset_key, user_info.username)
 
-            reset_password_url = f"https://zekoder.netlify.app/auth/resetpassword?token={reset_key}"
+            reset_password_url = f"{RESET_PASSWORD_URL}?token={reset_key}"
             await send_email(
                 recipients=[user_info.username],
                 subject="Reset Password",
@@ -432,6 +434,7 @@ class ProviderFusionAuth(Provider):
             log.error(f"Exception: {err}")
             raise err
 
+
     async def resend_confirmation_email(self, db, user_info):
         try:
             user = crud.get_user_by_email(db, user_info.username)
@@ -442,7 +445,7 @@ class ProviderFusionAuth(Provider):
 
             confirm_email_key = hash(uuid.uuid4().hex)
             set_redis(confirm_email_key, user_info.username)
-            confirm_email_url = f"https://zekoder.netlify.app/auth/confirm-email?token={confirm_email_key}"
+            confirm_email_url = f"{RESEND_CONFIRMATION_EMAIL_URL}?token={confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
