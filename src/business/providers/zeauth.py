@@ -73,7 +73,7 @@ class ProviderFusionAuth(Provider):
         return User(
             id=str(user.id),
             email=user.email,
-            username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
+            username=user.user_name,
             verified=user.verified,
             user_status=user.user_status,
             first_name=user.first_name,
@@ -239,7 +239,7 @@ class ProviderFusionAuth(Provider):
             id=str(user.id),
             sub=str(user.id),
             email=user.email,
-            username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
+            username=user.user_name,
             verified=user.verified,
             user_status=True,
             avatar_url='',
@@ -261,7 +261,7 @@ class ProviderFusionAuth(Provider):
             user=User(
                 id=str(user.id),
                 email=user.email,
-                username=user.email if (user.user_name == "" or user.user_name != user.email) else user.user_name,
+                username=user.user_name,
                 verified=user.verified,
                 user_status=user.user_status,
                 created_at=user.created_on,
@@ -338,9 +338,23 @@ class ProviderFusionAuth(Provider):
         """create new user"""
         try:
             encrypted_password = self.str_enc_dec.encrypt_str(message=user.password)
+            user_Name = user.user_name
+            # check if username is not DEFAULT_ADMIN_EMAIL(We need this control for bootsraping)
+            # and if username not none, check username taken from another account, if not assign
+            # else username field is empty then fetch username field to email field.
+            if user_Name != DEFAULT_ADMIN_EMAIL:
+                if user.user_name != "":
+                    userName = crud.check_username_exist(db, user_Name)
+                    if userName is None:
+                        user_Name = user.user_name
+                    else:
+                        raise UserNameError("username already linked to an account")
+                else:
+                    user_Name = user.email
+
             created_user = crud.create_new_user(db, user={
                 "email": user.email,
-                "user_name": user.email if (user.username == "" or user.username != user.email) else user.username,
+                "user_name": user_Name,
                 "password": str(encrypted_password),
                 "verified": False,
                 "user_status": True,
@@ -374,9 +388,23 @@ class ProviderFusionAuth(Provider):
             encrypted_password = self.str_enc_dec.encrypt_str(message=user.password)
             log.info(f"encrypted_password {encrypted_password}")
 
+            userName = user.username
+            # check if username is not DEFAULT_ADMIN_EMAIL(We need this control for bootsraping)
+            # and if username not none, check username taken from another account, if not assign
+            # else username field is empty then fetch username field to email field.
+            if userName != DEFAULT_ADMIN_EMAIL:
+                if user.username != "":
+                    userName = crud.check_username_exist(db, userName)
+                    if userName is None:
+                        userName = user.username
+                    else:
+                        raise UserNameError("username already linked to an account")
+                else:
+                    userName = user.email
+
             user_resp = crud.create_user(db, user={
                 "email": user.email,
-                "user_name": user.email if (user.username == "" or user.username != user.email) else user.username,
+                "user_name": userName,
                 "password": str(encrypted_password),
                 "verified": False,
                 "user_status": True,

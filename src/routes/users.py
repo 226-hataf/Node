@@ -54,6 +54,9 @@ async def create_new_user(user: UserCreateSchema, db: Session = Depends(get_db),
     """Create new user"""
     try:
         return auth_provider.createNewUser(db, user)
+    except UserNameError as e:
+        log.debug(e)
+        raise HTTPException(status_code=403, detail=f"'{user.user_name}' username already linked to an account")
     except ValueError as e:
         log.error(e)
         raise HTTPException(status_code=500, detail="unknown error, check the logs")

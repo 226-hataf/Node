@@ -212,6 +212,10 @@ def get_user_login(db: Session, email: str):
     return user_login
 
 
+def check_username_exist(db: Session, username: str):
+    return db.query(models.User).filter(models.User.user_name == username).first()
+
+
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 

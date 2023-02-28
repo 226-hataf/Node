@@ -39,5 +39,9 @@ class UserNotFoundError(Exception):
     pass
 
 
+class UserNameError(Exception):
+    pass
+
+
 class IncorrectResetKeyError(Exception):
     pass
