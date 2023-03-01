@@ -55,7 +55,7 @@ class UserResponseSchema(ZeBaseModel):
     id: Optional[UUID] = Field(description="User's uuid", title="User's uuid")
     email: Optional[str] = Field(description="User's email", title="User's email", example="test-ze@test.com")
     password: Optional[str] = Field(description="User's password", title="User's password", example="gAAAAABjw0VGdYxDbneai8bdfPdTov-A9WKT6M10C8dR7bun0_cJ1Hfz2D")
-    username: Optional[str] = Field(description="User's username", title="User's username", example="test-ze@test.com")
+    user_name: Optional[str] = Field(description="User's username", title="User's username", example="test-ze@test.com")
     first_name: Optional[str] = Field(description="User's first name", title="User's first name", example="test")
     last_name: Optional[str] = Field(description="User's last name", title="User's last name", example="ze")
     verified: Optional[bool] = Field(description="User's verified status true/false", title="User's verified status")
@@ -69,7 +69,7 @@ class UserResponseSchema(ZeBaseModel):
 class UserCreateSchema(ZeBaseModel):
     """user create schema"""
     email: str = Field(description="User's email", title="User's email", example="test-ze@test.com")
-    username: Optional[str] = Field(description="User's username", title="User's username")
+    user_name: Optional[str] = Field(description="User's username", title="User's username")
     password: Optional[str] = Field(description="User's password", title="User's password", example="Te&te&123")
     first_name: Optional[str] = Field(description="User's first name", title="User's first name", example="test")
     last_name: Optional[str] = Field(description="User's last name", title="User's last name", example="ze")

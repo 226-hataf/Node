@@ -1,7 +1,6 @@
 import os
 import uuid
 from typing import Any
-
 import jwt
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
@@ -18,7 +17,7 @@ from core.db_models import models
 from datetime import date, datetime, timedelta
 from fastapi import HTTPException
 from pydantic.schema import Enum
-import random
+import secrets
 import string
 from redis_service.redis_service import RedisClient
 
@@ -213,12 +212,20 @@ def get_user_login(db: Session, email: str):
     return user_login
 
 
+def check_username_exist(db: Session, username: str):
+    return db.query(models.User).filter(models.User.user_name == username).first()
+
+
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
 
 def get_multi_users_by_emails(db: Session, emails: list):
     return [obj.id for obj in db.query(models.User).filter(models.User.email.in_(emails))]
+
+
+def get_multi_groups_by_group_names(db: Session, names: list):
+    return [obj.id for obj in db.query(models.Group).filter(models.Group.name.in_(names))]
 
 
 def get_user_by_uuid(db: Session, user_id: UUIDCheckForUserIDSchema):
@@ -594,13 +601,10 @@ def is_groups_user_not_exists(db: Session, groups_user_create: GroupsUserBase):
 
 
 def generate_client_secret():
-    return ''.join(
-        random.choices(
-            string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation,
-            k=32
-        )
-    ).replace('"',
-              '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+    return ''.join((secrets.choice(
+        string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation
+    ) for i in range(32)))\
+        .replace('"', '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
 
 
 def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
