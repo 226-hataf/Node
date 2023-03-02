@@ -11,6 +11,11 @@ class Provider:
         self.zeauth_bootstrap()
 
 
+class SignupSendNotificationError(Exception):
+    """Raised when notification email not send"""
+    pass
+
+
 class DuplicateEmailError(Exception):
     pass
 

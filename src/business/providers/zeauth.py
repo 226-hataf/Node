@@ -10,7 +10,8 @@ from business.models.users import User, LoginResponseModel, EncryptDecryptStrSch
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
-from core.crud import get_groups_name_of_user_by_id, get_roles_name_of_group
+from core.crud import get_groups_name_of_user_by_id, get_roles_name_of_group, \
+    send_notification_email
 from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
@@ -414,8 +415,14 @@ class ProviderFusionAuth(Provider):
             })
             log.info(user_resp.id)
             log.info(f"user {user_resp.email} created successfully.")
-            return self._cast_user(user_resp)
 
+            try:
+                if user_resp.email:
+                    send_notification_email(db, user.email, status='signup')
+            except SignupSendNotificationError:
+                log.debug("Notification email not send !! ")
+
+            return self._cast_user(user_resp)
         except IntegrityError as err:
             log.error(err)
             raise DuplicateEmailError() from err
@@ -428,6 +435,12 @@ class ProviderFusionAuth(Provider):
             user_resp = crud.get_user_by_email(db=db, email=user_info.username)
             if not user_resp:
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
+
+            try:
+                if user_resp.email:
+                    send_notification_email(db, user_resp.email, status='resetPassword')
+            except SignupSendNotificationError:
+                log.debug("Notification email not send !! ")
 
             reset_key = hash(uuid.uuid4().hex)
             set_redis(reset_key, user_info.username)

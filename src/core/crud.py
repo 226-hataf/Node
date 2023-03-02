@@ -2,6 +2,7 @@ import os
 import uuid
 from typing import Any
 import jwt
+import requests
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from business.models.schema_clients import ClientCreateSchema, ClientSchema, ClientJWTSchema, UUIDCheckForClientIdSchema
@@ -11,7 +12,7 @@ from business.models.schema_roles import RoleBaseSchema
 from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema
 from business.models.schemas_groups import GroupBaseSchema
 from business.models.schemas_groups_users import GroupUserRoleSchema, UserToGroupsSchema
-from business.providers.base import UserNotVerifiedError
+from business.providers.base import UserNotVerifiedError, SignupSendNotificationError
 from core import log
 from core.db_models import models
 from datetime import date, datetime, timedelta
@@ -23,6 +24,7 @@ from redis_service.redis_service import RedisClient
 
 client = RedisClient()
 
+SEND_NOTIFICATION_EMAIL_URL = os.environ.get('SEND_NOTIFICATION_EMAIL_URL')
 ZEAUTH_URL = os.environ.get('ZEAUTH_URL')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
@@ -184,6 +186,33 @@ def create_user(db: Session, user):
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+def send_notification_email(db: Session, email: str, status: str = None):
+    email_exist = get_user_by_email(db, email)
+    if email_exist:
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        if status == 'signup':
+            json_data = {"notificationId": "fd41c1fd-3c69-4cd1-9033-a41dc69788eb"}
+            response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
+            if response.status_code == 200:
+                log.debug(f'Notification email send to <{email_exist.email}>')
+                return True
+            else:
+                raise SignupSendNotificationError
+
+        if status == 'resetPassword':
+            json_data = {"notificationId": "851d6251-cbfc-404d-b9e6-0d99374b4057"}
+            response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
+            if response.status_code == 200:
+                log.debug(f'Notification email send to <{email_exist.email}>')
+                return True
+            else:
+                raise SignupSendNotificationError
+    else:
+        return None
 
 
 def create_new_user(db: Session, user):
