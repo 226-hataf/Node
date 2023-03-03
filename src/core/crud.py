@@ -12,7 +12,8 @@ from business.models.schema_roles import RoleBaseSchema
 from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema
 from business.models.schemas_groups import GroupBaseSchema
 from business.models.schemas_groups_users import GroupUserRoleSchema, UserToGroupsSchema
-from business.providers.base import UserNotVerifiedError, SignupSendNotificationError
+from business.providers.base import UserNotVerifiedError, SignupSendNotificationError, TemplateNotificationError, \
+    CreateNotificationError, ResetPasswordSendNotificationError
 from core import log
 from core.db_models import models
 from datetime import date, datetime, timedelta
@@ -188,7 +189,50 @@ def create_user(db: Session, user):
     return db_user
 
 
-def send_notification_email(db: Session, email: str, status: str = None):
+def create_template_for_notification(body: str):
+    zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
+    template_name = 'reset_password'
+    title = "Reset Password"
+    channel = "email"
+    json_data = {
+        "template_name": f"{template_name}",
+        "title": f"{title}",
+        "body": body,
+        "channel": f"{channel}"
+    }
+    response = requests.post(f"{zenotify_base_url}/templates/", json=json_data)
+
+    if response.status_code == 201:
+        log.debug(f'Template created success <{response.json()["id"]}>')
+        return response
+    else:
+        raise TemplateNotificationError
+
+
+def create_notification(recipients: str, template: str):
+    zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
+    provider = "664d0ac7-1d6c-4537-9fe6-5da5eef11fa1"
+    target = "email"
+
+    json_data = {
+        "recipients": [recipients],
+        "provider": f"{provider}",
+        "template": template,
+        "params": "",
+        "target": [f"{target}"],
+        "status": "",
+        "last_error": ""
+    }
+    log.debug(json_data)
+    response = requests.post(f"{zenotify_base_url}/notifications/", json=json_data)
+    log.debug(response)
+    if response.status_code == 201:
+        log.debug(f'Notification created success <{response.json()["id"]}>')
+        return response
+    else:
+        raise CreateNotificationError
+
+def send_notification_email(db: Session, email: str, status: str = None, notificationid: str = None):
     email_exist = get_user_by_email(db, email)
     if email_exist:
         headers = {
@@ -203,14 +247,13 @@ def send_notification_email(db: Session, email: str, status: str = None):
             else:
                 raise SignupSendNotificationError
 
-        if status == 'resetPassword':
-            json_data = {"notificationId": "851d6251-cbfc-404d-b9e6-0d99374b4057"}
+        if status == 'reset_password':
+            json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
-                log.debug(f'Notification email send to <{email_exist.email}>')
-                return True
+                return {"detail": "Reset Password link send to <{email_exist.email}>"}
             else:
-                raise SignupSendNotificationError
+                raise ResetPasswordSendNotificationError
     else:
         return None
 

@@ -130,6 +130,12 @@ async def reset_password(user_info: ResetPasswordSchema, db: Session = Depends(g
         response = await auth_provider.reset_password(user_info, db)
         if response:
             return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "email has been sent"})
+    except ResetPasswordSendNotificationError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
+    except CreateNotificationError as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
     except UserNotFoundError as err:
         log.error(err)
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err

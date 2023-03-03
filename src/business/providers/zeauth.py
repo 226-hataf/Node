@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
 from core.crud import get_groups_name_of_user_by_id, get_roles_name_of_group, \
-    send_notification_email
+    send_notification_email, create_template_for_notification, create_notification
 from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
@@ -433,25 +433,35 @@ class ProviderFusionAuth(Provider):
     async def reset_password(self, user_info, db):
         try:
             user_resp = crud.get_user_by_email(db=db, email=user_info.username)
-            if not user_resp:
+
+            if user_resp.email:
+                reset_key = hash(uuid.uuid4().hex)
+                set_redis(reset_key, user_info.username)
+                body = f"{RESET_PASSWORD_URL}?token={reset_key}"
+                # First; create template
+                try:
+                    response = create_template_for_notification(body)
+                    log.debug(response.json())
+                    if response.json()['id']:
+                        # Second; Create notification
+                        provider = response.json()['id']
+                        recipients = "a.uygur@cyberneticlabs.io"
+                        notification_response = create_notification(recipients, provider)
+                        if notification_response.json()['id']:
+                            notification_id = notification_response.json()['id']
+                            # And; send reset password link to users email !
+                            notification_resp = send_notification_email(db, user_resp.email, status='reset_password', notificationid=notification_id)
+                            return notification_resp
+                        else:
+                            raise ResetPasswordSendNotificationError("Reset Password link could not send !! ")
+                    else:
+                        raise CreateNotificationError("Notification Creating could not success !! ")
+
+                except TemplateNotificationError:
+                    log.debug("Notification Template could not created !! ")
+            else:
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
 
-            try:
-                if user_resp.email:
-                    send_notification_email(db, user_resp.email, status='resetPassword')
-            except SignupSendNotificationError:
-                log.debug("Notification email not send !! ")
-
-            reset_key = hash(uuid.uuid4().hex)
-            set_redis(reset_key, user_info.username)
-
-            reset_password_url = f"{RESET_PASSWORD_URL}?token={reset_key}"
-            await send_email(
-                recipients=[user_info.username],
-                subject="Reset Password",
-                body=reset_password_url
-            )
-            return True
         except Exception as err:
             log.error(err)
             raise err
