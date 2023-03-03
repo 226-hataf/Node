@@ -103,10 +103,17 @@ async def user_login(user_info: UserLoginSchema, db: Session = Depends(get_db)):
 @app.post("/resend_confirmation_email")
 async def resend_confirmation_email(user_info: ResendConfirmationEmailSchema, db: Session = Depends(get_db)):
     try:
-        return await auth_provider.resend_confirmation_email(db, user_info)
-    except UserNotFoundError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
+        response = await auth_provider.resend_confirmation_email(db, user_info)
+        if response:
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Resend email has been sent"})
+    except ResendConfirmationEmailError:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Resend confirmation email could not send !! ")
+    except CreateNotificationError:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Notification Creating could not success !! ")
+    except TemplateNotificationError:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Template Creating could not success !! ")
+    except UserNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"User '{user_info.username}' not in system")
     except Exception as err:
         log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
@@ -130,20 +137,16 @@ async def reset_password(user_info: ResetPasswordSchema, db: Session = Depends(g
         response = await auth_provider.reset_password(user_info, db)
         if response:
             return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "email has been sent"})
-    except ResetPasswordSendNotificationError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
-    except CreateNotificationError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
-    except UserNotFoundError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
-    except NotExistingResourceError as err:
-        log.error(err)
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(err)) from err
+    except ResetPasswordSendNotificationError:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Reset Password link could not send !! ")
+    except CreateNotificationError:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Notification Creating could not success !! ")
+    except TemplateNotificationError:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Template Creating could not success !! ")
+    except UserNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"User '{user_info.username}' not in system")
     except Exception as err:
-        log.error(f'Error reset password: {type(err)} - {str(err)}')
+        log.error(err)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
 
 

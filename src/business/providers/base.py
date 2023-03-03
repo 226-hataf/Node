@@ -16,17 +16,25 @@ class SignupSendNotificationError(Exception):
     pass
 
 
+class ResendConfirmationEmailError(Exception):
+    """Raised when resend confirmation email error"""
+    pass
+
+
 class TemplateNotificationError(Exception):
     """Raised when notification template create error"""
     pass
+
 
 class CreateNotificationError(Exception):
     """Raised when creating notification error"""
     pass
 
+
 class ResetPasswordSendNotificationError(Exception):
     """Raised when reset password link could not send"""
     pass
+
 
 class DuplicateEmailError(Exception):
     pass

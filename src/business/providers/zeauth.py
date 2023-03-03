@@ -438,30 +438,33 @@ class ProviderFusionAuth(Provider):
                 reset_key = hash(uuid.uuid4().hex)
                 set_redis(reset_key, user_info.username)
                 body = f"{RESET_PASSWORD_URL}?token={reset_key}"
+                template_name = 'reset_password'
+                title = "Reset Password"
                 # First; create template
-                try:
-                    response = create_template_for_notification(body)
-                    log.debug(response.json())
-                    if response.json()['id']:
-                        # Second; Create notification
-                        provider = response.json()['id']
-                        recipients = "a.uygur@cyberneticlabs.io"
-                        notification_response = create_notification(recipients, provider)
-                        if notification_response.json()['id']:
-                            notification_id = notification_response.json()['id']
-                            # And; send reset password link to users email !
-                            notification_resp = send_notification_email(db, user_resp.email, status='reset_password', notificationid=notification_id)
+                response = create_template_for_notification(body, template_name, title)
+                log.debug(response.json())
+                if response.json()['id']:
+                    # Second; Create notification
+                    template = response.json()['id']
+                    recipients = user_resp.email
+                    provider = "664d0ac7-1d6c-4537-9fe6-5da5eef11fa1"  # provider for reset password
+                    # we will only use  this provider for reset password
+                    notification_response = create_notification(recipients, template, provider)
+                    if notification_response.json()['id']:
+                        # And; send reset password link to users email !
+                        notification_id = notification_response.json()['id']
+                        notification_resp = send_notification_email(db, user_resp.email, status='reset_password',
+                                                                    notificationid=notification_id)
+                        if notification_resp:
                             return notification_resp
                         else:
-                            raise ResetPasswordSendNotificationError("Reset Password link could not send !! ")
+                            raise ResetPasswordSendNotificationError
                     else:
-                        raise CreateNotificationError("Notification Creating could not success !! ")
-
-                except TemplateNotificationError:
-                    log.debug("Notification Template could not created !! ")
+                        raise CreateNotificationError
+                else:
+                    raise TemplateNotificationError
             else:
-                raise UserNotFoundError(f"User '{user_info.username}' not in system")
-
+                raise UserNotFoundError
         except Exception as err:
             log.error(err)
             raise err
@@ -485,12 +488,11 @@ class ProviderFusionAuth(Provider):
             log.error(f"Exception: {err}")
             raise err
 
-
     async def resend_confirmation_email(self, db, user_info):
         try:
             user = crud.get_user_by_email(db, user_info.username)
             if not user:
-                raise UserNotFoundError(f"User '{user_info.username}' not in system")
+                raise UserNotFoundError
 
             crud.user_verified(db, verified=False, user_id=user.id)
 
@@ -503,13 +505,33 @@ class ProviderFusionAuth(Provider):
                     .replace("{{first_name}}", user.first_name) \
                     .replace("{{verification_link}}", confirm_email_url)
 
-                await send_email(
-                    recipients=[user_info.username],
-                    subject="Confirm email",
-                    body=email_template
-                )
+                template_name = 'resend_confirmation_email'
+                title = "Confirm email"
+                body = email_template
+                # First; create template
+                response = create_template_for_notification(body, template_name, title)
+                log.debug(response.json())
+                if response.json()['id']:
+                    # Second; Create notification
+                    template = response.json()['id']
+                    recipients = user.email
+                    provider = "e823f94f-3e3d-4778-9128-1fafcd478aad"  # provider for resend confirmation email
+                    # we will use only this provider for resend confirmation email
+                    notification_response = create_notification(recipients, template, provider)
+                    if notification_response.json()['id']:
+                        # And; send reset password link to users email !
+                        notification_id = notification_response.json()['id']
+                        notification_resp = send_notification_email(db, user.email, status='resend_confirmation_email',
+                                                                    notificationid=notification_id)
+                        if notification_resp:
+                            return notification_resp
+                        else:
+                            raise ResendConfirmationEmailError
+                    else:
+                        raise CreateNotificationError
+                else:
+                    raise TemplateNotificationError
 
-            return "Confirmation email sent!"
         except Exception as err:
             log.error(err)
             raise err
