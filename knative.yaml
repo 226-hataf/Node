@@ -126,6 +126,18 @@ spec:
           - name: DATA_ENCRYPTION_PRIV_KEY
             value: 'LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlDWXdJQkFBS0JnUURXL0ZpUEg5WmYwZUsrSzRRRVRPa2V6ejdldmJ4UExzWkcyUjhSLzJaaDhXdnBaUUNWCm1uTzZvRFFTa3Rvaml3ZkhMRWRxNzNPRjlzWWU0V2FabEFUeXJqcy83b1Q4SmhnaXFKNW5obXlZRXpKYk1TeTAKeDBqZXNHeG1SLy94UDZBRC9DRXR5ek5yS0lYaWxIbmlCd3U4czRYOTR4bVlNTmUxS1pVQkZZUGpHUUlEQVFBQgpBb0dCQU5ZUGg0SmpPZ3BJcXhPZHNxS3hqZ0ZlYkFSUE9ieENINjBWcmFrMis5T1VGbFhiZXR4N1lMWTNwQUhHCmRTdWsySWJLSVFacURFWWNkQ0wxWFZEeXoxRnJJQ1B5b0pwaGFUQ0xmMm8rR20vRjkrMUFwclR5S2RyL0I2bXMKdXVzWHFpWHBNcG92TXVLbDJpOGI4S0lyaXB3Qk9jcGxpSHo1T3hqaHQ3b2s3OUU5QWtVQTZxYmlZNFNsQ3ZxMwpTRjZXc0V4NFI4U2xDMm5uaDlOWDd1ZCtiaGRMMGUvcTBxdldOV3JVVW9BOXluQzVDSGJlSWhQWWFiUnZzTlRvClBQMXpPNGE4eU1IU0hPTUNQUURxaTI0ejJqdDZUV3BnN3lYK0FOSWxmTi9LbzZoSmo1K0I3Uy8rQms4anVNSkEKZ0E0MTNtMDNZNjIrVGdERldwUzNJWWhmcjBQbFkrdmgzTk1DUlFDcHB3VHhQTnJ5NkRnUmk4blpKMENqYXVxRgpLUW1yNjBLZFNTUGd4dGticlNHVE5ZZ0hVUGkzdVY1emVqSmRpMHVwU2IzakZ3RFYwZWtqQjRBRDNyT3BWbkRxClR3STlBSm5tVWJLT2dUYVlNN1JWVisyYXBrblk3Wk91M1k4ZlFiL2tYZmhtTldtd0l5NWxtRzE2Zk5tNmUxZ0QKSVBoZW5uU24rUzhuOXZvL0habC81d0pGQUtNVCt4RU9wY2V3UGFpaHhGeStiSGJpNkt3ZmZzWURLVU1NeW84MwpzU1RwL0MzREJuUTdHNEtjK2FHZFZ1YmU2b1QrZE9iRWtWazFEM3FJNjhPcHhlOVF0WmkwCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg=='
           - name: RESET_PASSWORD_URL
-            value: "https://zekoder.netlify.app/auth/resetpassword"
+            value: "https://zekoder.netlify.app"
           - name: RESEND_CONFIRMATION_EMAIL_URL
-            value: "https://zekoder.netlify.app/auth/confirm-email"
+            value: "https://zekoder.netlify.app"
+          - name: SEND_NOTIFICATION_EMAIL_URL
+            value: "https://zenotify-service.zekoder.zestudio.zekoder.zekoder.net"
+          - name: ZENOTIFY_BASE_URL
+            value: "http://zenotify.zekoder.zestudio.zekoder.zekoder.net"
+          - name: RESET_PASSWORD_PROVIDER
+            value: 664d0ac7-1d6c-4537-9fe6-5da5eef11fa1
+          - name: RESEND_CONFIRMATION_PROVIDER
+            value: e823f94f-3e3d-4778-9128-1fafcd478aad
+          - name: SIGNUP_NOTIFICATION_TEMPLATE
+            value: d83e42a9-4927-4f9b-a736-0513f394ef79
+          - name: SIGNUP_PROVIDER
+            value: 83c469dc-e478-4679-817f-aa94032d22e7

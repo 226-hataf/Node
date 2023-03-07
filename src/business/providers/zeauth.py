@@ -416,13 +416,20 @@ class ProviderFusionAuth(Provider):
             log.info(user_resp.id)
             log.info(f"user {user_resp.email} created successfully.")
 
-            try:
-                if user_resp.email:
-                    send_notification_email(db, user.email, status='signup')
-            except SignupSendNotificationError:
-                log.debug("Notification email not send !! ")
+            if user_resp.email:
+                # Second; Create notification
+                template = os.environ.get('SIGNUP_NOTIFICATION_TEMPLATE')  # default template for signup
+                recipients = user_resp.email
+                provider = os.environ.get('SIGNUP_PROVIDER')  # provider for signup
+                notification_response = create_notification(recipients, template, provider)
+                log.debug(notification_response)
+                if notification_response.json()['id']:
+                    # Send wellcome notification to user's email
+                    notification_id = notification_response.json()['id']
+                    send_notification_email(db, recipients, status='signup', notificationid=notification_id)
 
             return self._cast_user(user_resp)
+
         except IntegrityError as err:
             log.error(err)
             raise DuplicateEmailError() from err
@@ -437,7 +444,7 @@ class ProviderFusionAuth(Provider):
             if user_resp.email:
                 reset_key = hash(uuid.uuid4().hex)
                 set_redis(reset_key, user_info.username)
-                body = f"{RESET_PASSWORD_URL}?token={reset_key}"
+                body = f"{RESET_PASSWORD_URL}/auth/resetpassword?token={reset_key}"
                 template_name = 'reset_password'
                 title = "Reset Password"
                 # First; create template
@@ -447,7 +454,7 @@ class ProviderFusionAuth(Provider):
                     # Second; Create notification
                     template = response.json()['id']
                     recipients = user_resp.email
-                    provider = "664d0ac7-1d6c-4537-9fe6-5da5eef11fa1"  # provider for reset password
+                    provider = os.environ.get('RESET_PASSWORD_PROVIDER')  # provider for reset password
                     # we will only use  this provider for reset password
                     notification_response = create_notification(recipients, template, provider)
                     if notification_response.json()['id']:
@@ -498,7 +505,7 @@ class ProviderFusionAuth(Provider):
 
             confirm_email_key = hash(uuid.uuid4().hex)
             set_redis(confirm_email_key, user_info.username)
-            confirm_email_url = f"{RESEND_CONFIRMATION_EMAIL_URL}?token={confirm_email_key}"
+            confirm_email_url = f"{RESEND_CONFIRMATION_EMAIL_URL}/auth/confirm-email?token={confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
@@ -515,7 +522,7 @@ class ProviderFusionAuth(Provider):
                     # Second; Create notification
                     template = response.json()['id']
                     recipients = user.email
-                    provider = "e823f94f-3e3d-4778-9128-1fafcd478aad"  # provider for resend confirmation email
+                    provider = os.environ.get('RESEND_CONFIRMATION_PROVIDER')  # provider for resend confirmation email
                     # we will use only this provider for resend confirmation email
                     notification_response = create_notification(recipients, template, provider)
                     if notification_response.json()['id']:

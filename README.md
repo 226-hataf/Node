@@ -10,8 +10,14 @@
 | FUSIONAUTH_APIKEY            |                                           ****                                            |
 | applicationId                |                                           ****                                            |
 | ZEAUTH_URL               |                             https://accounts.dev.zekoder.net                              |
- RESET_PASSWORD_URL               |                                           ****                                            |
- RESEND_CONFIRMATION_EMAIL_URL               |                                           ****                                            |
+ RESET_PASSWORD_URL            |                                https://zekoder.netlify.app                            |
+ RESEND_CONFIRMATION_EMAIL_URL |                  https://zekoder.netlify.app                                |
+SEND_NOTIFICATION_EMAIL_URL    |                  https://zenotify-service.zekoder.zestudio.zekoder.zekoder.net            |
+ZENOTIFY_BASE_URL    |                  http://zenotify.zekoder.zestudio.zekoder.zekoder.net            |
+RESET_PASSWORD_PROVIDER    |                  664d0ac7-1d6c-4537-9fe6-5da5eef11fa1            |
+RESEND_CONFIRMATION_PROVIDER    |                  e823f94f-3e3d-4778-9128-1fafcd478aad           |
+SIGNUP_NOTIFICATION_TEMPLATE    |                  d83e42a9-4927-4f9b-a736-0513f394ef79           |
+SIGNUP_PROVIDER    |                  83c469dc-e478-4679-817f-aa94032d22e7          |
 | FRONTEND_REDIRECT_URL        |                    https://zekoder.netlify.app/auth/verifysociallogin                     |
 | GOOGLE_REDIRECT_URL          |                                           ****                                            |
 | TWITTER_REDIRECT_URL         |                                           ****                                            |

@@ -234,7 +234,7 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             'Content-Type': 'application/json',
         }
         if status == 'signup':
-            json_data = {"notificationId": "fd41c1fd-3c69-4cd1-9033-a41dc69788eb"}
+            json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
                 log.debug(f'Notification email send to <{email_exist.email}>')
