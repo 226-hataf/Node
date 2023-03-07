@@ -141,6 +141,7 @@ class ProviderFusionAuth(Provider):
         user_id = generated_user_id
         uid = user_id
         verified = True
+        user_status = True,
 
         last_login_at = datetime.utcnow()  # get this data from db
         last_update_at = datetime.utcnow()  # get this data from db
@@ -162,7 +163,7 @@ class ProviderFusionAuth(Provider):
             email=email,
             username=email,
             verified=verified,
-            user_status=True,
+            user_status=user_status,
             avatar_url=avatar_url,
             first_name=first_name,
             last_name=last_name,
@@ -241,7 +242,7 @@ class ProviderFusionAuth(Provider):
             email=user.email,
             username=user.user_name,
             verified=user.verified,
-            user_status=True,
+            user_status=user.user_status,
             avatar_url='',
             first_name=user.first_name,
             last_name=user.last_name,
@@ -357,7 +358,7 @@ class ProviderFusionAuth(Provider):
                 "user_name": user_Name,
                 "password": str(encrypted_password),
                 "verified": False,
-                "user_status": True,
+                "user_status": False,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "phone": user.phone,
@@ -406,8 +407,8 @@ class ProviderFusionAuth(Provider):
                 "email": user.email,
                 "user_name": userName,
                 "password": str(encrypted_password),
-                "verified": False,
-                "user_status": True,
+                "verified": False,  # On signup make user verified False
+                "user_status": False,   # On signup make user_status False
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "phone": user.phone,
@@ -469,7 +470,7 @@ class ProviderFusionAuth(Provider):
             if not user:
                 raise UserNotFoundError(f"User '{user_info.username}' not in system")
 
-            crud.user_verified(db, verified=False, user_id=user.id)
+            crud.user_verified(db, verified=False, user_status=False, user_id=user.id)
 
             confirm_email_key = hash(uuid.uuid4().hex)
             set_redis(confirm_email_key, user_info.username)
@@ -500,7 +501,9 @@ class ProviderFusionAuth(Provider):
                 raise IncorrectResetKeyError(f"Token {email_verify.token} is incorrect!") from err
 
             if user := crud.get_user_by_email(db, email):
-                crud.user_verified(db, verified=True, user_id=user.id)
+                # ZEK-887 user_status should return false if verified is false. If verified is true ,
+                # user_status should also return true.
+                crud.user_verified(db, verified=True, user_status=True, user_id=user.id)
 
             return "Email Verified!"
         except Exception as err:
