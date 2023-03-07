@@ -2,6 +2,7 @@ import os
 import uuid
 from typing import Any
 import jwt
+import requests
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from business.models.schema_clients import ClientCreateSchema, ClientSchema, ClientJWTSchema, UUIDCheckForClientIdSchema
@@ -11,7 +12,8 @@ from business.models.schema_roles import RoleBaseSchema
 from business.models.schema_users import UsersWithIDsSchema, UserUpdateSchema
 from business.models.schemas_groups import GroupBaseSchema
 from business.models.schemas_groups_users import GroupUserRoleSchema, UserToGroupsSchema
-from business.providers.base import UserNotVerifiedError
+from business.providers.base import UserNotVerifiedError, SignupSendNotificationError, TemplateNotificationError, \
+    CreateNotificationError, ResetPasswordSendNotificationError, ResendConfirmationEmailError
 from core import log
 from core.db_models import models
 from datetime import date, datetime, timedelta
@@ -23,6 +25,7 @@ from redis_service.redis_service import RedisClient
 
 client = RedisClient()
 
+SEND_NOTIFICATION_EMAIL_URL = os.environ.get('SEND_NOTIFICATION_EMAIL_URL')
 ZEAUTH_URL = os.environ.get('ZEAUTH_URL')
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 AUDIENCE = 'ZeAuth'
@@ -184,6 +187,78 @@ def create_user(db: Session, user):
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+def create_template_for_notification(body: str, template_name: str, title: str):
+    zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
+    channel = "email"
+    json_data = {
+        "template_name": template_name,
+        "title": title,
+        "body": body,
+        "channel": f"{channel}"
+    }
+    response = requests.post(f"{zenotify_base_url}/templates/", json=json_data)
+
+    if response.status_code == 201:
+        log.debug(f'Template created success <{response.json()["id"]}>')
+        return response
+    else:
+        raise TemplateNotificationError
+
+
+def create_notification(recipients: str, template: str, provider: str):
+    zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
+    target = "email"
+    json_data = {
+        "recipients": [recipients],
+        "provider": provider,
+        "template": template,
+        "params": "",
+        "target": [f"{target}"],
+        "status": "",
+        "last_error": ""
+    }
+    response = requests.post(f"{zenotify_base_url}/notifications/", json=json_data)
+    if response.status_code == 201:
+        log.debug(f'Notification created success <{response.json()["id"]}>')
+        return response
+    else:
+        raise CreateNotificationError
+
+
+def send_notification_email(db: Session, email: str, status: str = None, notificationid: str = None):
+    email_exist = get_user_by_email(db, email)
+    if email_exist:
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        if status == 'signup':
+            json_data = {"notificationId": notificationid}
+            response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
+            if response.status_code == 200:
+                log.debug(f'Notification email send to <{email_exist.email}>')
+                return True
+            else:
+                raise SignupSendNotificationError
+
+        if status == 'reset_password':
+            json_data = {"notificationId": notificationid}
+            response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
+            if response.status_code == 200:
+                return True
+            else:
+                raise ResetPasswordSendNotificationError
+
+        if status == 'resend_confirmation_email':
+            json_data = {"notificationId": notificationid}
+            response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
+            if response.status_code == 200:
+                return True
+            else:
+                raise ResendConfirmationEmailError
+    else:
+        return None
 
 
 def create_new_user(db: Session, user):

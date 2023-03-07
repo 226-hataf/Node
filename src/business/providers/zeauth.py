@@ -10,7 +10,8 @@ from business.models.users import User, LoginResponseModel, EncryptDecryptStrSch
 from sqlalchemy.exc import IntegrityError
 from core import log, crud
 import requests
-from core.crud import get_groups_name_of_user_by_id, get_roles_name_of_group
+from core.crud import get_groups_name_of_user_by_id, get_roles_name_of_group, \
+    send_notification_email, create_template_for_notification, create_notification
 from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
@@ -414,6 +415,19 @@ class ProviderFusionAuth(Provider):
             })
             log.info(user_resp.id)
             log.info(f"user {user_resp.email} created successfully.")
+
+            if user_resp.email:
+                # Second; Create notification
+                template = os.environ.get('SIGNUP_NOTIFICATION_TEMPLATE')  # default template for signup
+                recipients = user_resp.email
+                provider = os.environ.get('SIGNUP_PROVIDER')  # provider for signup
+                notification_response = create_notification(recipients, template, provider)
+                log.debug(notification_response)
+                if notification_response.json()['id']:
+                    # Send wellcome notification to user's email
+                    notification_id = notification_response.json()['id']
+                    send_notification_email(db, recipients, status='signup', notificationid=notification_id)
+
             return self._cast_user(user_resp)
 
         except IntegrityError as err:
@@ -426,19 +440,38 @@ class ProviderFusionAuth(Provider):
     async def reset_password(self, user_info, db):
         try:
             user_resp = crud.get_user_by_email(db=db, email=user_info.username)
-            if not user_resp:
-                raise UserNotFoundError(f"User '{user_info.username}' not in system")
 
-            reset_key = hash(uuid.uuid4().hex)
-            set_redis(reset_key, user_info.username)
-
-            reset_password_url = f"{RESET_PASSWORD_URL}?token={reset_key}"
-            await send_email(
-                recipients=[user_info.username],
-                subject="Reset Password",
-                body=reset_password_url
-            )
-            return True
+            if user_resp.email:
+                reset_key = hash(uuid.uuid4().hex)
+                set_redis(reset_key, user_info.username)
+                body = f"{RESET_PASSWORD_URL}/auth/resetpassword?token={reset_key}"
+                template_name = 'reset_password'
+                title = "Reset Password"
+                # First; create template
+                response = create_template_for_notification(body, template_name, title)
+                log.debug(response.json())
+                if response.json()['id']:
+                    # Second; Create notification
+                    template = response.json()['id']
+                    recipients = user_resp.email
+                    provider = os.environ.get('RESET_PASSWORD_PROVIDER')  # provider for reset password
+                    # we will only use  this provider for reset password
+                    notification_response = create_notification(recipients, template, provider)
+                    if notification_response.json()['id']:
+                        # And; send reset password link to users email !
+                        notification_id = notification_response.json()['id']
+                        notification_resp = send_notification_email(db, user_resp.email, status='reset_password',
+                                                                    notificationid=notification_id)
+                        if notification_resp:
+                            return notification_resp
+                        else:
+                            raise ResetPasswordSendNotificationError
+                    else:
+                        raise CreateNotificationError
+                else:
+                    raise TemplateNotificationError
+            else:
+                raise UserNotFoundError
         except Exception as err:
             log.error(err)
             raise err
@@ -462,31 +495,50 @@ class ProviderFusionAuth(Provider):
             log.error(f"Exception: {err}")
             raise err
 
-
     async def resend_confirmation_email(self, db, user_info):
         try:
             user = crud.get_user_by_email(db, user_info.username)
             if not user:
-                raise UserNotFoundError(f"User '{user_info.username}' not in system")
+                raise UserNotFoundError
 
             crud.user_verified(db, verified=False, user_id=user.id)
 
             confirm_email_key = hash(uuid.uuid4().hex)
             set_redis(confirm_email_key, user_info.username)
-            confirm_email_url = f"{RESEND_CONFIRMATION_EMAIL_URL}?token={confirm_email_key}"
+            confirm_email_url = f"{RESEND_CONFIRMATION_EMAIL_URL}/auth/confirm-email?token={confirm_email_key}"
             directory = os.path.dirname(__file__)
             with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
                 email_template = index_file.read() \
                     .replace("{{first_name}}", user.first_name) \
                     .replace("{{verification_link}}", confirm_email_url)
 
-                await send_email(
-                    recipients=[user_info.username],
-                    subject="Confirm email",
-                    body=email_template
-                )
+                template_name = 'resend_confirmation_email'
+                title = "Confirm email"
+                body = email_template
+                # First; create template
+                response = create_template_for_notification(body, template_name, title)
+                log.debug(response.json())
+                if response.json()['id']:
+                    # Second; Create notification
+                    template = response.json()['id']
+                    recipients = user.email
+                    provider = os.environ.get('RESEND_CONFIRMATION_PROVIDER')  # provider for resend confirmation email
+                    # we will use only this provider for resend confirmation email
+                    notification_response = create_notification(recipients, template, provider)
+                    if notification_response.json()['id']:
+                        # And; send reset password link to users email !
+                        notification_id = notification_response.json()['id']
+                        notification_resp = send_notification_email(db, user.email, status='resend_confirmation_email',
+                                                                    notificationid=notification_id)
+                        if notification_resp:
+                            return notification_resp
+                        else:
+                            raise ResendConfirmationEmailError
+                    else:
+                        raise CreateNotificationError
+                else:
+                    raise TemplateNotificationError
 
-            return "Confirmation email sent!"
         except Exception as err:
             log.error(err)
             raise err
