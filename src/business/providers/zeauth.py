@@ -563,25 +563,16 @@ class ProviderFusionAuth(Provider):
             raise err
 
     def verify(self, token: str):
+        db = get_db().__next__()
         try:
             user = jwt.decode(bytes(token, 'utf-8'), JWT_SECRET_KEY, algorithms=["HS256"], audience=AUDIENCE)
 
-            if not (user.get('email') or user.get('client_id')):
+            if not user.get('email') and not user.get('client_id'):
                 error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
                 log.error(user)
                 raise InvalidTokenError('failed token verification')
 
-            if user.get('client_id'):
-                return dict(
-                    client_id=str(user.get('client_id')),
-                    aud=user.get('aud'),
-                    expr=int(user.get('expr')),
-                    iss=user.get('iss'),
-                    name=user.get('name'),
-                    email=user.get('email'),
-                    roles=user.get('roles'),
-                )
-            else:
+            if not user.get('client_id'):
                 return User(
                     id=str(user.get('id')),
                     roles=user.get('roles'),
@@ -600,6 +591,32 @@ class ProviderFusionAuth(Provider):
                     permissions=user.get('groups')
                 )
 
+            db_user = crud.get_user_by_uuid(db=db, user_id=UUIDCheckForUserIDSchema(user_id=str(user.get('owner'))))
+            roles = []
+            groups = []
+            if get_groups := get_groups_name_of_user_by_id(db, str(db_user.id)):
+                groups = [group['name'] for group in get_groups]
+                get_roles = get_roles_name_of_group(db, groups)
+                roles = [roles for roles, in get_roles]
+            return User(
+                id=str(db_user.id),
+                roles=roles,
+                groups=groups,
+                email=db_user.email,
+                user_name=db_user.user_name,
+                verified=db_user.verified,
+                user_status=db_user.user_status,
+                first_name=db_user.first_name,
+                last_name=db_user.last_name,
+                full_name=f"{db_user.first_name} {db_user.last_name}"
+                if db_user.last_name
+                else "",
+                phone=db_user.phone,
+                last_login_at=db_user.last_login_at,
+                created_at=db_user.created_on,
+                update_at=db_user.updated_on,
+                permissions=groups,
+            )
         except Exception as err:
             error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
             log.error(error_template.format(type(err).__name__, str(err)))
