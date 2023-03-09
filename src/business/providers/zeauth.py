@@ -566,23 +566,21 @@ class ProviderFusionAuth(Provider):
         try:
             user = jwt.decode(bytes(token, 'utf-8'), JWT_SECRET_KEY, algorithms=["HS256"], audience=AUDIENCE)
 
-            if not user.get('email'):
+            if not (user.get('email') or user.get('client_id')):
                 error_template = "ZeAuth Token verify:  An exception of type {0} occurred. error: {1}"
                 log.error(user)
                 raise InvalidTokenError('failed token verification')
 
             if user.get('client_id'):
-                client_payload = dict(
+                return dict(
                     client_id=str(user.get('client_id')),
                     aud=user.get('aud'),
                     expr=int(user.get('expr')),
                     iss=user.get('iss'),
                     name=user.get('name'),
                     email=user.get('email'),
-                    roles=user.get('roles')
+                    roles=user.get('roles'),
                 )
-                return client_payload
-
             else:
                 return User(
                     id=str(user.get('id')),
