@@ -439,10 +439,7 @@ class ProviderFusionAuth(Provider):
                         # Second; Create notification
                         template = response.json()['id']
                         recipients = user.email
-                        # provider for signup confirmation email
-                        provider = os.environ.get('SIGNUP_WITH_ACTIVATION_PROVIDER')
-                        # we will use only this provider for signup activation email
-                        notification_response = create_notification(recipients, template, provider)
+                        notification_response = create_notification(recipients, template)
                         if notification_response.json()['id']:
                             # And; send activation email link to users email !
                             notification_id = notification_response.json()['id']
@@ -480,9 +477,8 @@ class ProviderFusionAuth(Provider):
                     # Second; Create notification
                     template = response.json()['id']
                     recipients = user_resp.email
-                    provider = os.environ.get('RESET_PASSWORD_PROVIDER')  # provider for reset password
                     # we will only use  this provider for reset password
-                    notification_response = create_notification(recipients, template, provider)
+                    notification_response = create_notification(recipients, template)
                     if notification_response.json()['id']:
                         # And; send reset password link to users email !
                         notification_id = notification_response.json()['id']
@@ -545,9 +541,8 @@ class ProviderFusionAuth(Provider):
                     # Second; Create notification
                     template = response.json()['id']
                     recipients = user.email
-                    provider = os.environ.get('RESEND_CONFIRMATION_PROVIDER')  # provider for resend confirmation email
                     # we will use only this provider for resend confirmation email
-                    notification_response = create_notification(recipients, template, provider)
+                    notification_response = create_notification(recipients, template)
                     if notification_response.json()['id']:
                         # And; send reset password link to users email !
                         notification_id = notification_response.json()['id']

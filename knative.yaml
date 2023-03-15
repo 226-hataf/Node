@@ -133,9 +133,5 @@ spec:
             value: "https://zenotify-service.zekoder.zestudio.zekoder.zekoder.net"
           - name: ZENOTIFY_BASE_URL
             value: "http://zenotify.zekoder.zestudio.zekoder.zekoder.net"
-          - name: RESET_PASSWORD_PROVIDER
-            value: 664d0ac7-1d6c-4537-9fe6-5da5eef11fa1
-          - name: RESEND_CONFIRMATION_PROVIDER
-            value: e823f94f-3e3d-4778-9128-1fafcd478aad
-          - name: SIGNUP_WITH_ACTIVATION_PROVIDER
-            value: 76702904-fd54-4e36-bd2d-d043860ec3a5
+          - name: NOTIFICATION_PROVIDER
+            value: 94c3f049-9fbd-4d2e-a147-7b9ddbc37351

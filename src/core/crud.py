@@ -207,12 +207,13 @@ def create_template_for_notification(body: str, template_name: str, title: str):
         raise TemplateNotificationError
 
 
-def create_notification(recipients: str, template: str, provider: str):
+def create_notification(recipients: str, template: str):
+    provider = os.environ.get('NOTIFICATION_PROVIDER')
     zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
     target = "email"
     json_data = {
         "recipients": [recipients],
-        "provider": provider,
+        "provider": f"{provider}",
         "template": template,
         "params": "",
         "target": [f"{target}"],
