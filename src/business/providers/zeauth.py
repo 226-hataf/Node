@@ -418,16 +418,41 @@ class ProviderFusionAuth(Provider):
             log.info(f"user {user_resp.email} created successfully.")
 
             if user_resp.email:
-                # Second; Create notification
-                template = os.environ.get('SIGNUP_NOTIFICATION_TEMPLATE')  # default template for signup
-                recipients = user_resp.email
-                provider = os.environ.get('SIGNUP_PROVIDER')  # provider for signup
-                notification_response = create_notification(recipients, template, provider)
-                log.debug(notification_response)
-                if notification_response.json()['id']:
-                    # Send wellcome notification to user's email
-                    notification_id = notification_response.json()['id']
-                    send_notification_email(db, recipients, status='signup', notificationid=notification_id)
+                # ZEK-866
+                activation_email_key = hash(uuid.uuid4().hex)
+                set_redis(activation_email_key, user_resp.user_name)
+                # we will use RESEND_CONFIRMATION_EMAIL_URL to send activation_email. These links are same
+                activation_email_url = f"{RESEND_CONFIRMATION_EMAIL_URL}/auth/confirm-email?token={activation_email_key}"
+                directory = os.path.dirname(__file__)
+                with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
+                    email_template = index_file.read() \
+                        .replace("{{first_name}}", user.first_name) \
+                        .replace("{{verification_link}}", activation_email_url)
+
+                    template_name = 'signup_with_activation_email'
+                    title = "Activation Email"
+                    body = email_template
+                    # First; create template
+                    response = create_template_for_notification(body, template_name, title)
+                    log.debug(response.json())
+                    if response.json()['id']:
+                        # Second; Create notification
+                        template = response.json()['id']
+                        recipients = user.email
+                        # provider for signup confirmation email
+                        provider = os.environ.get('SIGNUP_WITH_ACTIVATION_PROVIDER')
+                        # we will use only this provider for signup activation email
+                        notification_response = create_notification(recipients, template, provider)
+                        if notification_response.json()['id']:
+                            # And; send activation email link to users email !
+                            notification_id = notification_response.json()['id']
+                            send_notification_email(db, user.email,
+                                                    status='signup_with_activation_email',
+                                                    notificationid=notification_id)
+                        else:
+                            raise CreateNotificationError
+                    else:
+                        raise TemplateNotificationError
 
             return self._cast_user(user_resp)
 
@@ -461,12 +486,9 @@ class ProviderFusionAuth(Provider):
                     if notification_response.json()['id']:
                         # And; send reset password link to users email !
                         notification_id = notification_response.json()['id']
-                        notification_resp = send_notification_email(db, user_resp.email, status='reset_password',
-                                                                    notificationid=notification_id)
-                        if notification_resp:
-                            return notification_resp
-                        else:
-                            raise ResetPasswordSendNotificationError
+                        send_notification_email(db, user_resp.email,
+                                                status='reset_password',
+                                                notificationid=notification_id)
                     else:
                         raise CreateNotificationError
                 else:
@@ -529,17 +551,13 @@ class ProviderFusionAuth(Provider):
                     if notification_response.json()['id']:
                         # And; send reset password link to users email !
                         notification_id = notification_response.json()['id']
-                        notification_resp = send_notification_email(db, user.email, status='resend_confirmation_email',
-                                                                    notificationid=notification_id)
-                        if notification_resp:
-                            return notification_resp
-                        else:
-                            raise ResendConfirmationEmailError
+                        send_notification_email(db, user.email,
+                                                status='resend_confirmation_email',
+                                                notificationid=notification_id)
                     else:
                         raise CreateNotificationError
                 else:
                     raise TemplateNotificationError
-
         except Exception as err:
             log.error(err)
             raise err

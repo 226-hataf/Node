@@ -233,12 +233,11 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
         headers = {
             'Content-Type': 'application/json',
         }
-        if status == 'signup':
+        if status == 'signup_with_activation_email':
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
                 log.debug(f'Notification email send to <{email_exist.email}>')
-                return True
             else:
                 raise SignupSendNotificationError
 
@@ -246,7 +245,7 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
-                return True
+                log.debug(f'Notification email send to <{email_exist.email}>')
             else:
                 raise ResetPasswordSendNotificationError
 
@@ -254,7 +253,7 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
-                return True
+                log.debug(f'Notification email send to <{email_exist.email}>')
             else:
                 raise ResendConfirmationEmailError
     else:
