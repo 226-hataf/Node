@@ -506,8 +506,8 @@ def assign_multi_groups_to_user(db: Session, user_id: str, groups: UserToGroupsS
             query_groupUser = db.query(models.GroupsUser)
             # Check ! do we have a record in our groups table, for requested groups uuid's ?
             groups_in_groupsTable = [obj.id for obj in
-                                   query_groups
-                                   .filter(models.Group.id.in_(groups.groups))]
+                                     query_groups
+                                     .filter(models.Group.id.in_(groups.groups))]
             # check user in the group
             users_in_groupUserTable = [obj.groups for obj in
                                        query_groupUser
@@ -526,10 +526,10 @@ def assign_multi_groups_to_user(db: Session, user_id: str, groups: UserToGroupsS
             else:
                 raise HTTPException(status_code=403, detail="Available Groups are already related to this User")
 
-
     except ValueError as e:
         log.error(e)
         return {"detail": "invalid uuid"}
+
 
 def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_role: GroupUserRoleSchema):
     try:
@@ -688,8 +688,9 @@ def is_groups_user_not_exists(db: Session, groups_user_create: GroupsUserBase):
 def generate_client_secret():
     return ''.join((secrets.choice(
         string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation
-    ) for i in range(32)))\
-        .replace('"', '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+    ) for i in range(32))) \
+        .replace('"',
+                 '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
 
 
 def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
