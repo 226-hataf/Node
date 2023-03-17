@@ -190,6 +190,14 @@ def create_user(db: Session, user):
     return db_user
 
 
+def get_template_by_name(template_name: str):
+    zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
+    response = requests.get(f"{zenotify_base_url}/templates/")
+    json_response = response.json()
+    template = [x['body'] for x in json_response["data"] if x["template_name"] == template_name]
+    return template
+
+
 def create_template_for_notification(body: str, template_name: str, title: str):
     zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
     channel = "email"

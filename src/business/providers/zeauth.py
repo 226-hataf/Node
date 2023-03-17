@@ -16,12 +16,14 @@ from core.cryptography_fernet import StringEncryptDecrypt
 from redis_service.redis_service import RedisClient, set_redis, get_redis
 from email_service.mail_service import send_email
 from ..models.schema_groups_role import GroupsRoleBase, GroupsUserBase
-from ..models.schema_main import  UUIDCheckForUserIDSchema
+from ..models.schema_main import UUIDCheckForUserIDSchema
 from ..models.schema_roles import RoleBaseSchema
 from ..models.schemas_groups import GroupBaseSchema
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 import jwt
 from config.db import get_db
+import tempfile
+from pathlib import Path
 
 RESEND_CONFIRMATION_EMAIL_URL = os.environ.get('RESEND_CONFIRMATION_EMAIL_URL')
 RESET_PASSWORD_URL = os.environ.get('RESET_PASSWORD_URL')
@@ -52,8 +54,6 @@ class ProviderFusionAuth(Provider):
         self.fusionauth_client = None
         self.str_enc_dec = StringEncryptDecrypt(STR_ENCRYPT_DECRYPT_KEY)
         super().__init__()
-
-
 
     def list_users(self, page: int, page_size: int, search: str, user_status: bool, date_of_creation: date,
                    date_of_last_login: date, sort_by, sort_column, db):
@@ -303,7 +303,6 @@ class ProviderFusionAuth(Provider):
         decrypted_str = self.str_enc_dec.decrypt_str(enc_message=str_for_dec)
         return EncryptDecryptStrSchema(encrypt_decrypt_str=decrypted_str)
 
-
     def userActivationProcess(self, db, user_id: UUIDCheckForUserIDSchema, q):
         """user active on/off process can be done from here"""
         try:
@@ -409,7 +408,7 @@ class ProviderFusionAuth(Provider):
                 "user_name": userName,
                 "password": str(encrypted_password),
                 "verified": False,  # On signup make user verified False
-                "user_status": False,   # On signup make user_status False
+                "user_status": False,  # On signup make user_status False
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "phone": user.phone,
@@ -423,33 +422,31 @@ class ProviderFusionAuth(Provider):
                 set_redis(activation_email_key, user_resp.user_name)
                 # we will use RESEND_CONFIRMATION_EMAIL_URL to send activation_email. These links are same
                 activation_email_url = f"{RESEND_CONFIRMATION_EMAIL_URL}/auth/confirm-email?token={activation_email_key}"
-                directory = os.path.dirname(__file__)
-                with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
-                    email_template = index_file.read() \
-                        .replace("{{first_name}}", user.first_name) \
-                        .replace("{{verification_link}}", activation_email_url)
-
-                    template_name = 'signup_with_activation_email'
-                    title = "Activation Email"
-                    body = email_template
-                    # First; create template
-                    response = create_template_for_notification(body, template_name, title)
-                    log.debug(response.json())
-                    if response.json()['id']:
-                        # Second; Create notification
-                        template = response.json()['id']
-                        recipients = user.email
-                        notification_response = create_notification(recipients, template)
-                        if notification_response.json()['id']:
-                            # And; send activation email link to users email !
-                            notification_id = notification_response.json()['id']
-                            send_notification_email(db, user.email,
-                                                    status='signup_with_activation_email',
-                                                    notificationid=notification_id)
-                        else:
-                            raise CreateNotificationError
+                # Main signup template from db (Bootstrapped template model)
+                template = crud.get_template_by_name('signup_temp_bootstrap')
+                new_template = ''.join(template).replace("{{first_name}}", user.first_name) \
+                    .replace("{{verification_link}}", activation_email_url)
+                template_name = 'signup_with_activation_email'
+                title = "Activation Email"
+                body = new_template
+                # First; create a new template from Bootstrapped main signup template
+                # Because every signup has to get a new template for specific signup user
+                response = create_template_for_notification(body, template_name, title)
+                if response.json()['id']:
+                    # Second; Create notification
+                    template = response.json()['id']
+                    recipients = user.email
+                    notification_response = create_notification(recipients, template)
+                    if notification_response.json()['id']:
+                        # And; send activation email link to users email !
+                        notification_id = notification_response.json()['id']
+                        send_notification_email(db, user.email,
+                                                status='signup_with_activation_email',
+                                                notificationid=notification_id)
                     else:
-                        raise TemplateNotificationError
+                        raise CreateNotificationError
+                else:
+                    raise TemplateNotificationError
 
             return self._cast_user(user_resp)
 
@@ -644,14 +641,17 @@ class ProviderFusionAuth(Provider):
         generated_refresh_token = str(generated_refresh_token).replace('-', '')
         try:
             # for user
-            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}", "map_refresh_token"):  # Search for the key if it is exists
-                payload_user = client.hgetall_redis_user_payload(f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
+            if client.get_refresh_token(f"{REDIS_KEY_PREFIX}-{token}",
+                                        "map_refresh_token"):  # Search for the key if it is exists
+                payload_user = client.hgetall_redis_user_payload(
+                    f"{REDIS_KEY_PREFIX}-{token}")  # Get data from Redis with refresh token
                 if payload_user:
                     # new access_token generated from valid refresh_token request
                     new_access_token_user = jwt.encode(payload_user, JWT_SECRET_KEY, algorithm="HS256")
                     payload_user['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
                     client.set_user_token(payload_user)  # write data to Redis
-                    client.del_refresh_token(f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
+                    client.del_refresh_token(
+                        f"{REDIS_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
                     return {'accessToken': new_access_token_user, 'refreshToken': payload_user['refreshToken']}
                 else:
                     return {'No Redis Data exists !'}
@@ -663,7 +663,8 @@ class ProviderFusionAuth(Provider):
                     new_access_token_client = jwt.encode(payload_client, JWT_SECRET_KEY, algorithm="HS256")
                     payload_client['refreshToken'] = generated_refresh_token  # Dont send in payload jwt.encode
                     client.set_client_token(payload_client)  # write data to Redis
-                    client.del_refresh_token(f"{REDIS_CLIENT_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
+                    client.del_refresh_token(
+                        f"{REDIS_CLIENT_KEY_PREFIX}-{token}")  # delete previous refresh_token key and the data
                     return {'accessToken': new_access_token_client, 'refreshToken': payload_client['refreshToken']}
                 else:
                     return {'No Redis Data exists !'}
@@ -676,6 +677,24 @@ class ProviderFusionAuth(Provider):
     def zeauth_bootstrap(self):
         db = get_db().__next__()
         log.info("zeauth_bootstrap...")
+
+        # for notification, create template for signup activation email send.
+        try:
+            response = crud.get_template_by_name('signup_temp_bootstrap')
+            if not response:
+                directory = os.path.dirname(__file__)
+                with open(os.path.join(directory, "../../index.html"), "r", encoding="utf-8") as index_file:
+                    email_template = index_file.read()
+                    template_name = 'signup_temp_bootstrap'
+                    title = "Activation Email"
+                    body = email_template
+                    response = create_template_for_notification(body, template_name, title)
+                    if not response:
+                        log.debug("Signup Template NOT created !")
+        except Exception as ex:
+            log.error("unable to create zenotify template")
+            log.error(ex)
+            return None
 
         if ProviderFusionAuth.admin_user_created:
             return
@@ -754,7 +773,8 @@ class ProviderFusionAuth(Provider):
                 if role.name in roles_for_super_user:
                     try:
                         if not crud.is_groups_role_not_exists(db,
-                                                          GroupsRoleBase(roles=role.id, groups=super_user_group.id)):
+                                                              GroupsRoleBase(roles=role.id,
+                                                                             groups=super_user_group.id)):
                             group_role = crud.create_groups_role(db,
                                                                  GroupsRoleBase(roles=role.id,
                                                                                 groups=super_user_group.id))
