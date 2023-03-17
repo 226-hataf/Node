@@ -74,17 +74,18 @@ def get_groups(db: Session, skip: int = 0, limit: int = 100):
 def get_group_by_name(db: Session, name: str):
     query = db.query(models.Group)
     groups = query.filter(models.Group.name == name).first()
-    users_id = [users['users'] for users in get_groups_users(db, groups.id)]
-    users_name = [users['first_name'] for users in get_groups_users(db, groups.id)]
-    return dict(
-        name=groups.name,
-        description=groups.description,
-        id=groups.id,
-        created_on=groups.created_on,
-        updated_on=groups.updated_on,
-        users_id_in_group=users_id,
-        users_name_in_group=users_name
-    )
+    if groups:
+        users_id = [users['users'] for users in get_groups_users(db, groups.id)]
+        users_name = [users['first_name'] for users in get_groups_users(db, groups.id)]
+        return dict(
+            name=groups.name,
+            description=groups.description,
+            id=groups.id,
+            created_on=groups.created_on,
+            updated_on=groups.updated_on,
+            users_id_in_group=users_id,
+            users_name_in_group=users_name
+        )
 
 
 def get_groups_by_name_list(db: Session, groups: list):
@@ -189,6 +190,14 @@ def create_user(db: Session, user):
     return db_user
 
 
+def get_template_by_name(template_name: str):
+    zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
+    response = requests.get(f"{zenotify_base_url}/templates/")
+    json_response = response.json()
+    template = [x['body'] for x in json_response["data"] if x["template_name"] == template_name]
+    return template
+
+
 def create_template_for_notification(body: str, template_name: str, title: str):
     zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
     channel = "email"
@@ -207,12 +216,13 @@ def create_template_for_notification(body: str, template_name: str, title: str):
         raise TemplateNotificationError
 
 
-def create_notification(recipients: str, template: str, provider: str):
+def create_notification(recipients: str, template: str):
+    provider = os.environ.get('NOTIFICATION_PROVIDER')
     zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
     target = "email"
     json_data = {
         "recipients": [recipients],
-        "provider": provider,
+        "provider": f"{provider}",
         "template": template,
         "params": "",
         "target": [f"{target}"],
@@ -233,12 +243,11 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
         headers = {
             'Content-Type': 'application/json',
         }
-        if status == 'signup':
+        if status == 'signup_with_activation_email':
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
                 log.debug(f'Notification email send to <{email_exist.email}>')
-                return True
             else:
                 raise SignupSendNotificationError
 
@@ -246,7 +255,7 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
-                return True
+                log.debug(f'Notification email send to <{email_exist.email}>')
             else:
                 raise ResetPasswordSendNotificationError
 
@@ -254,7 +263,7 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
-                return True
+                log.debug(f'Notification email send to <{email_exist.email}>')
             else:
                 raise ResendConfirmationEmailError
     else:
