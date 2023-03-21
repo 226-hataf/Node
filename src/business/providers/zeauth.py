@@ -478,15 +478,6 @@ class ProviderFusionAuth(Provider):
                         raise CreateNotificationError
                 else:
                     raise TemplateNotificationError
-                # Second; Create notification
-                template = os.environ.get('SIGNUP_NOTIFICATION_TEMPLATE')  # default template for signup
-                recipients = user_resp.email
-                notification_response = create_notification(recipients, template)
-                log.debug(notification_response)
-                if notification_response.json()['id']:
-                    # Send wellcome notification to user's email
-                    notification_id = notification_response.json()['id']
-                    send_notification_email(db, recipients, status='signup', notificationid=notification_id)
 
             return self._cast_user(user_resp)
 
@@ -717,6 +708,7 @@ class ProviderFusionAuth(Provider):
     def zeauth_bootstrap(self):
         db = get_db().__next__()
         log.info("zeauth_bootstrap...")
+
         # for notification, create template for signup activation email send.
         try:
             response = crud.get_template_by_name('signup_temp_bootstrap')

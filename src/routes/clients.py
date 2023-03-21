@@ -29,7 +29,6 @@ model = ZKModel(**{
         'delete': ['zk-zeauth-delete']
     }
 })
-
 RESEND_CONFIRMATION_EMAIL_URL = os.environ.get('RESEND_CONFIRMATION_EMAIL_URL')
 
 # Create Client

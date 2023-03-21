@@ -250,7 +250,6 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
                 log.debug(f'Notification email send to <{email_exist.email}>')
-                return True
             else:
                 raise SignupSendNotificationError
 
@@ -266,7 +265,7 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
-                return True
+                log.debug(f'Notification email send to <{email_exist.email}>')
             else:
                 raise ResendConfirmationEmailError
     else:
@@ -528,7 +527,6 @@ def assign_multi_groups_to_user(db: Session, user_id: str, groups: UserToGroupsS
                 return groups.groups
             else:
                 raise HTTPException(status_code=403, detail="Available Groups are already related to this User")
-
 
     except ValueError as e:
         log.error(e)
