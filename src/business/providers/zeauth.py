@@ -363,6 +363,37 @@ class ProviderFusionAuth(Provider):
                 "last_name": user.last_name,
                 "phone": user.phone,
             })
+            if created_user.email:
+                # ZEK-866
+                activation_email_key = hash(uuid.uuid4().hex)
+                set_redis(activation_email_key, created_user.user_name)
+                # we will use RESEND_CONFIRMATION_EMAIL_URL to send activation_email. These links are same
+                activation_email_url = f"{RESEND_CONFIRMATION_EMAIL_URL}/auth/confirm-email?token={activation_email_key}"
+                # Main signup template from db (Bootstrapped template model) for creating new user
+                template = crud.get_template_by_name('signup_temp_bootstrap')
+                new_template = ''.join(template).replace("{{first_name}}", user.first_name) \
+                    .replace("{{verification_link}}", activation_email_url)
+                template_name = 'signup_with_activation_email'
+                title = "Activation Email"
+                body = new_template
+                # First; create a new template from Bootstrapped main signup template
+                # Because every signup has to get a new template for specific signup user
+                response = create_template_for_notification(body, template_name, title)
+                if response.json()['id']:
+                    # Second; Create notification
+                    template = response.json()['id']
+                    recipients = user.email
+                    notification_response = create_notification(recipients, template)
+                    if notification_response.json()['id']:
+                        # And; send activation email link to created new users email !
+                        notification_id = notification_response.json()['id']
+                        send_notification_email(db, user.email,
+                                                status='signup_with_activation_email',
+                                                notificationid=notification_id)
+                    else:
+                        raise CreateNotificationError
+                else:
+                    raise TemplateNotificationError
             return created_user
         except Exception as err:
             log.debug(err)
