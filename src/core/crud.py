@@ -74,18 +74,19 @@ def get_groups(db: Session, skip: int = 0, limit: int = 100):
 def get_group_by_name(db: Session, name: str):
     query = db.query(models.Group)
     groups = query.filter(models.Group.name == name).first()
-    if groups:
-        users_id = [users['users'] for users in get_groups_users(db, groups.id)]
-        users_name = [users['first_name'] for users in get_groups_users(db, groups.id)]
-        return dict(
-            name=groups.name,
-            description=groups.description,
-            id=groups.id,
-            created_on=groups.created_on,
-            updated_on=groups.updated_on,
-            users_id_in_group=users_id,
-            users_name_in_group=users_name
-        )
+    if not groups:
+        return None
+    users_id = [users['users'] for users in get_groups_users(db, groups.id)]
+    users_name = [users['first_name'] for users in get_groups_users(db, groups.id)]
+    return dict(
+        name=groups.name,
+        description=groups.description,
+        id=groups.id,
+        created_on=groups.created_on,
+        updated_on=groups.updated_on,
+        users_id_in_group=users_id,
+        users_name_in_group=users_name
+    )
 
 
 def get_groups_by_name_list(db: Session, groups: list):
@@ -156,7 +157,8 @@ def get_roles(db: Session, skip: int = 0, limit: int = 100):
 
 
 def get_role_by_name(db: Session, name: str):
-    return db.query(models.Role).filter(models.Role.name == name).first()
+    roles = db.query(models.Role).filter(models.Role.name == name).first()
+    return roles or None
 
 
 def update_role(db: Session, id: str, name: str, description: str):
@@ -190,14 +192,6 @@ def create_user(db: Session, user):
     return db_user
 
 
-def get_template_by_name(template_name: str):
-    zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
-    response = requests.get(f"{zenotify_base_url}/templates/")
-    json_response = response.json()
-    template = [x['body'] for x in json_response["data"] if x["template_name"] == template_name]
-    return template
-
-
 def create_template_for_notification(body: str, template_name: str, title: str):
     zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
     channel = "email"
@@ -216,13 +210,12 @@ def create_template_for_notification(body: str, template_name: str, title: str):
         raise TemplateNotificationError
 
 
-def create_notification(recipients: str, template: str):
-    provider = os.environ.get('NOTIFICATION_PROVIDER')
+def create_notification(recipients: str, template: str, provider: str):
     zenotify_base_url = os.environ.get('ZENOTIFY_BASE_URL')
     target = "email"
     json_data = {
         "recipients": [recipients],
-        "provider": f"{provider}",
+        "provider": provider,
         "template": template,
         "params": "",
         "target": [f"{target}"],
@@ -243,11 +236,12 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
         headers = {
             'Content-Type': 'application/json',
         }
-        if status == 'signup_with_activation_email':
+        if status == 'signup':
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
                 log.debug(f'Notification email send to <{email_exist.email}>')
+                return True
             else:
                 raise SignupSendNotificationError
 
@@ -255,7 +249,7 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
-                log.debug(f'Notification email send to <{email_exist.email}>')
+                return True
             else:
                 raise ResetPasswordSendNotificationError
 
@@ -263,7 +257,7 @@ def send_notification_email(db: Session, email: str, status: str = None, notific
             json_data = {"notificationId": notificationid}
             response = requests.post(f"{SEND_NOTIFICATION_EMAIL_URL}/send/email", json=json_data, headers=headers)
             if response.status_code == 200:
-                log.debug(f'Notification email send to <{email_exist.email}>')
+                return True
             else:
                 raise ResendConfirmationEmailError
     else:
@@ -506,8 +500,8 @@ def assign_multi_groups_to_user(db: Session, user_id: str, groups: UserToGroupsS
             query_groupUser = db.query(models.GroupsUser)
             # Check ! do we have a record in our groups table, for requested groups uuid's ?
             groups_in_groupsTable = [obj.id for obj in
-                                     query_groups
-                                     .filter(models.Group.id.in_(groups.groups))]
+                                   query_groups
+                                   .filter(models.Group.id.in_(groups.groups))]
             # check user in the group
             users_in_groupUserTable = [obj.groups for obj in
                                        query_groupUser
@@ -526,10 +520,10 @@ def assign_multi_groups_to_user(db: Session, user_id: str, groups: UserToGroupsS
             else:
                 raise HTTPException(status_code=403, detail="Available Groups are already related to this User")
 
+
     except ValueError as e:
         log.error(e)
         return {"detail": "invalid uuid"}
-
 
 def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_role: GroupUserRoleSchema):
     try:
@@ -555,9 +549,9 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
                     [dict(groups=group_id, users=users, ) for users in assign_users_to_group],
                 )
                 db.commit()
-                yield {"users": assign_users_to_group}
+                return {"message": f"Users {users_in_usersTable} successfully assigned to the group", "status_code": "201"}
             else:
-                raise HTTPException(status_code=403, detail="Available users are already in the group")
+                return {"message": f"Available users {users_in_usersTable} are already assigned to the group", "status_code": "403"}
 
         # check if request data has 'roles' key, assign users to the group
         if group_user_role.roles:
@@ -582,9 +576,10 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
                     [dict(groups=group_id, roles=roles, ) for roles in assign_roles_to_group],
                 )
                 db.commit()
-                yield {"roles": assign_roles_to_group}
+                return {"message": f"Roles {roles_in_rolesTable} successfully assigned to the group", "status_code": "201"}
             else:
-                raise HTTPException(status_code=403, detail="Available roles are already in the group")
+                return {"message": f"Available roles {roles_in_rolesTable} are already assigned to the group", "status_code": "403"}
+
     except ValueError as e:
         log.error(e)
         return {"detail": "invalid uuid"}
@@ -688,9 +683,8 @@ def is_groups_user_not_exists(db: Session, groups_user_create: GroupsUserBase):
 def generate_client_secret():
     return ''.join((secrets.choice(
         string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation
-    ) for i in range(32))) \
-        .replace('"',
-                 '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
+    ) for i in range(32)))\
+        .replace('"', '')  # when generating client_id remove "" for not get error on request body. for example this generated id throws error "%*jt""3g@*4(!_O`sC,]_S'>BE;R@t4h\"
 
 
 def check_user_has_role(db: Session, user: str, role_name: str) -> [Any]:
