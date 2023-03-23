@@ -66,14 +66,22 @@ class ProviderFusionAuth(Provider):
         users, total_count = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
                                             date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
                                             sort_by=sort_by, sort_column=sort_column)
+
         users = [self._cast_user(user) for user in users]
 
         return users, next_page, page_size, total_count
 
     def _cast_user(self, user):
+        db = get_db().__next__()
+        # ZEK-936
+        groups = [group['name'] for group in get_groups_name_of_user_by_id(db, str(user.id))]
+        roles = get_roles_name_of_group(db, groups)
+        roles = [roles for roles, in roles]
         return User(
             id=str(user.id),
             email=user.email,
+            roles=roles,
+            groups=groups,
             username=user.user_name,
             verified=user.verified,
             user_status=user.user_status,
