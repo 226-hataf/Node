@@ -746,6 +746,7 @@ class ProviderFusionAuth(Provider):
                 last_name="Account"
             ))
             user_id = user.id
+            crud.update_status_verified(db, user_id=user_id, verified=True, user_status=True)
             log.info(f"Master Account created.. {user_id}")
         except DuplicateEmailError as e:
             log.info("user already created")
