@@ -751,8 +751,16 @@ class ProviderFusionAuth(Provider):
         except DuplicateEmailError as e:
             log.info("user already created")
             db.rollback()
-            ProviderFusionAuth.admin_user_created = True
-            return None
+
+            user = crud.get_user_by_email(db, email=DEFAULT_ADMIN_EMAIL)
+            user_id = user.id
+            if user.user_status is True and user.verified is True:
+
+                ProviderFusionAuth.admin_user_created = True
+                return None
+            else:
+                crud.update_status_verified(db, user_id=user_id, verified=True, user_status=True)
+
         except Exception as ex:
             log.error("unable to bootstrap")
             log.error(ex)
