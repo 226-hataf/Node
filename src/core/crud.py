@@ -861,4 +861,5 @@ def update_status_verified(db: Session, user_id: str, verified: bool, user_statu
         raise ValueError(f"USER with id {user_id} not found")
     user.verified = verified
     user.user_status = user_status
+    db.commit()
     return user
