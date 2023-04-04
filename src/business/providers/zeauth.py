@@ -19,11 +19,10 @@ from ..models.schema_groups_role import GroupsRoleBase, GroupsUserBase
 from ..models.schema_main import UUIDCheckForUserIDSchema
 from ..models.schema_roles import RoleBaseSchema
 from ..models.schemas_groups import GroupBaseSchema
+from ..models.schemas_groups_users import GroupUserRoleSchema
 from ..models.users import ResetPasswordVerifySchema, ConfirmationEmailVerifySchema
 import jwt
 from config.db import get_db
-import tempfile
-from pathlib import Path
 
 RESEND_CONFIRMATION_EMAIL_URL = os.environ.get('RESEND_CONFIRMATION_EMAIL_URL')
 RESET_PASSWORD_URL = os.environ.get('RESET_PASSWORD_URL')
@@ -402,6 +401,7 @@ class ProviderFusionAuth(Provider):
                         raise CreateNotificationError
                 else:
                     raise TemplateNotificationError
+
             return created_user
         except Exception as err:
             log.debug(err)
@@ -878,3 +878,67 @@ class ProviderFusionAuth(Provider):
             log.error(error_template.format(type(err).__name__, str(err)))
 
         ProviderFusionAuth.admin_user_created = True
+
+    def app_permissions(self, db, permission_data):
+        group_names = []
+        role_names = []
+        permissions = dict(permission_data.provider.permissions)
+        for subkey, subvalue in permissions.items():
+            if subkey in ["create", "update", "list"]:
+                group_names.extend(subvalue)
+            else:
+                continue
+
+        for permission_type, permissions in permissions.items():
+            role_names.extend(
+                f"{permission}-{permission_type}"
+                for permission in permissions
+            )
+        group_names = set(group_names)
+        group_names = (list(group_names))
+        role_names = set(role_names)
+        role_names = (list(role_names))
+
+        log.info(f"group names {group_names}")
+        log.info(f"role names {role_names}")
+        try:
+            for role in role_names:
+                if not crud.get_role_by_name(db=db, name=role):
+                    action = role.split('-')[-1]
+                    if '-admin-list' in role:
+                        description = role.replace('-admin-list', ' action list for admin')
+                    else:
+                        description = role.replace('-user-', f' action {action} for user')
+                    crud.create_role(db, role_create=RoleBaseSchema(name=role, description=description))
+                    log.info(f"role name {role} created")
+                else:
+                    log.info(f"role name {role} already created")
+
+            for group in group_names:
+                group_instance = crud.get_group_by_name(db=db, name=group)
+                if not group_instance:
+                    description = group.split('-')
+                    description = ' '.join(description)
+                    group_instance = crud.create_group(db, group_create=GroupBaseSchema(name=group,
+                                                                                        description=description))
+                    log.info(f"group name {group} created")
+                else:
+                    log.info(f"group name {group} already created")
+
+                group_id = str(group_instance['id'])
+                group_roles = []
+                for role in role_names:
+                    if group in role:
+                        role_instance = crud.get_role_by_name(db=db, name=role)
+                        role_id = role_instance.id
+                        group_roles.append(role_id)
+
+                response = crud.assign_multi_users_or_roles_to_group(db=db, group_id=group_id,
+                                                                     group_user_role=GroupUserRoleSchema(
+                                                                         roles=group_roles))
+                log.info(f"{response}")
+
+            return "Permissions created successfully!"
+
+        except Exception as e:
+            log.info(f"Error: {e}")
