@@ -65,14 +65,22 @@ class ProviderFusionAuth(Provider):
         users, total_count = crud.get_users(db, skip=skip, limit=page_size, search=search, user_status=user_status,
                                             date_of_creation=date_of_creation, date_of_last_login=date_of_last_login,
                                             sort_by=sort_by, sort_column=sort_column)
+
         users = [self._cast_user(user) for user in users]
 
         return users, next_page, page_size, total_count
 
     def _cast_user(self, user):
+        db = get_db().__next__()
+        # ZEK-936
+        groups = [group['name'] for group in get_groups_name_of_user_by_id(db, str(user.id))]
+        roles = get_roles_name_of_group(db, groups)
+        roles = [roles for roles, in roles]
         return User(
             id=str(user.id),
             email=user.email,
+            roles=roles,
+            groups=groups,
             username=user.user_name,
             verified=user.verified,
             user_status=user.user_status,
@@ -738,12 +746,23 @@ class ProviderFusionAuth(Provider):
                 last_name="Account"
             ))
             user_id = user.id
+            crud.update_status_verified(db, user_id=user_id, verified=True, user_status=True)
             log.info(f"Master Account created.. {user_id}")
         except DuplicateEmailError as e:
             log.info("user already created")
             db.rollback()
-            ProviderFusionAuth.admin_user_created = True
-            return None
+
+            user = crud.get_user_by_email(db, email=DEFAULT_ADMIN_EMAIL)
+            user_id = user.id
+
+            if user.user_status is True and user.verified is True:
+
+                ProviderFusionAuth.admin_user_created = True
+                return None
+            else:
+                crud.update_status_verified(db, user_id=user_id, verified=True, user_status=True)
+
+
         except Exception as ex:
             log.error("unable to bootstrap")
             log.error(ex)

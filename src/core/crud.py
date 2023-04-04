@@ -859,3 +859,14 @@ def remove_client(db: Session, client_id: UUIDCheckForClientIdSchema):
         db.delete(delete_client_from_users_table)
         db.commit()
     return delete_client.id
+
+
+def update_status_verified(db: Session, user_id: str, verified: bool, user_status: bool):
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise ValueError(f"USER with id {user_id} not found")
+    user.verified = verified
+    user.user_status = user_status
+    db.commit()
+    return user
