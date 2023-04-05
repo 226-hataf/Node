@@ -57,4 +57,4 @@ sonarcloud-check:
   script:
     - sonar-scanner
   only:
-    - dev
+    - main
