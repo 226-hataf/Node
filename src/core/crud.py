@@ -74,18 +74,19 @@ def get_groups(db: Session, skip: int = 0, limit: int = 100):
 def get_group_by_name(db: Session, name: str):
     query = db.query(models.Group)
     groups = query.filter(models.Group.name == name).first()
-    if groups:
-        users_id = [users['users'] for users in get_groups_users(db, groups.id)]
-        users_name = [users['first_name'] for users in get_groups_users(db, groups.id)]
-        return dict(
-            name=groups.name,
-            description=groups.description,
-            id=groups.id,
-            created_on=groups.created_on,
-            updated_on=groups.updated_on,
-            users_id_in_group=users_id,
-            users_name_in_group=users_name
-        )
+    if not groups:
+        return None
+    users_id = [users['users'] for users in get_groups_users(db, groups.id)]
+    users_name = [users['first_name'] for users in get_groups_users(db, groups.id)]
+    return dict(
+        name=groups.name,
+        description=groups.description,
+        id=groups.id,
+        created_on=groups.created_on,
+        updated_on=groups.updated_on,
+        users_id_in_group=users_id,
+        users_name_in_group=users_name
+    )
 
 
 def get_groups_by_name_list(db: Session, groups: list):
@@ -156,7 +157,8 @@ def get_roles(db: Session, skip: int = 0, limit: int = 100):
 
 
 def get_role_by_name(db: Session, name: str):
-    return db.query(models.Role).filter(models.Role.name == name).first()
+    roles = db.query(models.Role).filter(models.Role.name == name).first()
+    return roles or None
 
 
 def update_role(db: Session, id: str, name: str, description: str):
@@ -222,9 +224,10 @@ def create_notification(recipients: str, template: str):
     target = "email"
     json_data = {
         "recipients": [recipients],
-        "provider": f"{provider}",
+        "push_subscriptions": {},
+        "provider": provider,
         "template": template,
-        "params": "",
+        "params": {},
         "target": [f"{target}"],
         "status": "",
         "last_error": ""
@@ -555,9 +558,11 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
                     [dict(groups=group_id, users=users, ) for users in assign_users_to_group],
                 )
                 db.commit()
-                yield {"users": assign_users_to_group}
+                return {"message": f"Users {users_in_usersTable} successfully assigned to the group",
+                        "status_code": "201"}
             else:
-                raise HTTPException(status_code=403, detail="Available users are already in the group")
+                return {"message": f"Available users {users_in_usersTable} are already assigned to the group",
+                        "status_code": "403"}
 
         # check if request data has 'roles' key, assign users to the group
         if group_user_role.roles:
@@ -582,9 +587,12 @@ def assign_multi_users_or_roles_to_group(db: Session, group_id: str, group_user_
                     [dict(groups=group_id, roles=roles, ) for roles in assign_roles_to_group],
                 )
                 db.commit()
-                yield {"roles": assign_roles_to_group}
+                return {"message": f"Roles {roles_in_rolesTable} successfully assigned to the group",
+                        "status_code": "201"}
             else:
-                raise HTTPException(status_code=403, detail="Available roles are already in the group")
+                return {"message": f"Available roles {roles_in_rolesTable} are already assigned to the group",
+                        "status_code": "403"}
+
     except ValueError as e:
         log.error(e)
         return {"detail": "invalid uuid"}

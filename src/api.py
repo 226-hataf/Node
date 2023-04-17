@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from business.models.users import UserLoginSchema, ResendConfirmationEmailSchema, ResetPasswordSchema, \
     ResetPasswordVerifySchema, ConfirmationEmailVerifySchema, EncryptDecryptStrSchema, DecryptedContentSchema, \
     EncryptedContentSchema
+from business.models.schema_users import TablePermissionSchema
 import uvicorn
 from business.providers.base import *
 from business.providers import get_provider
@@ -228,6 +229,18 @@ async def refresh_token(token: str):
     except InvalidTokenError as e:
         log.error(e)
         raise HTTPException(status_code=403, detail="Your refresh_token cannot be created !")
+
+
+@app.post('/create_table_permissions', description="create table permissions")
+async def create_app_permissions(permission_data: TablePermissionSchema, db: Session = Depends(get_db)):
+    """create table permissions"""
+    try:
+        response = auth_provider.app_permissions(db, permission_data)
+        if response:
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "permission created successfully"})
+    except Exception as err:
+        log.error(err)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Internal server error') from err
 
 
 # load all routes dynamically

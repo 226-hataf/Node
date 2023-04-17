@@ -134,3 +134,18 @@ class UserWithIDList(ZeBaseModel):
 class UsersWithIDsResponseSchema(BaseModel):
     user: list[UserWithIDList]
 
+
+class Permission(BaseModel):
+    list: List[str]
+    update: List[str]
+    create: List[str]
+
+
+class Zekoder(BaseModel):
+    permissions: Permission
+
+
+class TablePermissionSchema(BaseModel):
+    app_name: str
+    provider_name: str
+    provider: Zekoder

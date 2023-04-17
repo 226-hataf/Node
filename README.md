@@ -14,7 +14,7 @@
  RESEND_CONFIRMATION_EMAIL_URL |                  https://zekoder.netlify.app                                |
 SEND_NOTIFICATION_EMAIL_URL    |                  https://zenotify-service.zekoder.zestudio.zekoder.zekoder.net            |
 ZENOTIFY_BASE_URL    |                  http://zenotify.zekoder.zestudio.zekoder.zekoder.net            |
-NOTIFICATION_PROVIDER    |                  94c3f049-9fbd-4d2e-a147-7b9ddbc37351            |
+NOTIFICATION_PROVIDER    |                  0f8c65d3-e4c4-4a89-b638-c31a8262e0fb            |
 | FRONTEND_REDIRECT_URL        |                    https://zekoder.netlify.app/auth/verifysociallogin                     |
 | GOOGLE_REDIRECT_URL          |                                           ****                                            |
 | TWITTER_REDIRECT_URL         |                                           ****                                            |

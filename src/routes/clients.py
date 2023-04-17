@@ -31,7 +31,6 @@ model = ZKModel(**{
 })
 RESEND_CONFIRMATION_EMAIL_URL = os.environ.get('RESEND_CONFIRMATION_EMAIL_URL')
 
-
 # Create Client
 @router.post('/', tags=[model.plural], status_code=201, response_model=ClientSchema, description="Create a Client")
 async def create(client: ClientCreateSchema, db: Session = Depends(get_db),
@@ -82,7 +81,6 @@ async def create(client: ClientCreateSchema, db: Session = Depends(get_db),
                     raise CreateNotificationError
             else:
                 raise TemplateNotificationError
-
         return new_client
     except Exception as e:
         log.error(e)
