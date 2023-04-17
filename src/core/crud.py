@@ -224,9 +224,10 @@ def create_notification(recipients: str, template: str):
     target = "email"
     json_data = {
         "recipients": [recipients],
+        "push_subscriptions": {},
         "provider": provider,
         "template": template,
-        "params": "",
+        "params": {},
         "target": [f"{target}"],
         "status": "",
         "last_error": ""

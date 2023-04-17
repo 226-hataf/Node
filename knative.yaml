@@ -134,4 +134,4 @@ spec:
           - name: ZENOTIFY_BASE_URL
             value: "http://zenotify.zekoder.zestudio.zekoder.zekoder.net"
           - name: NOTIFICATION_PROVIDER
-            value: 94c3f049-9fbd-4d2e-a147-7b9ddbc37351
+            value: 0f8c65d3-e4c4-4a89-b638-c31a8262e0fb
