@@ -436,7 +436,7 @@ class ProviderFusionAuth(Provider):
                 if user.username != "":
                     userName = crud.check_username_exist(db, userName)
                     if userName is None:
-                        userName = user.username
+                        userName = user.email
                     else:
                         raise UserNameError("username already linked to an account")
                 else:
