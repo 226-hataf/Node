@@ -1,0 +1,83 @@
+def get_all_name_uuid_work_flow(namespace: str) -> List[Tuple[str, str]]:
+    configuration = argo_workflows.Configuration(host=ARGO_HOST)
+    configuration.verify_ssl = False
+
+    api_client = argo_workflows.ApiClient(configuration)
+    api_instance = workflow_service_api.WorkflowServiceApi(api_client)
+
+    workflows = api_instance.list_workflows(namespace=namespace, _preload_content=False)
+    workflows_json
+
+
+
+
+def get_all_name_uuid_work_flow():
+    configuration = argo_workflows.Configuration(host=ARGO_HOST)
+    configuration.verify_ssl = False
+
+    api_client = argo_workflows.ApiClient(configuration)
+    api_instance = workflow_service_api.WorkflowServiceApi(api_client)
+
+    try:
+        workflows = api_instance.list_workflows()
+        workflow_names = []
+        workflow_ids = []
+
+        for workflow in workflows.items:
+            workflow_names.append(workflow.metadata.name)
+            workflow_ids.append(workflow.metadata.uid)
+
+        return workflow_names, workflow_ids
+	
+    except Exception as err:
+        log.info(type(err))
+        log.error(err)	
+
+
+def print_all_name_uuid_work_flow():
+    configuration = argo_workflows.Configuration(host=ARGO_HOST)
+    configuration.verify_ssl = False
+
+    api_client = argo_workflows.ApiClient(configuration)
+    api_instance = workflow_service_api.WorkflowServiceApi(api_client)
+
+    try:
+        workflows = api_instance.list_workflows()
+        print("Workflow names and IDs:")
+        for workflow in workflows.items:
+            print(f"{workflow.metadata.name}: {workflow.metadata.uid}")
+
+    except Exception as err:
+        log.info(type(err))
+        log.error(err)	
+
+
+
+
+
+
+
+
+
+
+
+
+from typing import List, Tuple
+from argo_workflows.model import IoArgoprojWorkflowV1alpha1Template
+from argo_workflows.api import workflow_service_api
+from argo_workflows.configuration import Configuration
+
+def get_created_workflow_names_ids(namespace: str, templates: List[IoArgoprojWorkflowV1alpha1Template]) -> Tuple[List[str], List[str]]:
+    configuration = Configuration(host=ARGO_HOST)
+    configuration.verify_ssl = False
+    api_client = workflow_service_api.WorkflowServiceApi(api_client=configuration)
+
+    workflow_names = []
+    workflow_ids = []
+    for template in templates:
+        workflows = api_client.list_workflows(namespace=namespace, label_selector=f"workflows.argoproj.io/workflow-template={template.metadata.name}")
+        for workflow in workflows.items:
+            workflow_names.append(workflow.metadata.name)
+            workflow_ids.append(workflow.metadata.uid)
+
+    return workflow_names, workflow_ids

@@ -1,0 +1,469 @@
+{
+    "swagger": "2.0.0",
+    "openapi": "3.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "Todo API",
+        "description": "API endpoints for managing todos",
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        }
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Local development server"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Todos",
+            "description": "Todo management endpoints"
+        }
+    ],
+    "paths": {
+        "/todos": {
+            "post": {
+                "tags": [
+                    "Todos"
+                ],
+                "summary": "Create a new todo",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                      "in": "body",
+                      "name": "body",
+                      "description": "Pet object that needs to be added to the store",
+                      "required": false,
+                      "schema": {
+                        "$ref": "#/components/schemas/Todo"
+                      }
+                    }
+                  ],
+                "responses": {
+                    "201": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Todo"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Todos"
+                ],
+                "summary": "Get all todos with pagination",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Number of todos per page"
+                    },
+                    {
+                        "in": "query",
+                        "name": "startId",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "ID of the first todo in the range"
+                    },
+                    {
+                        "in": "query",
+                        "name": "endId",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "ID of the last todo in the range"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TodoPagination"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/todos/{id}": {
+            "get": {
+                "tags": [
+                    "Todos"
+                ],
+                "summary": "Get a todo by ID",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "ID of the todo"
+                    }
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Todo"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Todo not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Todos"
+                ],
+                "summary": "Update a todo by ID",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "ID of the todo"
+                    }
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTodo"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Todo"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Todo not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Todos"
+                ],
+                "summary": "Delete a todo by ID",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "ID of the todo"
+                    }
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Todo not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Todo": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "createdat": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedat": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description"
+                ]
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "number"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "createdat": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedat": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description"
+                ]
+            },
+            "UpdateTodo": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "number"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "createdat": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedat": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description"
+                ]
+            },
+            "SuccessResponse": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "number"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "createdat": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedat": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description"
+                ]
+            },
+            "TodoPagination": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "number"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "createdat": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedat": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description"
+                ]
+            },
+            "ValidationError": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "number"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "createdat": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedat": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description"
+                ]
+            }
+        }
+    }
+}

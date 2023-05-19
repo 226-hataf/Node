@@ -1,0 +1,405 @@
+user id= e238e66e-ce27-11ed-88c7-db7d7379599a
+ repo is https://ar.rehmanmirza:glpat-xxthV7T8PYmV5k9KATgp@gitlab.com/cybernetic-labs/zekoder/backend/zeauth.git
+ branch zeauth_bootstrap_exception_handling i want to push code in this branch
+
+
+zekoder-zeauth@zekoder.net
+Zekoder@123!
+sha21(secretkey)
+
+
+def create_new_client(db: Session, client: ClientCreateSchema):
+
+
+def create_client_auth(db: Session, client_auth: ClientSchema):
+
+
+there these two functions in crud.py in which we need to work
+
+
+i want code from the  zeauth_bootstrap_exception_handling branch in my brach lient_secret_key_encryption
+
+
+
+git config --local user.name ar.rehmanmirza
+git config --local user.email ar.rehmanmirza@cyberneticlabs.io
+ zeauth_operator_provider_issue_fixed
+
+git checkout branch
+ git astatus
+git add .
+git commit -m 
+
+
+
+
+git clone https://ar.rehmanmirza:glpat-xxthV7T8PYmV5k9KATgp@gitlab.com/cybernetic-labs/zekoder/zeagent/zeagent-operator.git
+
+git clone https://ar.rehmanmirza:glpat-xxthV7T8PYmV5k9KATgp@gitlab.com/cybernetic-labs/zekoder/zeagent/worker.git
+
+
+ 
+Abdul Rehman
+GMAIL
+ar.rehmanmirza@cyberneticlabs.io
+webdir123R@ (edited) 
+Oct 24th, 2022 at 12:37 PM
+
+git clone https://ar.rehmanmirza:glpat-xxthV7T8PYmV5k9KATgp@gitlab.com/cybernetic-labs/zekoder/zeagent/zeagent-operator.git
+
+git clone https://ar.rehmanmirza:glpat-xxthV7T8PYmV5k9KATgp@gitlab.com/cybernetic-labs/zekoder/zeagent/worker.git
+
+kubectl port-forward svc/argo-server -n argo 2746   ot to https://localhost:2746 on your local machine
+
+
+workflow http://localhost:8080/docs
+
+gcloud alpha auth activate-service-account
+gcloud container clusters get-credentials zekoder-dev --zone us-central1-c --project zekoder-dev-349809
+kubectl port-forward svc/argo-server -n argo 2746
+
+ZEAUTH_CLIENT_ID= "434936c0-bda7-11ed-9fbd-8b08ab6cb044"
+ZEAUTH_CLIENT_SECRET="QEdx&65zGZYiBdk'D7?y@P&l9,~Z3h"
+client_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOiI0MzQ5MzZjMC1iZGE3LTExZWQtOWZiZC04YjA4YWI2Y2IwNDQiLCJhdWQiOiJaZUF1dGgiLCJleHByIjoxNjgxNDU1ODAwLCJuYW1lIjoiYWRtaW4iLCJvd25lciI6ImEwNDJmMDEyLTkzM2QtMTFlZC05ZTIxLWFiY2FkNzI5ZDJmNiIsImlzcyI6Imh0dHBzOi8vemVhdXRoLnpla29kZXIuemVzdHVkaW8uemVrb2Rlci56ZWtvZGVyLm5ldCIsImdyb3VwcyI6WyJhZG1pbiIsInVzZXIiLCJ6ZWtvZGVyLXplc3R1ZGlvLXVzZXIiLCJ6ZWtvZGVyLXplc3R1ZGlvLXN1cGVyLWFkbWluIl19.djc4Xkzr88Hzq4h6IJSSkC8IekZJrHTwfpXNbp4flQc",
+
+deployment id for testing
+c82510ce-32a1-44d7-8112-ae2fb54c12df
+
+
+
+
+import copy
+
+if is_new:
+    args = CREATE_DOMAIN.args[0]
+    args_copy = copy.deepcopy(args)
+    CREATE_DOMAIN.args = self._replace_all(args_copy, replace_args)
+    # rest of the code ...
+            provider=self._solution.get_provider().lower(),provider = self.get_provider['short_name'].lower()
+
+
+import copy
+
+if is_new:
+    args = copy.deepcopy(CREATE_DOMAIN.args[0])
+    CREATE_DOMAIN.args = self._replace_all(args, replace_args)
+    CREATE_DOMAIN.container_env = [
+        EnvVar(name="APP_DATA_PATH", value=bucket_name),
+        EnvVar(name="APP_PATH", value=bucket_name),
+        EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+        EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key')),
+        EnvVar(name="ZESTUDIO_BASE_URL", value=ZESTUDIO_BASE_URL),
+        EnvVar(name="ZEAUTH_BASE_URL", value=ZEAUTH_BASE_URL),
+        EnvVar(name="ZEAUTH_CLIENT_ID", value=ZEAUTH_CLIENT_ID),
+        EnvVar(name="ZEAUTH_CLIENT_SECRET", value=ZEAUTH_CLIENT_SECRET)
+    ]
+    CREATE_DOMAIN.dependencies = [self.steps[-1].task_name]
+
+    self.steps.append(CREATE_DOMAIN)
+
+if is_new:
+    create_domain_step = AFTER_DEPLOY_STEPS[0].copy()
+    create_domain_step.args = ['run.py create-domain replace_target replace_deployment_id --owner replace_owner --kind replace_kind']
+    create_domain_step.container_env = [
+        EnvVar(name="APP_DATA_PATH", value=bucket_name),
+        EnvVar(name="APP_PATH", value=bucket_name),
+        EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+        EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key')),
+        EnvVar(name="ZESTUDIO_BASE_URL", value=ZESTUDIO_BASE_URL),
+        EnvVar(name="ZEAUTH_BASE_URL", value=ZEAUTH_BASE_URL),
+        EnvVar(name="ZEAUTH_CLIENT_ID", value=ZEAUTH_CLIENT_ID),
+        EnvVar(name="ZEAUTH_CLIENT_SECRET", value=ZEAUTH_CLIENT_SECRET)
+    ]
+    create_domain_step.dependencies = [self.steps[-1].task_name]
+    self.steps.append(create_domain_step)
+
+vapid_key_step = AFTER_DEPLOY_STEPS[1].copy()
+vapid_key_step.args = ['run.py create-vapid-key replace_target --owner replace_owner --kind replace_kind']
+vapid_key_step.container_env = [
+    EnvVar(name="APP_DATA_PATH", value=bucket_name),
+    EnvVar(name="APP_PATH", value=bucket_name),
+    EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+    EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key'))
+]
+vapid_key_step.dependencies = [self.steps[-1].task_name]
+self.steps.append(vapid_key_step)
+
+
+
+    dag_template_name=TASK_TEMPLATE,
+    container_env=[],
+    dependencies=[]
+),
+
+    ArgoTemplate(
+        name="create-vapid-key",
+        args=['run.py create-vapid-key replace_target --owner replace_owner --kind replace_kind'],
+        container_name="create-vapid-key",
+        cmds=["python3"],
+        docker_image=ZEAGENT_WORKER_IMAGE,
+        task_name="create-vapid-key-task",
+        dag_template_name=TASK_TEMPLATE,
+        container_env=[],
+        dependencies=[]
+    )
+]
+
+
+
+
+
+
+
+steps.py
+
+        if is_new:
+            args = AFTER_DEPLOY_STEPS[0].copy()
+            AFTER_DEPLOY_STEPS[0].args = copy.deepcopy(args)
+            AFTER_DEPLOY_STEPS[0].args = self._replace_all(args, replace_args)
+            AFTER_DEPLOY_STEPS[0].container_env = [
+                EnvVar(name="APP_DATA_PATH", value=bucket_name),
+                EnvVar(name="APP_PATH", value=bucket_name),
+                EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+                EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key')),
+                EnvVar(name="ZESTUDIO_BASE_URL", value=ZESTUDIO_BASE_URL),
+                EnvVar(name="ZEAUTH_BASE_URL", value=ZEAUTH_BASE_URL),
+                EnvVar(name="ZEAUTH_CLIENT_ID", value=ZEAUTH_CLIENT_ID),
+                EnvVar(name="ZEAUTH_CLIENT_SECRET", value=ZEAUTH_CLIENT_SECRET)
+            ]
+            AFTER_DEPLOY_STEPS[0].dependencies = [self.steps[-1].task_name]
+            self.steps.append(AFTER_DEPLOY_STEPS[0])
+
+        vapid_args = AFTER_DEPLOY_STEPS[1].copy()
+        AFTER_DEPLOY_STEPS[1].args = self._replace_all(vapid_args, replace_args)
+        AFTER_DEPLOY_STEPS[1].container_env = [
+            EnvVar(name="APP_DATA_PATH", value=bucket_name),
+            EnvVar(name="APP_PATH", value=bucket_name),
+            EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+            EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key'))
+        ]
+        AFTER_DEPLOY_STEPS[1].dependencies = [self.steps[-1].task_name]
+
+
+eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOiI0MzQ5MzZjMC1iZGE3LTExZWQtOWZiZC04YjA4YWI2Y2IwNDQiLCJhdWQiOiJaZUF1dGgiLCJleHByIjoxNjgxODE2NTQ2LCJuYW1lIjoiYWRtaW4iLCJvd25lciI6ImEwNDJmMDEyLTkzM2QtMTFlZC05ZTIxLWFiY2FkNzI5ZDJmNiIsImlzcyI6Imh0dHBzOi8vemVhdXRoLnpla29kZXIuemVzdHVkaW8uemVrb2Rlci56ZWtvZGVyLm5ldCIsImdyb3VwcyI6WyJhZG1pbiIsInVzZXIiLCJ6ZWtvZGVyLXplc3R1ZGlvLXVzZXIiLCJ6ZWtvZGVyLXplc3R1ZGlvLXN1cGVyLWFkbWluIl19.RVcRjp9TUQvtsTl9QJBpIpdPabTvpsniXMxb6n1k3dE
+
+
+DEPLOY_STEPS = [
+    ArgoTemplate(
+        name="deploy-solution-with-helm",
+        args=[''],
+        container_name="deploy-solution-with-helm",
+        cmds=['./gen.sh'],
+        docker_image="us.gcr.io/zekoder-dev-349809/zekoder/zeagents-charts:dev",
+        task_name="deploy-solution--with-helm-task",
+        dag_template_name=TASK_TEMPLATE,
+        container_env=[],
+        dependencies=[]
+    )
+]
+
+AFTER_DEPLOY_STEPS = [
+
+    ArgoTemplate(
+        name="create-domain",
+        args=['run.py create-domain replace_target replace_deployment_id --owner replace_owner --kind replace_kind'],
+        container_name="create-domain",
+        cmds=["python3"],
+        docker_image=ZEAGENT_WORKER_IMAGE,
+        task_name="create-domain-task",
+        dag_template_name=TASK_TEMPLATE,
+        container_env=[],
+        dependencies=[]
+    ),
+
+    ArgoTemplate(
+        name="create-vapid-key",
+        args=['run.py create-vapid-key replace_target --owner replace_owner --kind replace_kind'],
+        container_name="create-vapid-key",
+        cmds=["python3"],
+        docker_image=ZEAGENT_WORKER_IMAGE,
+        task_name="create-vapid-key-task",
+        dag_template_name=TASK_TEMPLATE,
+        container_env=[],
+        dependencies=[]
+    )
+]
+
+
+
+
+
+      else:
+                    step_def.container_env.append(
+                        EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')))
+                    step_def.container_env.append(
+                        EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key')))
+                if step_def.name == f"build-rest-{app_id}":
+                    create_domain_dependencies.append(step_def.task_name)
+
+                self.steps.append(copy.copy(step_def))
+                prev_task = step_def.task_name
+
+        is_first_deploy_step = True
+        for deploy_step in AFTER_DEPLOY_STEPS:
+
+            deploy_step.args = self._replace_all(
+                deploy_step.args[0], replace_args)
+
+            if is_first_deploy_step:
+                deploy_step.dependencies = create_domain_dependencies
+            is_first_deploy_step = False
+
+            deploy_step.container_env = [
+                EnvVar(name="APP_DATA_PATH", value=bucket_name),
+                EnvVar(name="APP_PATH", value=bucket_name),
+                EnvVar(name="MINIO_ACCESS_KEY",
+                       value=minio_creds.get('access_key')),
+                EnvVar(name="MINIO_SECRET_KEY",
+                       value=minio_creds.get('secret_key'))
+            ]
+            if deploy_step.name == "deploy-solution-with-helm":
+                deploy_step.container_env.append(
+                    EnvVar(name="SOLUTION", value=str(solution['short_name']).lower().replace(' ', '')))
+                deploy_step.container_env.append(EnvVar(name="KIND", value=kind))
+
+            self.steps.append(deploy_step)
+
+        if is_new:
+            args = copy.deepcopy(AFTER_DEPLOY_STEPS[0].args[0])
+            AFTER_DEPLOY_STEPS[0].args = copy.deepcopy(args)
+            AFTER_DEPLOY_STEPS[0].args = self._replace_all(args, replace_args)
+            AFTER_DEPLOY_STEPS[0].container_env = [
+                EnvVar(name="APP_DATA_PATH", value=bucket_name),
+                EnvVar(name="APP_PATH", value=bucket_name),
+                EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+                EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key')),
+                EnvVar(name="ZESTUDIO_BASE_URL", value=ZESTUDIO_BASE_URL),
+                EnvVar(name="ZEAUTH_BASE_URL", value=ZEAUTH_BASE_URL),
+                EnvVar(name="ZEAUTH_CLIENT_ID", value=ZEAUTH_CLIENT_ID),
+                EnvVar(name="ZEAUTH_CLIENT_SECRET", value=ZEAUTH_CLIENT_SECRET)
+            ]
+            AFTER_DEPLOY_STEPS[0].dependencies = [self.steps[-1].task_name]
+            self.steps.append(AFTER_DEPLOY_STEPS[0])
+
+        vapid_args = AFTER_DEPLOY_STEPS[1].copy()
+        AFTER_DEPLOY_STEPS[1].args = self._replace_all(vapid_args, replace_args)
+        AFTER_DEPLOY_STEPS[1].container_env = [
+            EnvVar(name="APP_DATA_PATH", value=bucket_name),
+            EnvVar(name="APP_PATH", value=bucket_name),
+            EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+            EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key'))
+        ]
+        AFTER_DEPLOY_STEPS[1].dependencies = [self.steps[-1].task_name]
+        self.steps.append(AFTER_DEPLOY_STEPS[1])
+
+        # if is_new:
+        #     args = copy.deepcopy(CREATE_DOMAIN.args[0])
+        #     CREATE_DOMAIN.args = self._replace_all(args, replace_args)
+        #     CREATE_DOMAIN.container_env = [
+        #         EnvVar(name="APP_DATA_PATH", value=bucket_name),
+        #         EnvVar(name="APP_PATH", value=bucket_name),
+        #         EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+        #         EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key')),
+        #         EnvVar(name="ZESTUDIO_BASE_URL", value=ZESTUDIO_BASE_URL),
+        #         EnvVar(name="ZEAUTH_BASE_URL", value=ZEAUTH_BASE_URL),
+        #         EnvVar(name="ZEAUTH_CLIENT_ID", value=ZEAUTH_CLIENT_ID),
+        #         EnvVar(name="ZEAUTH_CLIENT_SECRET", value=ZEAUTH_CLIENT_SECRET)
+        #     ]
+        #     CREATE_DOMAIN.dependencies = [self.steps[-1].task_name]
+        #
+        #     self.steps.append(CREATE_DOMAIN)
+        #
+        # # create VAPID KEY
+        # vapid_args = CREATE_VAPID_KEY.args[0]
+        # CREATE_VAPID_KEY.args = self._replace_all(vapid_args, replace_args)
+        # CREATE_VAPID_KEY.container_env = [
+        #     EnvVar(name="APP_DATA_PATH", value=bucket_name),
+        #     EnvVar(name="APP_PATH", value=bucket_name),
+        #     EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+        #     EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key'))
+        # ]
+        # CREATE_VAPID_KEY.dependencies = [self.steps[-1].task_name]
+        # self.steps.append(CREATE_VAPID_KEY)
+        #
+        # # TODO: create an app folder for every app under the solution folder
+        # # app folder on MINIO contains:
+        # # 1. deployment.json (app micorservice deployment encrypted using ZeAgent encryption public key))
+        # # 2. app.json
+        # # 3. any assets folders
+        # # 4. known_urls.json
+        #
+        # # TODO: inject the MINIO address to the step folder as environemnt variable APP_ARTIFACT_PATH
+        # return self.steps
+
+
+
+
+
+for create_domain in CREATE_DOMAIN:
+    # Replace the arguments of the create_domain object
+    create_domain.args = self._replace_all(create_domain.args, replace_args)
+    
+    # Set the container environment variables
+    create_domain.container_env = [
+        EnvVar(name="APP_DATA_PATH", value=bucket_name),
+        EnvVar(name="APP_PATH", value=bucket_name),
+        EnvVar(name="MINIO_ACCESS_KEY", value=minio_creds.get('access_key')),
+        EnvVar(name="MINIO_SECRET_KEY", value=minio_creds.get('secret_key')),
+        EnvVar(name="ZESTUDIO_BASE_URL", value=ZESTUDIO_BASE_URL),
+        EnvVar(name="ZEAUTH_BASE_URL", value=ZEAUTH_BASE_URL),
+        EnvVar(name="ZEAUTH_CLIENT_ID", value=ZEAUTH_CLIENT_ID),
+        EnvVar(name="ZEAUTH_CLIENT_SECRET", value=ZEAUTH_CLIENT_SECRET)
+    ]
+    
+    # Set the dependencies of the create_domain object
+    create_domain.dependencies = [self.steps[-1].task_name]
+    
+    # Create a new CreateDomain object with the updated attributes and add it to the steps list
+    new_create_domain = CreateDomain(
+        name=create_domain.name,
+        args=create_domain.args,
+        container=create_domain.container,
+        container_env=create_domain.container_env,
+        dependencies=create_domain.dependencies,
+        timeout=create_domain.timeout,
+    )
+    self.steps.append(new_create_domain)
+This code creates a new CreateDomain object with the updated attributes and appends it to self.steps instead of using copy.deepcopy. This should ensure that the updated attributes are copied correctly.
+
+
+
+
+
+Regenerate response
+Send a message...
+
+ChatGPT Mar 23 Version. Free Research Preview. ChatGPT may produce inaccurate information 
+
+
+    def submit(self):
+        # submit the generated argo_workflow to Argo Server
+        response = submit_argo_work_flow(
+            namespace="argo", resource_name=self.metadata_name)
+        workflow_uuid = response.get('metadata', {}).get('uid')
+        workflow_name = response.get('metadata', {}).get('name')
+        self.workflow_uuid = workflow_uuid
+        self.workflow_name = workflow_name
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,12 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: my-workflow-
+spec:
+  entrypoint: my-task
+  templates:
+  - name: my-task
+    container:
+      image: busybox
+      command: [sh, -c]
+      args: ["echo Hello World"]
